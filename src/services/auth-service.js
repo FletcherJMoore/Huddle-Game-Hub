@@ -2,6 +2,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut
@@ -17,6 +18,10 @@ export function signInWithEmail(auth, email, password) {
 
 export function createAccountWithEmail(auth, email, password) {
   return createUserWithEmailAndPassword(auth, email, password);
+}
+
+export function sendVerificationEmail(user) {
+  return sendEmailVerification(user);
 }
 
 export function signInWithGoogle(auth) {
