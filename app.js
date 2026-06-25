@@ -1,3 +1,5 @@
+import { firebaseConfig } from "./firebase-config.js";
+
 const STORAGE_KEY = "planner-board-state-v1";
 const FIREBASE_SDK_VERSION = "11.10.0";
 
@@ -43,6 +45,7 @@ let firebaseApi = null;
 let currentUser = null;
 let cloudUnsubscribe = null;
 let isApplyingCloudState = false;
+let authMode = "signIn";
 
 const elements = {
   boardForm: document.querySelector("#boardForm"),
@@ -50,7 +53,11 @@ const elements = {
   boardList: document.querySelector("#boardList"),
   authStatus: document.querySelector("#authStatus"),
   authDetail: document.querySelector("#authDetail"),
-  guestSignInButton: document.querySelector("#guestSignInButton"),
+  emailAuthForm: document.querySelector("#emailAuthForm"),
+  authEmail: document.querySelector("#authEmail"),
+  authPassword: document.querySelector("#authPassword"),
+  emailSignInButton: document.querySelector("#emailSignInButton"),
+  emailSignUpButton: document.querySelector("#emailSignUpButton"),
   googleSignInButton: document.querySelector("#googleSignInButton"),
   signOutButton: document.querySelector("#signOutButton"),
   activeBoardName: document.querySelector("#activeBoardName"),
@@ -117,9 +124,13 @@ function updateBoard(updater) {
 }
 
 function normalizeBoard(board) {
+  const members = board.members ?? (board.memberIds ?? []).reduce((map, uid) => ({ ...map, [uid]: true }), {});
+  if (currentUser && !Object.keys(members).length) members[currentUser.uid] = true;
+
   return {
     ...board,
-    memberIds: board.memberIds?.length ? board.memberIds : currentUser ? [currentUser.uid] : [],
+    members,
+    memberIds: Object.keys(members),
     schedule: board.schedule ?? [],
     activities: board.activities ?? [],
     people: board.people ?? [],
@@ -168,25 +179,28 @@ function renderAuth() {
   if (!firebaseApi) {
     elements.authStatus.textContent = "Local draft mode";
     elements.authDetail.textContent = "Add Firebase config to sync boards.";
-    elements.guestSignInButton.disabled = true;
+    elements.emailAuthForm.classList.remove("hidden");
+    elements.emailSignInButton.disabled = true;
+    elements.emailSignUpButton.disabled = true;
     elements.googleSignInButton.disabled = true;
     elements.signOutButton.classList.add("hidden");
     return;
   }
 
-  elements.guestSignInButton.disabled = false;
+  elements.emailSignInButton.disabled = false;
+  elements.emailSignUpButton.disabled = false;
   elements.googleSignInButton.disabled = false;
 
   if (currentUser) {
-    elements.authStatus.textContent = currentUser.isAnonymous ? "Signed in as guest" : "Signed in";
+    elements.authStatus.textContent = "Signed in";
     elements.authDetail.textContent = currentUser.email || currentUser.uid;
-    elements.guestSignInButton.classList.add("hidden");
+    elements.emailAuthForm.classList.add("hidden");
     elements.googleSignInButton.classList.add("hidden");
     elements.signOutButton.classList.remove("hidden");
   } else {
     elements.authStatus.textContent = "Cloud sync ready";
     elements.authDetail.textContent = "Sign in to save boards to Firebase.";
-    elements.guestSignInButton.classList.remove("hidden");
+    elements.emailAuthForm.classList.remove("hidden");
     elements.googleSignInButton.classList.remove("hidden");
     elements.signOutButton.classList.add("hidden");
   }
@@ -326,6 +340,7 @@ function createBoard(name) {
     name,
     createdAt: new Date().toISOString(),
     memberIds: currentUser ? [currentUser.uid] : [],
+    members: currentUser ? { [currentUser.uid]: true } : {},
     schedule: [],
     activities: [],
     people: [],
@@ -338,39 +353,39 @@ function createBoard(name) {
 }
 
 async function initializeFirebase() {
-  const config = window.PLANNER_FIREBASE_CONFIG;
+  const config = firebaseConfig;
   if (!config?.projectId) {
     renderAuth();
     return;
   }
 
-  const [{ initializeApp }, authModule, firestoreModule] = await Promise.all([
+  const [{ initializeApp }, authModule, databaseModule] = await Promise.all([
     import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-auth.js`),
-    import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`)
+    import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-database.js`)
   ]);
 
   const app = initializeApp(config);
   const auth = authModule.getAuth(app);
-  const db = firestoreModule.getFirestore(app);
+  const db = databaseModule.getDatabase(app);
 
   firebaseApi = {
     auth,
     db,
     GoogleAuthProvider: authModule.GoogleAuthProvider,
-    signInAnonymously: authModule.signInAnonymously,
+    createUserWithEmailAndPassword: authModule.createUserWithEmailAndPassword,
+    get: databaseModule.get,
+    getDatabase: databaseModule.getDatabase,
+    off: databaseModule.off,
+    onValue: databaseModule.onValue,
+    ref: databaseModule.ref,
+    remove: databaseModule.remove,
+    serverTimestamp: databaseModule.serverTimestamp,
+    set: databaseModule.set,
+    signInWithEmailAndPassword: authModule.signInWithEmailAndPassword,
     signInWithPopup: authModule.signInWithPopup,
     signOut: authModule.signOut,
-    onAuthStateChanged: authModule.onAuthStateChanged,
-    collection: firestoreModule.collection,
-    doc: firestoreModule.doc,
-    deleteDoc: firestoreModule.deleteDoc,
-    getDoc: firestoreModule.getDoc,
-    onSnapshot: firestoreModule.onSnapshot,
-    query: firestoreModule.query,
-    setDoc: firestoreModule.setDoc,
-    serverTimestamp: firestoreModule.serverTimestamp,
-    where: firestoreModule.where
+    onAuthStateChanged: authModule.onAuthStateChanged
   };
 
   firebaseApi.onAuthStateChanged(auth, (user) => {
@@ -389,17 +404,27 @@ async function initializeFirebase() {
 }
 
 function subscribeToCloudBoards() {
-  const boardsRef = firebaseApi.collection(firebaseApi.db, "boards");
-  const boardsQuery = firebaseApi.query(boardsRef, firebaseApi.where("memberIds", "array-contains", currentUser.uid));
+  const userBoardsRef = firebaseApi.ref(firebaseApi.db, `userBoards/${currentUser.uid}`);
 
-  cloudUnsubscribe = firebaseApi.onSnapshot(boardsQuery, async (snapshot) => {
-    if (snapshot.empty) {
+  cloudUnsubscribe = firebaseApi.onValue(userBoardsRef, async (snapshot) => {
+    const boardIds = Object.keys(snapshot.val() ?? {});
+
+    if (!boardIds.length) {
       await uploadLocalBoardsForUser();
       return;
     }
 
+    const boardSnapshots = await Promise.all(
+      boardIds.map((boardId) => firebaseApi.get(firebaseApi.ref(firebaseApi.db, `boards/${boardId}`)))
+    );
+    const boards = boardSnapshots
+      .filter((boardSnapshot) => boardSnapshot.exists())
+      .map((boardSnapshot) => normalizeBoard({ id: boardSnapshot.key, ...boardSnapshot.val() }));
+
+    if (!boards.length) return;
+
     isApplyingCloudState = true;
-    state.boards = snapshot.docs.map((document) => normalizeBoard({ id: document.id, ...document.data() }));
+    state.boards = boards;
     if (!state.boards.some((board) => board.id === state.activeBoardId)) {
       state.activeBoardId = state.boards[0].id;
     }
@@ -420,11 +445,32 @@ async function syncActiveBoardToCloud() {
 }
 
 async function saveBoardToCloud(board) {
-  const boardRef = firebaseApi.doc(firebaseApi.db, "boards", board.id);
-  await firebaseApi.setDoc(boardRef, {
-    ...board,
+  const normalized = normalizeBoard(board);
+  await firebaseApi.set(firebaseApi.ref(firebaseApi.db, `boards/${normalized.id}`), {
+    ...normalized,
     updatedAt: firebaseApi.serverTimestamp()
-  }, { merge: true });
+  });
+  await Promise.all(Object.keys(normalized.members).map((uid) =>
+    firebaseApi.set(firebaseApi.ref(firebaseApi.db, `userBoards/${uid}/${normalized.id}`), true)
+  ));
+}
+
+async function deleteBoardFromCloud(boardId) {
+  await firebaseApi.remove(firebaseApi.ref(firebaseApi.db, `boards/${boardId}`));
+  await firebaseApi.remove(firebaseApi.ref(firebaseApi.db, `userBoards/${currentUser.uid}/${boardId}`));
+}
+
+async function signInWithEmail() {
+  const email = elements.authEmail.value.trim();
+  const password = elements.authPassword.value;
+  if (!email || !password) return;
+
+  if (authMode === "signUp") {
+    await firebaseApi.createUserWithEmailAndPassword(firebaseApi.auth, email, password);
+  } else {
+    await firebaseApi.signInWithEmailAndPassword(firebaseApi.auth, email, password);
+  }
+  elements.emailAuthForm.reset();
 }
 
 elements.boardForm.addEventListener("submit", (event) => {
@@ -433,9 +479,17 @@ elements.boardForm.addEventListener("submit", (event) => {
   elements.boardForm.reset();
 });
 
-elements.guestSignInButton.addEventListener("click", async () => {
+elements.emailAuthForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
   if (!firebaseApi) return;
-  await firebaseApi.signInAnonymously(firebaseApi.auth);
+  authMode = "signIn";
+  await signInWithEmail();
+});
+
+elements.emailSignUpButton.addEventListener("click", async () => {
+  if (!firebaseApi) return;
+  authMode = "signUp";
+  await signInWithEmail();
 });
 
 elements.googleSignInButton.addEventListener("click", async () => {
@@ -465,6 +519,7 @@ elements.deleteBoardButton.addEventListener("click", async () => {
         name: "Fresh board",
         createdAt: new Date().toISOString(),
         memberIds: currentUser ? [currentUser.uid] : [],
+        members: currentUser ? { [currentUser.uid]: true } : {},
         schedule: [],
         activities: [],
         people: [],
@@ -478,7 +533,7 @@ elements.deleteBoardButton.addEventListener("click", async () => {
   }
 
   if (firebaseApi && currentUser) {
-    await firebaseApi.deleteDoc(firebaseApi.doc(firebaseApi.db, "boards", removedBoardId));
+    await deleteBoardFromCloud(removedBoardId);
     await saveBoardToCloud(activeBoard());
   }
 

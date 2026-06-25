@@ -39,8 +39,15 @@
             <strong id="authStatus">Local draft mode</strong>
             <span id="authDetail">Add Firebase config to sync boards.</span>
           </div>
+          <form class="auth-form" id="emailAuthForm">
+            <input id="authEmail" type="email" placeholder="Email" autocomplete="email" />
+            <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" minlength="6" />
+            <div class="auth-actions">
+              <button class="text-button subtle" id="emailSignInButton" type="submit">Log in</button>
+              <button class="text-button subtle" id="emailSignUpButton" type="button">Sign up</button>
+            </div>
+          </form>
           <div class="auth-actions">
-            <button class="text-button subtle" id="guestSignInButton" type="button">Guest</button>
             <button class="text-button subtle" id="googleSignInButton" type="button">Google</button>
             <button class="text-button subtle hidden" id="signOutButton" type="button">Sign out</button>
           </div>
@@ -176,7 +183,6 @@
       </div>
     </template>
 
-    <script src="firebase-config.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>

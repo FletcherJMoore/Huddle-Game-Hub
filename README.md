@@ -1,22 +1,37 @@
-# Planner App
+# Huddle
 
 A simple shared planning board for scheduling times, collecting activity ideas, tracking people, and chatting around a plan.
 
 ## Local Preview
 
 ```sh
-python3 -m http.server 4173
+npm install
+npm run dev
 ```
 
-Then open:
+Then open the local URL printed in the terminal.
 
-```text
-http://127.0.0.1:4173
+## Environment
+
+Create a `.env` file from `.env.example` and paste in the Firebase web app values:
+
+```sh
+cp .env.example .env
 ```
 
-## Firebase Setup
+The app expects:
 
-This app is prepared for Firebase Hosting, Authentication, and Firestore.
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_DATABASE_URL`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+
+## Firebase
+
+This app is prepared for Firebase Hosting, Authentication, and Realtime Database.
 
 1. Re-authenticate Firebase CLI if needed:
 
@@ -30,12 +45,16 @@ firebase login --reauth
 firebase use --add
 ```
 
-3. Copy your Firebase web app config into `firebase-config.js`.
+3. Copy your Firebase web app config into `.env`.
 
-4. Deploy hosting and rules:
+4. Make sure these providers are enabled in Firebase Authentication:
+
+- Email/password
+- Google
+
+5. Build and deploy hosting plus database rules:
 
 ```sh
+npm run build
 firebase deploy
 ```
-
-# Huddle

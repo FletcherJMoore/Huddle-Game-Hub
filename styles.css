@@ -128,10 +128,14 @@ svg {
   margin-top: 3px;
 }
 
+.auth-form,
 .auth-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.auth-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .auth-actions .text-button {
