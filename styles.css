@@ -54,6 +54,50 @@ svg {
   min-height: 100vh;
 }
 
+.auth-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 20px;
+}
+
+.auth-card {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 430px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.auth-brand {
+  margin-bottom: 2px;
+}
+
+.auth-brand h1 {
+  font-size: 1.6rem;
+}
+
+.auth-form label {
+  margin-bottom: -3px;
+}
+
+.google-button {
+  width: 100%;
+}
+
+.auth-error {
+  margin: 0;
+  border: 1px solid #edc7cd;
+  border-radius: 8px;
+  background: #fff4f6;
+  color: #8e3042;
+  font-size: 0.9rem;
+  padding: 10px 12px;
+}
+
 .sidebar {
   border-right: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.76);
@@ -210,6 +254,11 @@ select:focus {
   background: #fff;
   border-color: var(--line);
   color: var(--ink);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .board-list {

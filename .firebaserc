@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "huddle-b73f3",
+    "huddle-teamplanner": "huddle-b73f3",
+    "web-huddle": "huddle-b73f3"
+  },
+  "targets": {},
+  "etags": {}
+}

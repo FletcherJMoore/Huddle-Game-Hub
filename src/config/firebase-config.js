@@ -9,3 +9,13 @@ export const firebaseConfig = {
   messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? "",
   appId: env.VITE_FIREBASE_APP_ID ?? ""
 };
+
+export function hasFirebaseConfig(config = firebaseConfig) {
+  return Boolean(
+    config.apiKey &&
+      config.authDomain &&
+      config.databaseURL &&
+      config.projectId &&
+      config.appId
+  );
+}
