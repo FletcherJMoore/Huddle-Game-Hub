@@ -2,6 +2,7 @@ const messages = {
   "auth/email-already-in-use": "That email already has an account.",
   "auth/invalid-email": "Enter a valid email address.",
   "auth/invalid-credential": "The email or password is incorrect.",
+  "auth/too-many-requests": "Too many attempts. Please wait a bit and try again.",
   "auth/popup-closed-by-user": "Google sign-in was closed before it finished.",
   "auth/weak-password": "Use a password with at least 6 characters."
 };
