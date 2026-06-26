@@ -5,10 +5,12 @@ import {
   sendVerificationEmail,
   signInWithEmail,
   signInWithGoogle,
-  signOutUser
+  signOutUser,
+  setDisplayName
 } from "../../services/auth-service.js";
 import { getFriendlyAuthError } from "../../utils/firebase-errors.js";
 import { displayName } from "../boards/board-model.js";
+import { initialsFor } from "../../utils/format.js";
 
 export function setAuthError(message = "") {
   elements.authError.textContent = message;
@@ -28,19 +30,14 @@ function setAuthLoading(isLoading) {
 
 export function renderAccount() {
   const name = displayName();
-  const initials = name
-    .split(/\s|@/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0].toUpperCase())
-    .join("");
+  const initials = initialsFor(name);
+  const email = store.currentUser?.email || "";
 
-  elements.authStatus.textContent = "Signed in";
-  elements.authDetail.textContent = store.currentUser?.email || "Authenticated user";
-  elements.profileAvatar.textContent = initials || "U";
-  elements.profileMenuAvatar.textContent = initials || "U";
-  elements.settingsDisplayName.textContent = store.currentUser?.displayName || displayName();
-  elements.settingsEmail.textContent = store.currentUser?.email || "Not available";
+  elements.profileAvatar.textContent = initials;
+  elements.profileMenuAvatar.textContent = initials;
+  elements.profileMenuName.textContent = name;
+  elements.profileMenuEmail.textContent = email;
+  elements.dashWelcome.textContent = `Welcome back, ${name} 👋`;
 }
 
 async function authenticateWithEmail(mode) {
@@ -52,7 +49,9 @@ async function authenticateWithEmail(mode) {
     const email = elements.authEmail.value.trim();
     const password = elements.authPassword.value;
     if (mode === "signUp") {
+      const name = elements.authName.value.trim();
       const credential = await createAccountWithEmail(store.services.auth, email, password);
+      if (name) await setDisplayName(credential.user, name);
       await sendVerificationEmail(credential.user);
       await signOutUser(store.services.auth);
       setAuthNotice("Verification email sent. Confirm your email, then log in.");

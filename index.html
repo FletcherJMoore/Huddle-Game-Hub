@@ -6,316 +6,334 @@
     <title>Huddle — Plan your game rotation</title>
   </head>
   <body>
+    <!-- ambient background glow -->
+    <div class="ambient" aria-hidden="true">
+      <span class="blob blob-1"></span>
+      <span class="blob blob-2"></span>
+    </div>
+
+    <!-- ============ AUTH ============ -->
     <section class="auth-screen" id="authScreen" aria-label="Sign in">
       <div class="auth-card">
-        <div class="brand auth-brand">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" role="img">
-              <path d="M7 3h10a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z" />
-              <path d="M8 8h8M8 12h5M8 16h7" />
-            </svg>
+        <div class="auth-pitch">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="brand-word">Huddle</span>
           </div>
-          <div>
-            <h1>Huddle</h1>
-            <p>Figure out what to play — together.</p>
+          <h1 class="auth-headline">Game nights,<br />minus the group-chat chaos.</h1>
+          <p class="auth-sub">Boards for every crew. Vote on what to play, find a night that works for everyone, and talk trash — all in one place.</p>
+          <div class="auth-tags">
+            <span class="pill">🗳 Majority voting</span>
+            <span class="pill">📆 Consensus scheduling</span>
+            <span class="pill">💬 Built-in chat</span>
           </div>
         </div>
 
         <form class="auth-form" id="emailAuthForm">
+          <div class="eyebrow accent">Welcome to Huddle</div>
+          <p class="auth-form-sub">Free forever for your friend groups.</p>
+
+          <label for="authName">Display name</label>
+          <input id="authName" type="text" placeholder="e.g. Alex" autocomplete="name" />
+
           <label for="authEmail">Email</label>
-          <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" required />
+          <input id="authEmail" type="email" placeholder="you@email.com" autocomplete="email" required />
+
           <label for="authPassword">Password</label>
           <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" minlength="6" required />
-          <div class="auth-actions">
-            <button class="text-button" id="emailSignInButton" type="submit">Log in</button>
-            <button class="text-button subtle" id="emailSignUpButton" type="button">Sign up</button>
-          </div>
-        </form>
 
-        <button class="text-button google-button" id="googleSignInButton" type="button">Continue with Google</button>
-        <p class="auth-notice hidden" id="authNotice" role="status"></p>
-        <p class="auth-error hidden" id="authError" role="alert"></p>
+          <button class="btn btn-accent btn-block" id="emailSignInButton" type="submit">Log in →</button>
+          <button class="btn btn-ghost btn-block" id="emailSignUpButton" type="button">Create my account</button>
+
+          <div class="auth-divider"><span>or</span></div>
+          <button class="btn btn-surface btn-block" id="googleSignInButton" type="button">Continue with Google</button>
+
+          <p class="auth-notice hidden" id="authNotice" role="status"></p>
+          <p class="auth-error hidden" id="authError" role="alert"></p>
+        </form>
       </div>
     </section>
 
-    <div class="app-shell hidden" id="appShell">
-      <aside class="sidebar" aria-label="Application navigation">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" role="img">
-              <path d="M7 3h10a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z" />
-              <path d="M8 8h8M8 12h5M8 16h7" />
-            </svg>
+    <!-- ============ APP ============ -->
+    <div class="app-root hidden" id="appRoot">
+      <!-- ---------- DASHBOARD ---------- -->
+      <section class="dashboard hidden" id="dashboardScreen">
+        <div class="dash-topbar">
+          <div class="brand">
+            <div class="brand-mark sm" aria-hidden="true"><span></span><span></span><span></span></div>
+            <span class="brand-word sm">Huddle</span>
           </div>
-          <div>
-            <h1>Huddle</h1>
-            <p>Your squad's game rotation</p>
+          <div class="topbar-actions">
+            <button class="btn btn-accent" id="newBoardButtonTop" type="button">+ New board</button>
+            <div class="menu-anchor">
+              <button class="icon-btn" id="notifButton" type="button" aria-label="Notifications">
+                🔔<span class="dot-badge hidden" id="notifBadge">0</span>
+              </button>
+              <div class="popover hidden" id="notifMenu">
+                <div class="popover-head">
+                  <strong>Notifications</strong>
+                  <button class="link-btn" id="clearNotifsButton" type="button">Clear all</button>
+                </div>
+                <div class="popover-body" id="notifList"></div>
+              </div>
+            </div>
+            <div class="menu-anchor">
+              <button class="avatar-btn" id="profileButton" type="button" aria-label="Profile menu">
+                <span class="avatar" id="profileAvatar">U</span>
+              </button>
+              <div class="popover popover-sm hidden" id="profileMenu">
+                <div class="popover-user">
+                  <span class="avatar" id="profileMenuAvatar">U</span>
+                  <div class="popover-user-meta">
+                    <strong id="profileMenuName">User</strong>
+                    <span id="profileMenuEmail"></span>
+                  </div>
+                </div>
+                <div class="popover-section">
+                  <button class="menu-item danger" id="signOutButton" type="button">↩ Log out</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <nav class="primary-nav" aria-label="Primary navigation">
-          <button class="nav-item active" id="boardsNavButton" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 5h16M4 12h16M4 19h16" />
-            </svg>
-            Huddles
-          </button>
-          <button class="nav-item" id="settingsNavButton" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
-              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.05.05a2 2 0 1 1-2.83 2.83l-.05-.05A1.7 1.7 0 0 0 15 19.37a1.7 1.7 0 0 0-1 .58V20a2 2 0 1 1-4 0v-.07a1.7 1.7 0 0 0-1-.58 1.7 1.7 0 0 0-1.88.34l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.7 1.7 0 0 0 4.63 15a1.7 1.7 0 0 0-.58-1H4a2 2 0 1 1 0-4h.07a1.7 1.7 0 0 0 .58-1 1.7 1.7 0 0 0-.34-1.88l-.05-.05a2 2 0 1 1 2.83-2.83l.05.05A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1-.58V4a2 2 0 1 1 4 0v.07a1.7 1.7 0 0 0 1 .58 1.7 1.7 0 0 0 1.88-.34l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.7 1.7 0 0 0 19.37 9c.2.34.4.68.58 1H20a2 2 0 1 1 0 4h-.07a1.7 1.7 0 0 0-.53 1Z" />
-            </svg>
-            Settings
-          </button>
-        </nav>
+        <h1 class="dash-welcome" id="dashWelcome">Welcome back 👋</h1>
+        <p class="dash-lede">Here's what your crews need from you.</p>
 
-        <form class="new-board" id="boardForm">
-          <label for="boardName">New huddle</label>
-          <div class="inline-form">
-            <input id="boardName" name="boardName" type="text" placeholder="Friday Night Squad" maxlength="42" required />
-            <button type="submit" class="icon-button" aria-label="Create huddle" title="Create huddle">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
+        <div class="needs-strip" id="needsStrip">
+          <div class="needs-head">
+            <span class="eyebrow accent">⚡ Needs you</span>
+            <span class="count-pill" id="needsCount">0</span>
           </div>
-        </form>
+          <div class="needs-actions" id="needsActions"></div>
+        </div>
 
-        <nav class="board-list" id="boardList" aria-label="Huddle list"></nav>
-      </aside>
+        <div class="section-head">
+          <h2>Your boards</h2>
+          <span class="muted" id="dashBoardCount">0 boards</span>
+        </div>
+        <div class="board-grid" id="boardCards"></div>
+      </section>
 
-      <main class="workspace">
-        <header class="topbar">
-          <div>
-            <span class="eyebrow" id="viewEyebrow">Huddle</span>
-            <strong id="viewTitle">Huddle</strong>
-          </div>
-          <div class="topbar-actions">
-            <button class="chat-toggle" id="chatToggleButton" type="button" aria-label="Open messages" aria-expanded="false">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.3A8 8 0 1 1 21 12Z" />
-                <path d="M8.5 11h7M8.5 14h4" />
-              </svg>
-              <span class="chat-badge hidden" id="chatBadge">0</span>
-            </button>
-            <div class="profile-area">
-              <button class="profile-button" id="profileButton" type="button" aria-label="Open profile menu" aria-expanded="false" aria-haspopup="true">
-                <span class="profile-avatar" id="profileAvatar">U</span>
-              </button>
-            <div class="profile-menu hidden" id="profileMenu">
-              <div class="profile-menu-user">
-                <span class="profile-avatar menu-avatar" id="profileMenuAvatar">U</span>
+      <!-- ---------- BOARD VIEW ---------- -->
+      <section class="board-screen hidden" id="boardScreen">
+        <!-- rail -->
+        <aside class="rail" aria-label="Boards">
+          <button class="rail-logo" id="railLogo" type="button" aria-label="Dashboard">
+            <span class="brand-mark sm" aria-hidden="true"><span></span><span></span><span></span></span>
+          </button>
+          <div class="rail-divider"></div>
+          <div class="rail-boards" id="railBoards"></div>
+          <button class="rail-create" id="railCreate" type="button" aria-label="New board">+</button>
+        </aside>
+
+        <!-- main -->
+        <main class="board-main">
+          <header class="board-head">
+            <div class="board-head-id">
+              <div class="board-title-row">
+                <span class="board-emoji" id="boardEmoji">🎮</span>
+                <h1 id="boardName">Board</h1>
+                <span class="online-pill" id="boardOnline">● 0 online</span>
+              </div>
+              <div class="board-subtitle muted" id="boardSubtitle"></div>
+            </div>
+            <div class="board-head-actions">
+              <div class="avatar-cluster" id="headerAvatars"></div>
+              <button class="btn btn-surface" id="inviteButton" type="button">+ Invite</button>
+            </div>
+          </header>
+
+          <nav class="board-tabs">
+            <button class="tab active" id="tabRoster" type="button">🎮 Game Roster</button>
+            <button class="tab" id="tabSchedule" type="button">📅 Schedule</button>
+          </nav>
+
+          <div class="board-content">
+            <!-- ROSTER -->
+            <section class="roster" id="rosterView">
+              <div class="content-head">
                 <div>
-                  <strong id="authStatus">Signed in</strong>
-                  <span id="authDetail"></span>
+                  <h2>What should we play?</h2>
+                  <p class="muted" id="rosterSubtitle">Majority moves a game into rotation.</p>
+                </div>
+                <div class="content-head-actions">
+                  <button class="btn btn-surface" id="spinButton" type="button">🎡 Spin the wheel</button>
+                  <button class="btn btn-accent" id="proposeGameButton" type="button">+ Propose a game</button>
                 </div>
               </div>
-              <button type="button" id="profileSettingsButton">Settings</button>
-              <button type="button" id="themeToggleButton">Light / dark mode</button>
-              <button type="button" id="signOutButton">Sign out</button>
-            </div>
-            </div>
-          </div>
-        </header>
 
-        <section class="view-panel" id="boardView">
-          <section class="board-header">
-            <div>
-              <input class="board-title" id="activeBoardName" aria-label="Board name" maxlength="48" />
-              <div class="board-meta" id="boardMeta"></div>
-            </div>
-            <div class="header-actions">
-              <span class="role-badge" id="roleBadge">Admin</span>
-              <button class="text-button subtle" id="seedButton" type="button">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M4 19V5m0 0h11l1 4h4v8H4" />
-                </svg>
-                Sample
-              </button>
-              <button class="icon-button danger" id="deleteBoardButton" type="button" aria-label="Delete board" title="Delete board">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14" />
-                </svg>
-              </button>
-            </div>
-          </section>
+              <div class="wheel-result hidden" id="wheelResult"></div>
 
-          <section class="board-toolbar" aria-label="Huddle summary">
-            <div class="board-view-tab active">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M6 3h12l-1 7-5 4-5-4-1-7ZM10 18h4M12 14v4" />
-              </svg>
-              Roster
-            </div>
-            <div class="toolbar-stat">
-              <span>In rotation</span>
-              <strong id="rotationCount">0 games</strong>
-            </div>
-            <div class="toolbar-stat">
-              <span>Top pick</span>
-              <strong id="topActivity">No votes yet</strong>
-            </div>
-            <div class="toolbar-stat">
-              <span>Next game night</span>
-              <strong id="nextEvent">Not scheduled</strong>
-            </div>
-            <div class="toolbar-stat">
-              <span>Crew</span>
-              <strong id="peopleCount">0 members</strong>
-            </div>
-          </section>
+              <div class="roster-section-head">
+                <span class="status-dot dot-green"></span>
+                <h3 class="status-label green">In Rotation</h3>
+                <span class="muted" id="rotationCount">0</span>
+              </div>
+              <div class="rotation-grid" id="rotationList"></div>
 
-          <section class="board-grid">
-            <div class="panel games-panel">
-              <div class="panel-heading">
-                <h2>Games</h2>
-                <button class="icon-button small editor-control" id="addGameButton" type="button" aria-label="Add game" title="Add game">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                </button>
+              <div class="roster-section-head">
+                <span class="status-dot dot-amber"></span>
+                <h3 class="status-label amber">Pending Vote</h3>
+                <span class="muted" id="pendingCount">0</span>
               </div>
-              <form class="entry-form game-form hidden" id="gameForm">
-                <input id="gameTitle" type="text" placeholder="Game title" maxlength="64" required />
-                <input id="gameGenre" type="text" placeholder="Genre" maxlength="40" />
-                <select id="gameStatus" aria-label="List">
-                  <option value="maybe">😏 Hear Me Out</option>
-                  <option value="rotation">🎲 Current Rotation</option>
-                  <option value="never">🚫 Not in a Million Years</option>
-                </select>
-                <div class="platform-picker" id="gamePlatforms" role="group" aria-label="Where can you play?">
-                  <button type="button" class="platform-chip" data-platform="PC">PC</button>
-                  <button type="button" class="platform-chip" data-platform="Xbox">Xbox</button>
-                  <button type="button" class="platform-chip" data-platform="PS5">PS5</button>
-                  <button type="button" class="platform-chip" data-platform="Switch">Switch</button>
-                  <button type="button" class="platform-chip" data-platform="Mobile">Mobile</button>
-                </div>
-                <button type="submit" class="game-form-submit">Add game</button>
-              </form>
+              <div class="pending-list" id="pendingList"></div>
 
-              <div class="bucket-stack">
-                <section class="bucket bucket-rotation" data-status="rotation">
-                  <header class="bucket-header">🎲 Current Rotation 🎮</header>
-                  <div class="game-list" id="rotationList"></div>
-                </section>
-                <section class="bucket bucket-maybe" data-status="maybe">
-                  <header class="bucket-header">😏 Hear Me Out Though 👀</header>
-                  <div class="game-list" id="maybeList"></div>
-                </section>
-                <section class="bucket bucket-never" data-status="never">
-                  <header class="bucket-header">🚫 Not in a Million Years 🚫</header>
-                  <div class="game-list" id="neverList"></div>
-                </section>
+              <div class="roster-section-head">
+                <span class="status-dot dot-rose"></span>
+                <h3 class="status-label rose">Rejected</h3>
+                <span class="muted" id="rejectedCount">0</span>
               </div>
-            </div>
-
-            <div class="panel schedule-panel">
-              <div class="panel-heading">
-                <h2>Game Nights</h2>
-                <button class="icon-button small editor-control" id="addTimeButton" type="button" aria-label="Schedule a game night" title="Schedule a game night">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                </button>
-              </div>
-              <form class="entry-form hidden" id="timeForm">
-                <input id="timeDate" type="date" required />
-                <input id="timeStart" type="time" required />
-                <input id="timeEnd" type="time" required />
-                <input id="timeActivity" type="text" placeholder="What are we playing?" maxlength="60" required />
-                <button type="submit">Add</button>
-              </form>
-              <div class="item-list" id="scheduleList"></div>
-            </div>
-
-            <div class="panel crew-panel">
-              <div class="panel-heading">
-                <h2>Crew</h2>
-              </div>
-              <form class="invite-box admin-control" id="inviteForm">
-                <span>Invite by email</span>
-                <div class="invite-row">
-                  <input id="inviteEmail" type="email" placeholder="friend@example.com" autocomplete="off" aria-label="Invite email" />
-                  <button class="text-button subtle" id="sendInviteButton" type="submit">Invite</button>
-                </div>
-                <p class="invite-hint">They'll join automatically the next time they sign in to Huddle with this email.</p>
-                <p class="invite-feedback hidden" id="inviteFeedback" role="status"></p>
-              </form>
-              <div class="pending-invites" id="pendingInvites"></div>
-              <div class="item-list" id="peopleList"></div>
-            </div>
-          </section>
-        </section>
-
-        <section class="view-panel hidden" id="settingsView">
-          <div class="settings-layout">
-            <section class="panel settings-panel">
-              <div class="panel-heading">
-                <h2>Profile</h2>
-                <span class="role-badge" id="settingsRoleBadge">Admin</span>
-              </div>
-              <div class="setting-row">
-                <span>Name</span>
-                <strong id="settingsDisplayName">User</strong>
-              </div>
-              <div class="setting-row">
-                <span>Email</span>
-                <strong id="settingsEmail">user@example.com</strong>
-              </div>
+              <div class="rejected-list" id="rejectedList"></div>
             </section>
 
-            <section class="panel settings-panel">
-              <div class="panel-heading">
-                <h2>Preferences</h2>
+            <!-- SCHEDULE -->
+            <section class="schedule hidden" id="scheduleView">
+              <div class="content-head">
+                <div>
+                  <h2>When are we playing?</h2>
+                  <p class="muted">Vote Yes / Maybe / No on proposed times. Best consensus rises to the top.</p>
+                </div>
+                <button class="btn btn-accent" id="proposeTimeButton" type="button">+ Propose a time</button>
               </div>
-              <div class="setting-row">
-                <span>Light / dark mode</span>
-                <button class="text-button subtle" id="settingsThemeButton" type="button">Coming soon</button>
-              </div>
-            </section>
 
-            <section class="panel settings-panel admin-setting" id="adminSettingsPanel">
-              <div class="panel-heading">
-                <h2>Admin</h2>
+              <div class="heatmap-card">
+                <div class="eyebrow">This week's free-time heatmap</div>
+                <div class="heatmap" id="heatmap"></div>
+                <div class="heatmap-note muted">🟣 Darker = more of the crew is free. <b id="bestDayLabel"></b></div>
               </div>
-              <div class="setting-row">
-                <span>Role management</span>
-                <strong>Coming soon</strong>
-              </div>
+
+              <div class="session-list" id="sessionList"></div>
             </section>
           </div>
-        </section>
-      </main>
+        </main>
 
-      <div class="chat-backdrop hidden" id="chatBackdrop"></div>
-      <aside class="chat-drawer hidden" id="chatDrawer" aria-label="Messages">
-        <header class="chat-drawer-head">
-          <strong>Messages</strong>
-          <button class="icon-button subtle small" id="chatDrawerClose" type="button" aria-label="Close messages">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </header>
-        <div class="conversation-pills" id="conversationList"></div>
-        <div class="conversation-head" id="conversationHeader"></div>
-        <div class="chat-log" id="chatLog"></div>
-        <form class="chat-form drawer-chat-form" id="chatForm">
-          <input id="chatMessage" type="text" placeholder="Message" maxlength="400" autocomplete="off" required />
-          <button class="icon-button" type="submit" aria-label="Send message" title="Send message">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m4 12 16-8-5 16-3-7-8-1Z" />
-            </svg>
-          </button>
+        <!-- chat panel -->
+        <aside class="chat-panel" id="chatPanel" aria-label="Chat">
+          <div class="chat-head">
+            <div class="chat-head-id">
+              <strong># general</strong>
+              <span class="muted" id="chatOnline">0 online now</span>
+            </div>
+            <button class="icon-btn sm" id="chatToggle" type="button" aria-label="Collapse chat">‹</button>
+          </div>
+          <div class="chat-log" id="chatLog"></div>
+          <form class="chat-composer" id="chatForm">
+            <div class="composer-row">
+              <input id="chatMessage" type="text" placeholder="Message # general…" maxlength="400" autocomplete="off" />
+              <button class="composer-send" type="submit" aria-label="Send">➤</button>
+            </div>
+            <div class="composer-quick">
+              <button class="chip-btn" id="quickPollButton" type="button">📊 Quick poll</button>
+              <button class="chip-btn" id="shareSessionButton" type="button">📅 Share next session</button>
+            </div>
+          </form>
+        </aside>
+      </section>
+    </div>
+
+    <!-- ============ MODALS ============ -->
+    <div class="modal-backdrop hidden" id="modalRoot">
+      <!-- propose game -->
+      <div class="modal hidden" id="modalProposeGame" role="dialog" aria-modal="true">
+        <h3>Propose a game</h3>
+        <p class="modal-sub">It'll land in Pending — your vote counts as the first 👍.</p>
+        <form id="proposeGameForm">
+          <label for="pgTitle">Game title</label>
+          <input id="pgTitle" type="text" placeholder="e.g. Valheim" maxlength="64" required />
+          <div class="field-row">
+            <div class="field-grow">
+              <label for="pgVariant">Version / Edition <span class="optional">(optional)</span></label>
+              <input id="pgVariant" type="text" placeholder="e.g. Java, Bedrock" maxlength="40" />
+            </div>
+            <div class="field-narrow">
+              <label for="pgPlayers">Players</label>
+              <input id="pgPlayers" type="text" placeholder="1-4" maxlength="12" />
+            </div>
+          </div>
+          <label>Platform</label>
+          <div class="platform-picker" id="pgPlatforms">
+            <button type="button" class="platform-opt" data-platform="PC">PC</button>
+            <button type="button" class="platform-opt" data-platform="Xbox">Xbox</button>
+            <button type="button" class="platform-opt" data-platform="PS5">PS5</button>
+            <button type="button" class="platform-opt" data-platform="Switch">Switch</button>
+            <button type="button" class="platform-opt" data-platform="Mobile">Mobile</button>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-accent btn-grow">Add to roster</button>
+          </div>
         </form>
-      </aside>
+      </div>
+
+      <!-- invite -->
+      <div class="modal hidden" id="modalInvite" role="dialog" aria-modal="true">
+        <h3>Invite to <span id="inviteBoardName">this board</span></h3>
+        <p class="modal-sub">They'll join automatically the next time they sign in with this email.</p>
+        <form id="inviteForm">
+          <label for="inviteEmail">Invite by email</label>
+          <div class="field-row tight">
+            <input id="inviteEmail" type="email" placeholder="friend@email.com" autocomplete="off" />
+            <button type="submit" class="btn btn-accent" id="sendInviteButton">Send</button>
+          </div>
+          <p class="field-feedback hidden" id="inviteFeedback" role="status"></p>
+        </form>
+        <div class="pending-invites" id="pendingInvites"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-surface btn-block modal-cancel">Done</button>
+        </div>
+      </div>
+
+      <!-- propose time -->
+      <div class="modal hidden" id="modalProposeTime" role="dialog" aria-modal="true">
+        <h3>Propose a time</h3>
+        <p class="modal-sub">The crew votes Yes / Maybe / No to find consensus.</p>
+        <form id="proposeTimeForm">
+          <div class="field-row">
+            <div class="field-grow">
+              <label for="ptDate">Day</label>
+              <input id="ptDate" type="date" required />
+            </div>
+            <div class="field-narrow">
+              <label for="ptStart">Start</label>
+              <input id="ptStart" type="time" required />
+            </div>
+            <div class="field-narrow">
+              <label for="ptEnd">End</label>
+              <input id="ptEnd" type="time" required />
+            </div>
+          </div>
+          <label for="ptLabel">Note <span class="optional">(optional)</span></label>
+          <input id="ptLabel" type="text" placeholder="e.g. Helldivers raid night" maxlength="60" />
+          <div class="modal-actions">
+            <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-accent btn-grow">Propose time</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- create board -->
+      <div class="modal hidden" id="modalCreateBoard" role="dialog" aria-modal="true">
+        <h3>New board</h3>
+        <form id="createBoardForm">
+          <label>Icon</label>
+          <div class="emoji-picker" id="cbEmoji"></div>
+          <label>Accent</label>
+          <div class="accent-picker" id="cbAccent"></div>
+          <label for="cbName">Name</label>
+          <input id="cbName" type="text" placeholder="e.g. Local Legends" maxlength="42" required />
+          <div class="modal-actions">
+            <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-accent btn-grow">Create board</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <template id="emptyTemplate">
-      <div class="empty-state">
-        <div class="empty-art" aria-hidden="true"></div>
-        <p></p>
-      </div>
+      <div class="empty-state"><p></p></div>
     </template>
 
     <script type="module" src="/src/main.js"></script>

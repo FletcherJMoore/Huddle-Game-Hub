@@ -5,7 +5,8 @@ import {
   sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
-  signOut
+  signOut,
+  updateProfile
 } from "firebase/auth";
 
 export function watchAuthState(auth, onChange) {
@@ -26,6 +27,10 @@ export function sendVerificationEmail(user) {
 
 export function signInWithGoogle(auth) {
   return signInWithPopup(auth, new GoogleAuthProvider());
+}
+
+export function setDisplayName(user, name) {
+  return updateProfile(user, { displayName: name });
 }
 
 export function signOutUser(auth) {

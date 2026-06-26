@@ -14,7 +14,6 @@ export function game(title, genre, platforms, status) {
 }
 
 // Unique per browser session so each user's starter board has its own id.
-// A hardcoded id would collide across users and break invite codes.
 const demoBoardId = crypto.randomUUID();
 
 export const defaultState = {
@@ -22,24 +21,27 @@ export const defaultState = {
   boards: [
     {
       id: demoBoardId,
-      name: "Friday Night Squad",
+      name: "Couch Co-op Crew",
+      emoji: "🎮",
+      accent: "#7c5cff",
       createdAt: new Date().toISOString(),
       members: {},
       memberProfiles: {},
       reads: {},
       games: [
-        game("Fortnite", "Battle Royale", ["PC", "Xbox", "PS5", "Switch"], "rotation"),
-        game("Mortal Kombat", "Fighting", ["PC", "Xbox", "PS5", "Switch"], "rotation"),
-        game("Dead by Daylight", "Survival Horror", ["PC", "Xbox", "PS5"], "maybe"),
-        game("Destiny 2", "FPS/MMO", ["PC", "Xbox", "PS5"], "maybe")
+        game("Helldivers 2", "Co-op Shooter", ["PC", "PS5"], "rotation"),
+        game("Stardew Valley", "Farming Sim", ["PC", "Switch"], "rotation"),
+        game("Lethal Company", "Co-op Horror", ["PC"], "maybe"),
+        game("Overcooked 2", "Party", ["PC", "Switch"], "maybe")
       ],
       schedule: [
         {
           id: crypto.randomUUID(),
-          date: new Date().toISOString().slice(0, 10),
+          date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
           start: "20:00",
           end: "22:30",
-          activity: "Warm-up matches, then vote"
+          activity: "Co-op night",
+          votes: {}
         }
       ],
       messages: [
@@ -47,7 +49,7 @@ export const defaultState = {
           id: crypto.randomUUID(),
           author: "Huddle",
           authorUid: null,
-          text: "Drop games in 'Hear Me Out' and give them a 👍 or 👎.",
+          text: "Propose a game and give it a 👍 or 👎.",
           createdAt: new Date().toISOString()
         }
       ]

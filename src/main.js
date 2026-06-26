@@ -6,76 +6,63 @@ import { getFirebaseServices } from "./services/firebase-service.js";
 import { watchAuthState, signOutUser } from "./services/auth-service.js";
 import { subscribeToUserBoards, saveBoard, ensureMemberProfile } from "./services/boards-repository.js";
 import { claimInvites } from "./services/invites-repository.js";
-import { normalizeBoard, currentProfile } from "./features/boards/board-model.js";
+import { normalizeBoard, currentProfile, memberIdsOf } from "./features/boards/board-model.js";
 import { renderAccount, setAuthError, setAuthNotice, bindAuthEvents } from "./features/auth/auth.js";
-import { renderView, renderPermissions, bindShellEvents } from "./features/shell/shell.js";
-import { renderBoards, bindBoardEvents } from "./features/boards/board-list.js";
-import { renderGames, bindGameEvents, approvalScore, countVotes } from "./features/games/games.js";
+import { bindShellEvents, renderTabs, showToast } from "./features/shell/shell.js";
+import { renderRail, renderDashboard, bindBoardEvents } from "./features/boards/board-list.js";
+import { renderRoster, bindGameEvents } from "./features/games/games.js";
 import { renderSchedule, bindScheduleEvents } from "./features/schedule/schedule.js";
-import { renderCrew, bindCrewEvents } from "./features/crew/crew.js";
+import { renderHeaderAvatars, bindCrewEvents } from "./features/crew/crew.js";
 import { renderChat, bindChatEvents } from "./features/chat/chat.js";
-import { sortSchedule, formatShortDate } from "./utils/format.js";
 
-// Lightweight transient banner for one-off confirmations (e.g. "you joined X").
-function showToast(message) {
-  const toast = document.createElement("div");
-  toast.className = "app-toast";
-  toast.textContent = message;
-  document.body.append(toast);
-  requestAnimationFrame(() => toast.classList.add("visible"));
-  setTimeout(() => {
-    toast.classList.remove("visible");
-    setTimeout(() => toast.remove(), 300);
-  }, 4000);
-}
+let lastBoardId = null;
 
-function showAuthScreen() {
-  elements.authScreen.classList.remove("hidden");
-  elements.appShell.classList.add("hidden");
-}
+// Top-level render: routes between auth / dashboard / board.
+function renderApp() {
+  if (!store.currentUser) {
+    elements.authScreen.classList.remove("hidden");
+    elements.appRoot.classList.add("hidden");
+    return;
+  }
 
-function showPlanner() {
   elements.authScreen.classList.add("hidden");
-  elements.appShell.classList.remove("hidden");
-}
-
-// Top-level render: refreshes every feature against the active board.
-function renderPlanner() {
-  if (!store.currentUser) return;
+  elements.appRoot.classList.remove("hidden");
+  renderAccount();
 
   const board = activeBoard();
-  store.state.activeBoardId = board.id;
-  const memberIds = board.memberIds ?? Object.keys(board.members ?? {});
+  const onBoard = store.view === "board" && Boolean(board);
 
-  renderAccount();
-  renderView();
-  renderPermissions();
-  renderBoards();
+  elements.dashboardScreen.classList.toggle("hidden", onBoard);
+  elements.boardScreen.classList.toggle("hidden", !onBoard);
 
-  // Don't overwrite the title while the user is editing it (live updates can
-  // otherwise yank the field mid-keystroke).
-  if (document.activeElement !== elements.activeBoardName) {
-    elements.activeBoardName.value = board.name;
+  if (onBoard) {
+    store.state.activeBoardId = board.id;
+    renderBoard(board);
+  } else {
+    store.view = "dashboard";
+    renderDashboard();
   }
-  elements.boardMeta.textContent = `${board.games.length} games · ${memberIds.length} crew · ${board.messages.length} messages`;
+}
 
-  const rotationCount = board.games.filter((item) => item.status === "rotation").length;
-  elements.rotationCount.textContent = `${rotationCount} ${rotationCount === 1 ? "game" : "games"}`;
+function renderBoard(board) {
+  if (lastBoardId !== board.id) {
+    elements.wheelResult.classList.add("hidden");
+    lastBoardId = board.id;
+  }
 
-  const topPick = [...board.games]
-    .filter((item) => item.status === "maybe")
-    .sort((a, b) => approvalScore(b) - approvalScore(a))[0];
-  elements.topActivity.textContent =
-    topPick && approvalScore(topPick) > 0 ? `${topPick.title} (👍 ${countVotes(topPick, "up")})` : "No votes yet";
+  renderRail();
 
-  const next = sortSchedule(board.schedule)[0];
-  elements.nextEvent.textContent = next ? `${next.activity} · ${formatShortDate(next.date)}` : "Not scheduled";
-  elements.peopleCount.textContent = `${memberIds.length} ${memberIds.length === 1 ? "member" : "members"}`;
+  const count = memberIdsOf(board).length;
+  elements.boardEmoji.textContent = board.emoji;
+  elements.boardName.textContent = board.name;
+  elements.boardSubtitle.textContent = `${count} ${count === 1 ? "member" : "members"} · ${board.games.length} games`;
+  elements.boardOnline.textContent = `● ${count} online`;
 
-  renderGames(board);
-  renderSchedule(board);
-  renderCrew(board);
-  renderChat();
+  renderHeaderAvatars(board);
+  renderTabs();
+  if (store.boardTab === "roster") renderRoster(board);
+  else renderSchedule(board);
+  renderChat(board);
 }
 
 async function uploadLocalBoardsForUser() {
@@ -83,7 +70,6 @@ async function uploadLocalBoardsForUser() {
   await Promise.all(boards.map((board) => saveBoard(store.services.db, board, store.currentUser.uid)));
 }
 
-// Make sure co-members can see our current name without forcing a full re-save.
 function syncOwnProfiles() {
   if (!store.services || !store.currentUser) return;
   const profile = currentProfile();
@@ -103,17 +89,11 @@ async function handleAuthenticatedUser(user) {
   }
 
   store.currentUser = user;
-  showPlanner();
-  renderAccount();
+  renderApp();
 
-  // Join any boards this user was invited to by email. Newly joined boards
-  // stream in through the boards subscription below.
   claimInvites(store.services.functions)
     .then((joined) => {
-      if (joined.length) {
-        const names = joined.map((board) => board.boardName).join(", ");
-        showToast(`You were added to ${names}.`);
-      }
+      if (joined.length) showToast(`You were added to ${joined.map((b) => b.boardName).join(", ")}.`);
     })
     .catch((error) => console.error("Failed to claim invites", error));
 
@@ -130,26 +110,21 @@ async function handleAuthenticatedUser(user) {
     if (!store.state.boards.some((board) => board.id === store.state.activeBoardId)) {
       store.state.activeBoardId = store.state.boards[0].id;
     }
-    if (!store.state.boards.some((board) => board.id === store.chat.activeBoardId)) {
-      store.chat.activeBoardId = store.state.boards[0].id;
-    }
     saveLocal();
     store.isApplyingCloudState = false;
-    renderPlanner();
+    renderApp();
     syncOwnProfiles();
   });
 }
 
 function handleSignedOutUser() {
   store.currentUser = null;
-  store.chat.open = false;
-  elements.chatDrawer.classList.add("hidden");
-  elements.chatBackdrop.classList.add("hidden");
+  store.view = "dashboard";
   if (store.unsubscribeBoards) {
     store.unsubscribeBoards();
     store.unsubscribeBoards = null;
   }
-  showAuthScreen();
+  renderApp();
 }
 
 function startApp() {
@@ -160,19 +135,17 @@ function startApp() {
   bindScheduleEvents();
   bindCrewEvents();
   bindChatEvents();
-  setRenderHandler(renderPlanner);
+  setRenderHandler(renderApp);
 
   try {
     store.services = getFirebaseServices();
     watchAuthState(store.services.auth, (user) => {
-      if (user) {
-        handleAuthenticatedUser(user);
-      } else {
-        handleSignedOutUser();
-      }
+      if (user) handleAuthenticatedUser(user);
+      else handleSignedOutUser();
     });
   } catch (error) {
-    showAuthScreen();
+    console.error(error);
+    renderApp();
     setAuthError("Firebase is not configured yet. Check your .env values.");
   }
 }
