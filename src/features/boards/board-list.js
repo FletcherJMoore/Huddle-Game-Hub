@@ -2,7 +2,7 @@ import { store, activeBoard, saveState, render } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
 import { normalizeBoard, currentProfile, isAdmin, canEdit } from "./board-model.js";
 import { game } from "../../data/default-state.js";
-import { deleteBoard, saveBoard, joinBoard } from "../../services/boards-repository.js";
+import { deleteBoard, saveBoard } from "../../services/boards-repository.js";
 
 export function renderBoards() {
   elements.boardList.replaceChildren(
@@ -43,44 +43,6 @@ function createBoard(name) {
   render();
 }
 
-function setJoinFeedback(message = "", isError = false) {
-  elements.joinFeedback.textContent = message;
-  elements.joinFeedback.classList.toggle("hidden", !message);
-  elements.joinFeedback.classList.toggle("error", Boolean(isError));
-}
-
-async function handleJoin(code) {
-  const boardId = code.trim();
-  if (!boardId) return;
-
-  if (store.state.boards.some((board) => board.id === boardId)) {
-    store.state.activeBoardId = boardId;
-    saveState({ skipCloud: true });
-    render();
-    setJoinFeedback("You're already in that huddle — switched to it.");
-    elements.joinForm.reset();
-    return;
-  }
-
-  setJoinFeedback("Joining…");
-  try {
-    await joinBoard(store.services.db, boardId, store.currentUser.uid, currentProfile());
-    store.state.activeBoardId = boardId;
-    store.chat.activeBoardId = boardId;
-    setJoinFeedback("Joined! Loading the huddle…");
-    elements.joinForm.reset();
-  } catch (error) {
-    console.error("Join failed", error);
-    const denied = error?.code === "PERMISSION_DENIED" || /permission_denied/i.test(error?.message ?? "");
-    setJoinFeedback(
-      denied
-        ? "Couldn't join — the code may be wrong, or the database rules aren't deployed yet."
-        : "Couldn't join — double-check the invite code.",
-      true
-    );
-  }
-}
-
 async function handleDelete() {
   if (!isAdmin()) return;
   const removedBoardId = store.state.activeBoardId;
@@ -116,11 +78,6 @@ export function bindBoardEvents() {
     event.preventDefault();
     createBoard(elements.boardName.value.trim());
     elements.boardForm.reset();
-  });
-
-  elements.joinForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    handleJoin(elements.joinCode.value);
   });
 
   elements.activeBoardName.addEventListener("input", () => {

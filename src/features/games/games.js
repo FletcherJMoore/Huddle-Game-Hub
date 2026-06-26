@@ -113,7 +113,8 @@ function approvalRow(board, item) {
 
   const chips = document.createElement("div");
   chips.className = "approval-chips";
-  board.memberIds.forEach((uid) => {
+  const memberIds = board.memberIds ?? Object.keys(board.members ?? {});
+  memberIds.forEach((uid) => {
     const vote = item.approvals?.[uid] ?? "none";
     const isSelf = uid === store.currentUser?.uid;
     const interactive = isSelf && canEdit();

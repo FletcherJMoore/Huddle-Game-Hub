@@ -81,19 +81,6 @@
           </div>
         </form>
 
-        <form class="join-board" id="joinForm">
-          <label for="joinCode">Join a huddle</label>
-          <div class="inline-form">
-            <input id="joinCode" name="joinCode" type="text" placeholder="Paste invite code" />
-            <button type="submit" class="icon-button" aria-label="Join huddle" title="Join huddle">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
-            </button>
-          </div>
-          <p class="join-feedback hidden" id="joinFeedback" role="status"></p>
-        </form>
-
         <nav class="board-list" id="boardList" aria-label="Huddle list"></nav>
       </aside>
 
@@ -245,14 +232,16 @@
               <div class="panel-heading">
                 <h2>Crew</h2>
               </div>
-              <div class="invite-box">
-                <span>Invite code</span>
+              <form class="invite-box admin-control" id="inviteForm">
+                <span>Invite by email</span>
                 <div class="invite-row">
-                  <input id="inviteCode" type="text" readonly aria-label="Invite code" />
-                  <button class="text-button subtle" id="copyInviteButton" type="button">Copy</button>
+                  <input id="inviteEmail" type="email" placeholder="friend@example.com" autocomplete="off" aria-label="Invite email" />
+                  <button class="text-button subtle" id="sendInviteButton" type="submit">Invite</button>
                 </div>
-                <p class="invite-hint">Share this code so teammates can join and weigh in on games.</p>
-              </div>
+                <p class="invite-hint">They'll join automatically the next time they sign in to Huddle with this email.</p>
+                <p class="invite-feedback hidden" id="inviteFeedback" role="status"></p>
+              </form>
+              <div class="pending-invites" id="pendingInvites"></div>
               <div class="item-list" id="peopleList"></div>
             </div>
           </section>

@@ -1463,3 +1463,73 @@ body {
 .drawer-chat-form input:disabled {
   background: #f3f4f6;
 }
+
+/* Email invites */
+#inviteEmail {
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+
+.invite-feedback {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--green-strong);
+}
+
+.invite-feedback.error {
+  color: #a03b4d;
+}
+
+.pending-invites {
+  display: grid;
+  gap: 6px;
+  padding: 0 14px 12px;
+}
+
+.pending-invites:empty {
+  display: none;
+}
+
+.pending-heading {
+  margin: 4px 0 2px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.pending-invite {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.pending-email {
+  overflow: hidden;
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 60;
+  transform: translate(-50%, 12px);
+  border-radius: 8px;
+  background: #1a1a1a;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 12px 18px;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.app-toast.visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}

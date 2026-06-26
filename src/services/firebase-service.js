@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
+import { getFunctions } from "firebase/functions";
 
 import { firebaseConfig, hasFirebaseConfig } from "../config/firebase-config.js";
 
@@ -17,7 +18,8 @@ export function getFirebaseServices() {
   services = {
     app,
     auth: getAuth(app),
-    db: getDatabase(app)
+    db: getDatabase(app),
+    functions: getFunctions(app)
   };
 
   return services;

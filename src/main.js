@@ -5,6 +5,7 @@ import { elements } from "./state/dom.js";
 import { getFirebaseServices } from "./services/firebase-service.js";
 import { watchAuthState, signOutUser } from "./services/auth-service.js";
 import { subscribeToUserBoards, saveBoard, ensureMemberProfile } from "./services/boards-repository.js";
+import { claimInvites } from "./services/invites-repository.js";
 import { normalizeBoard, currentProfile } from "./features/boards/board-model.js";
 import { renderAccount, setAuthError, setAuthNotice, bindAuthEvents } from "./features/auth/auth.js";
 import { renderView, renderPermissions, bindShellEvents } from "./features/shell/shell.js";
@@ -14,6 +15,19 @@ import { renderSchedule, bindScheduleEvents } from "./features/schedule/schedule
 import { renderCrew, bindCrewEvents } from "./features/crew/crew.js";
 import { renderChat, bindChatEvents } from "./features/chat/chat.js";
 import { sortSchedule, formatShortDate } from "./utils/format.js";
+
+// Lightweight transient banner for one-off confirmations (e.g. "you joined X").
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "app-toast";
+  toast.textContent = message;
+  document.body.append(toast);
+  requestAnimationFrame(() => toast.classList.add("visible"));
+  setTimeout(() => {
+    toast.classList.remove("visible");
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
 
 function showAuthScreen() {
   elements.authScreen.classList.remove("hidden");
@@ -91,6 +105,17 @@ async function handleAuthenticatedUser(user) {
   store.currentUser = user;
   showPlanner();
   renderAccount();
+
+  // Join any boards this user was invited to by email. Newly joined boards
+  // stream in through the boards subscription below.
+  claimInvites(store.services.functions)
+    .then((joined) => {
+      if (joined.length) {
+        const names = joined.map((board) => board.boardName).join(", ");
+        showToast(`You were added to ${names}.`);
+      }
+    })
+    .catch((error) => console.error("Failed to claim invites", error));
 
   if (store.unsubscribeBoards) store.unsubscribeBoards();
 
