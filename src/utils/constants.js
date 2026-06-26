@@ -2,18 +2,26 @@
 
 export const PLATFORMS = ["PC", "Xbox", "PS5", "Switch", "Mobile"];
 
-export const BUCKETS = [
-  { key: "rotation", listId: "rotationList", label: "🎲 Current Rotation 🎮" },
-  { key: "maybe", listId: "maybeList", label: "😏 Hear Me Out Though 👀" },
-  { key: "never", listId: "neverList", label: "🚫 Not in a Million Years 🚫" }
+// status -> roster section. rotation = agreed/in-rotation, maybe = pending vote,
+// never = rejected.
+export const BUCKET_KEYS = ["rotation", "maybe", "never"];
+
+// Board accent colors offered in the create-board modal.
+export const ACCENT_OPTIONS = ["#7c5cff", "#00e0b8", "#ff5c7c", "#3da5ff", "#ffb13d"];
+
+// Board icons offered in the create-board modal.
+export const EMOJI_OPTIONS = ["🎮", "🕹", "👾", "🎲", "🍕", "🔥", "🏆", "⚔️", "🚀", "🐉"];
+
+// Palette used to color member + game avatars deterministically.
+export const AVATAR_COLORS = [
+  "#ffd24c",
+  "#ff7eb6",
+  "#56d364",
+  "#7c5cff",
+  "#3da5ff",
+  "#ff9f40",
+  "#00e0b8",
+  "#ff5c7c"
 ];
 
-export const BUCKET_KEYS = BUCKETS.map((bucket) => bucket.key);
-
-export const ROLE_LABELS = {
-  admin: "Admin",
-  editor: "Editor",
-  viewer: "Viewer"
-};
-
-export const STORAGE_KEY = "huddle-state-v1";
+export const STORAGE_KEY = "huddle-state-v2";

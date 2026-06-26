@@ -1,11 +1,9 @@
 // Pure formatting and sorting helpers.
 
 export function formatShortDate(dateString) {
+  if (!dateString) return "";
   const date = new Date(`${dateString}T00:00`);
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric"
-  }).format(date);
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
 }
 
 export function sortSchedule(schedule) {
@@ -16,9 +14,35 @@ export function timeLabel(iso) {
   return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }
 
+// "20:00" -> "8:00 PM"
+export function formatTime12(hhmm) {
+  if (!hhmm) return "";
+  const [h, m] = hhmm.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+export function sessionTimeLabel(start, end) {
+  if (!start) return "";
+  return end ? `${formatTime12(start)} – ${formatTime12(end)}` : formatTime12(start);
+}
+
+// Day-of-week abbreviation ("FRI") for a yyyy-mm-dd string.
+export function dowShort(dateString) {
+  if (!dateString) return "";
+  const date = new Date(`${dateString}T00:00`);
+  return new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(date).toUpperCase();
+}
+
+export function dayNum(dateString) {
+  if (!dateString) return "";
+  return new Date(`${dateString}T00:00`).getDate();
+}
+
 export function initialsFor(name) {
   return (
-    name
+    String(name)
       .replace(/\(you\)/i, "")
       .split(/\s|@/)
       .filter(Boolean)

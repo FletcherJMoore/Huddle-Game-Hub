@@ -1,62 +1,146 @@
-// App chrome: view switching, permission gating, and the nav/profile menu.
+// App chrome: screen routing, board tabs, chat collapse, modal + menu plumbing,
+// and the toast. Pure UI state — feature modules call these to drive navigation.
 
-import { store, activeBoard, render } from "../../state/store.js";
+import { store, render } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
-import { ROLE_LABELS } from "../../utils/constants.js";
-import { currentRole, canEdit, isAdmin } from "../boards/board-model.js";
+
+const MODALS = {
+  proposeGame: elements.modalProposeGame,
+  invite: elements.modalInvite,
+  proposeTime: elements.modalProposeTime,
+  createBoard: elements.modalCreateBoard
+};
 
 export function setView(view) {
-  store.currentView = view;
-  closeProfileMenu();
+  store.view = view;
+  closeMenus();
   render();
 }
 
-function closeProfileMenu() {
+export function openBoard(boardId) {
+  store.state.activeBoardId = boardId;
+  store.view = "board";
+  store.boardTab = "roster";
+  closeMenus();
+  render();
+}
+
+export function goDashboard() {
+  store.view = "dashboard";
+  closeMenus();
+  render();
+}
+
+export function setTab(tab) {
+  store.boardTab = tab;
+  render();
+}
+
+export function toggleChat() {
+  store.chatCollapsed = !store.chatCollapsed;
+  applyChatState();
+}
+
+function applyChatState() {
+  elements.chatPanel.classList.toggle("collapsed", store.chatCollapsed);
+  elements.chatToggle.textContent = store.chatCollapsed ? "›" : "‹";
+}
+
+export function openModal(name) {
+  store.modal = name;
+  closeMenus();
+  elements.modalRoot.classList.remove("hidden");
+  Object.entries(MODALS).forEach(([key, node]) => node.classList.toggle("hidden", key !== name));
+}
+
+export function closeModal() {
+  store.modal = null;
+  elements.modalRoot.classList.add("hidden");
+}
+
+export function closeMenus() {
+  store.notifOpen = false;
+  store.profileOpen = false;
+  elements.notifMenu.classList.add("hidden");
   elements.profileMenu.classList.add("hidden");
+  elements.notifButton.setAttribute("aria-expanded", "false");
   elements.profileButton.setAttribute("aria-expanded", "false");
 }
 
-export function renderView() {
-  const isSettings = store.currentView === "settings";
-  elements.boardView.classList.toggle("hidden", isSettings);
-  elements.settingsView.classList.toggle("hidden", !isSettings);
-  elements.boardsNavButton.classList.toggle("active", !isSettings);
-  elements.settingsNavButton.classList.toggle("active", isSettings);
-  elements.viewEyebrow.textContent = isSettings ? "Settings" : "Huddle";
-  elements.viewTitle.textContent = isSettings ? "Account settings" : activeBoard().name;
+function toggleNotif() {
+  store.notifOpen = !store.notifOpen;
+  store.profileOpen = false;
+  elements.notifMenu.classList.toggle("hidden", !store.notifOpen);
+  elements.profileMenu.classList.add("hidden");
 }
 
-export function renderPermissions() {
-  const roleLabel = ROLE_LABELS[currentRole()];
+function toggleProfile() {
+  store.profileOpen = !store.profileOpen;
+  store.notifOpen = false;
+  elements.profileMenu.classList.toggle("hidden", !store.profileOpen);
+  elements.notifMenu.classList.add("hidden");
+}
 
-  elements.roleBadge.textContent = roleLabel;
-  elements.settingsRoleBadge.textContent = roleLabel;
-  elements.adminSettingsPanel.classList.toggle("hidden", !isAdmin());
-  elements.activeBoardName.disabled = !isAdmin();
-  elements.deleteBoardButton.classList.toggle("hidden", !isAdmin());
-  document.querySelectorAll(".editor-control").forEach((control) => {
-    control.classList.toggle("hidden", !canEdit());
-  });
-  document.querySelectorAll(".admin-control").forEach((control) => {
-    control.classList.toggle("hidden", !isAdmin());
-  });
+// Render board tab active state + active view.
+export function renderTabs() {
+  const roster = store.boardTab === "roster";
+  elements.tabRoster.classList.toggle("active", roster);
+  elements.tabSchedule.classList.toggle("active", !roster);
+  elements.rosterView.classList.toggle("hidden", !roster);
+  elements.scheduleView.classList.toggle("hidden", roster);
+}
+
+let toastTimer = null;
+export function showToast(message) {
+  document.querySelectorAll(".app-toast").forEach((t) => t.remove());
+  if (toastTimer) clearTimeout(toastTimer);
+
+  const toast = document.createElement("div");
+  toast.className = "app-toast";
+  const spark = document.createElement("span");
+  spark.className = "spark";
+  spark.textContent = "✦";
+  const text = document.createElement("span");
+  text.textContent = message;
+  toast.append(spark, text);
+  document.body.append(toast);
+  requestAnimationFrame(() => toast.classList.add("visible"));
+  toastTimer = setTimeout(() => {
+    toast.classList.remove("visible");
+    setTimeout(() => toast.remove(), 300);
+  }, 3200);
 }
 
 export function bindShellEvents() {
-  elements.boardsNavButton.addEventListener("click", () => setView("boards"));
-  elements.settingsNavButton.addEventListener("click", () => setView("settings"));
-  elements.profileSettingsButton.addEventListener("click", () => setView("settings"));
-  elements.themeToggleButton.addEventListener("click", closeProfileMenu);
-  elements.settingsThemeButton.addEventListener("click", () => {});
+  elements.tabRoster.addEventListener("click", () => setTab("roster"));
+  elements.tabSchedule.addEventListener("click", () => setTab("schedule"));
+  elements.railLogo.addEventListener("click", goDashboard);
+  elements.chatToggle.addEventListener("click", toggleChat);
 
-  elements.profileButton.addEventListener("click", () => {
-    const isOpen = elements.profileMenu.classList.toggle("hidden") === false;
-    elements.profileButton.setAttribute("aria-expanded", String(isOpen));
+  elements.notifButton.addEventListener("click", toggleNotif);
+  elements.profileButton.addEventListener("click", toggleProfile);
+  elements.clearNotifsButton.addEventListener("click", () => {
+    elements.notifList.replaceChildren();
+    elements.notifBadge.classList.add("hidden");
   });
 
+  // Close menus / modal on outside click + Escape.
   document.addEventListener("click", (event) => {
-    if (!elements.profileMenu.contains(event.target) && !elements.profileButton.contains(event.target)) {
-      closeProfileMenu();
-    }
+    const inMenu = event.target.closest(".menu-anchor");
+    if (!inMenu && (store.notifOpen || store.profileOpen)) closeMenus();
   });
+
+  elements.modalRoot.addEventListener("click", (event) => {
+    if (event.target === elements.modalRoot) closeModal();
+  });
+  document.querySelectorAll(".modal-cancel").forEach((btn) =>
+    btn.addEventListener("click", closeModal)
+  );
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (store.modal) closeModal();
+    else closeMenus();
+  });
+
+  applyChatState();
 }
