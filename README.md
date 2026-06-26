@@ -1,4 +1,4 @@
-# Huddle
+# Huddle Game Hub
 
 A simple shared planning board for scheduling times, collecting activity ideas, tracking people, and chatting around a plan.
 
