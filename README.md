@@ -58,3 +58,30 @@ firebase use --add
 npm run build
 firebase deploy
 ```
+
+## Invites (Cloud Functions)
+
+Boards are invite-only by email — no actual email is sent. An admin enters a
+teammate's email in the Crew panel, and that person is added to the board
+automatically the next time they sign in to Huddle with that address. A small
+`claimMyInvites` Cloud Function does the join server-side so the database rules
+can stay strict (no client-side self-join).
+
+One-time setup:
+
+1. **Upgrade the Firebase project to the Blaze (pay-as-you-go) plan.** Cloud
+   Functions require it. The free tier covers light use.
+
+2. **Install function dependencies and deploy:**
+
+   ```sh
+   cd functions && npm install && cd ..
+   firebase deploy --only functions
+   ```
+
+3. **Deploy the updated database rules** (they block client-side self-join and
+   gate invites to board admins):
+
+   ```sh
+   firebase deploy --only database
+   ```

@@ -4,11 +4,6 @@
       "$boardId": {
         ".read": "auth != null && data.child('members').child(auth.uid).exists()",
         ".write": "auth != null && ((!data.exists() && newData.child('members').child(auth.uid).val() === 'admin') || data.child('members').child(auth.uid).val() === true || data.child('members').child(auth.uid).val() === 'admin' || (data.child('members').child(auth.uid).val() === 'editor' && newData.child('members').val() === data.child('members').val()))",
-        "members": {
-          "$memberUid": {
-            ".write": "auth != null && auth.uid === $memberUid && !data.exists() && newData.val() === 'editor' && root.child('boards').child($boardId).child('members').exists()"
-          }
-        },
         "memberProfiles": {
           "$memberUid": {
             ".write": "auth != null && auth.uid === $memberUid"
@@ -21,6 +16,19 @@
         ".read": "auth != null && auth.uid === $uid",
         "$boardId": {
           ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+    "invites": {
+      "$boardId": {
+        ".read": "auth != null && root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'admin'",
+        ".write": "auth != null && root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'admin'"
+      }
+    },
+    "emailInvites": {
+      "$emailKey": {
+        "$boardId": {
+          ".write": "auth != null && root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'admin'"
         }
       }
     }

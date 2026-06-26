@@ -81,16 +81,6 @@ export async function saveBoard(db, board, uid) {
   }
 }
 
-// Add the current user to an existing board as an editor. Written as a single
-// multi-path update so it succeeds atomically under the self-join DB rules.
-export async function joinBoard(db, boardId, uid, profile) {
-  await update(ref(db), {
-    [`boards/${boardId}/members/${uid}`]: "editor",
-    [`boards/${boardId}/memberProfiles/${uid}`]: profile,
-    [`userBoards/${uid}/${boardId}`]: true
-  });
-}
-
 // Upsert just the caller's own profile so co-members can see their name.
 export async function ensureMemberProfile(db, boardId, uid, profile) {
   await update(ref(db), {
