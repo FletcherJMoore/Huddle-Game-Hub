@@ -92,6 +92,9 @@
                   </div>
                 </div>
                 <div class="popover-section">
+                  <button class="menu-item" id="linkSteamButton" type="button">🎮 Link Steam</button>
+                </div>
+                <div class="popover-section">
                   <button class="menu-item danger" id="signOutButton" type="button">↩ Log out</button>
                 </div>
               </div>
@@ -143,6 +146,7 @@
             <div class="board-head-actions">
               <div class="avatar-cluster" id="headerAvatars"></div>
               <button class="btn btn-surface" id="inviteButton" type="button">+ Invite</button>
+              <button class="icon-btn sm hidden" id="boardSettingsButton" type="button" aria-label="Board settings" title="Board settings">⚙</button>
             </div>
           </header>
 
@@ -187,6 +191,14 @@
                 <span class="muted" id="rejectedCount">0</span>
               </div>
               <div class="rejected-list" id="rejectedList"></div>
+
+              <div class="roster-section-head steam-head">
+                <span class="status-dot dot-steam"></span>
+                <h3 class="status-label steam">Games You All Own</h3>
+                <span class="muted" id="commonCount">0</span>
+              </div>
+              <div id="steamLink"></div>
+              <div class="rotation-grid steam-grid" id="commonGames"></div>
             </section>
 
             <!-- SCHEDULE -->
@@ -238,7 +250,7 @@
     <div class="modal-backdrop hidden" id="modalRoot">
       <!-- propose game -->
       <div class="modal hidden" id="modalProposeGame" role="dialog" aria-modal="true">
-        <h3>Propose a game</h3>
+        <h3 id="pgModalTitle">Propose a game</h3>
         <p class="modal-sub">It'll land in Pending — your vote counts as the first 👍.</p>
         <form id="proposeGameForm">
           <label for="pgTitle">Game title</label>
@@ -263,7 +275,7 @@
           </div>
           <div class="modal-actions">
             <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
-            <button type="submit" class="btn btn-accent btn-grow">Add to roster</button>
+            <button type="submit" class="btn btn-accent btn-grow" id="pgSubmitButton">Add to roster</button>
           </div>
         </form>
       </div>
@@ -316,7 +328,7 @@
 
       <!-- create board -->
       <div class="modal hidden" id="modalCreateBoard" role="dialog" aria-modal="true">
-        <h3>New board</h3>
+        <h3 id="cbModalTitle">New board</h3>
         <form id="createBoardForm">
           <label>Icon</label>
           <div class="emoji-picker" id="cbEmoji"></div>
@@ -326,8 +338,9 @@
           <input id="cbName" type="text" placeholder="e.g. Local Legends" maxlength="42" required />
           <div class="modal-actions">
             <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
-            <button type="submit" class="btn btn-accent btn-grow">Create board</button>
+            <button type="submit" class="btn btn-accent btn-grow" id="cbSubmitButton">Create board</button>
           </div>
+          <button type="button" class="btn btn-danger btn-block hidden" id="cbDeleteButton">Delete board</button>
         </form>
       </div>
     </div>

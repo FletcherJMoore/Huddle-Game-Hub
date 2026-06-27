@@ -90,6 +90,60 @@ export function renderTabs() {
   elements.scheduleView.classList.toggle("hidden", roster);
 }
 
+// ---------- invite notifications ----------
+
+export function showInviteNotifications(invites, onAccept) {
+  if (!invites.length) return;
+
+  invites.forEach((invite) => {
+    const item = document.createElement("div");
+    item.className = "notif-item";
+    item.dataset.boardId = invite.boardId;
+
+    const msg = document.createElement("p");
+    msg.className = "notif-msg";
+    msg.textContent = `${invite.invitedByName} invited you to ${invite.boardName}`;
+
+    const actions = document.createElement("div");
+    actions.className = "notif-actions";
+
+    const acceptBtn = document.createElement("button");
+    acceptBtn.type = "button";
+    acceptBtn.className = "btn-primary btn-sm";
+    acceptBtn.textContent = "Accept";
+    acceptBtn.addEventListener("click", () => {
+      acceptBtn.disabled = true;
+      acceptBtn.textContent = "Joining…";
+      onAccept(invite).then(() => item.remove()).catch(() => {
+        acceptBtn.disabled = false;
+        acceptBtn.textContent = "Accept";
+      });
+      updateNotifBadge();
+    });
+
+    const declineBtn = document.createElement("button");
+    declineBtn.type = "button";
+    declineBtn.className = "link-btn";
+    declineBtn.textContent = "Decline";
+    declineBtn.addEventListener("click", () => {
+      item.remove();
+      updateNotifBadge();
+    });
+
+    actions.append(acceptBtn, declineBtn);
+    item.append(msg, actions);
+    elements.notifList.prepend(item);
+  });
+
+  updateNotifBadge();
+}
+
+export function updateNotifBadge() {
+  const count = elements.notifList.querySelectorAll(".notif-item").length;
+  elements.notifBadge.textContent = count;
+  elements.notifBadge.classList.toggle("hidden", count === 0);
+}
+
 let toastTimer = null;
 export function showToast(message) {
   document.querySelectorAll(".app-toast").forEach((t) => t.remove());

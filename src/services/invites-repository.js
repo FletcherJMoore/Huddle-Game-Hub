@@ -4,8 +4,7 @@ import { onValue, ref, update } from "firebase/database";
 import { emailKey } from "../utils/invite.js";
 
 // Create a pending invite for a board. Writes both the admin-facing pending
-// record and the reverse lookup the `claimMyInvites` function reads when the
-// invited person signs in and is joined to the board.
+// record and the reverse lookup the Cloud Functions read.
 export async function createInvite(db, board, email, role, inviter) {
   const key = emailKey(email);
   const lowerEmail = String(email).trim().toLowerCase();
@@ -47,11 +46,18 @@ export function subscribeToInvites(db, boardId, onChange) {
   });
 }
 
-// Ask the backend to join any boards this (verified) user was invited to by
-// email. Returns the list of boards that were just joined, if any.
-export async function claimInvites(functions) {
+// Returns boards this user has been invited to without joining them.
+export async function getPendingInvites(functions) {
   if (!functions) return [];
-  const callable = httpsCallable(functions, "claimMyInvites");
+  const callable = httpsCallable(functions, "getPendingInvites");
   const result = await callable();
-  return result.data?.joined ?? [];
+  return result.data?.pending ?? [];
+}
+
+// Accepts a single invite — grants membership and clears the invite record.
+export async function acceptInvite(functions, boardId) {
+  if (!functions) throw new Error("Firebase functions not initialised.");
+  const callable = httpsCallable(functions, "acceptInvite");
+  const result = await callable({ boardId });
+  return result.data;
 }

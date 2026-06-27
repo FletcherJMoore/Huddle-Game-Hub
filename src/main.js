@@ -5,15 +5,16 @@ import { elements } from "./state/dom.js";
 import { getFirebaseServices } from "./services/firebase-service.js";
 import { watchAuthState, signOutUser } from "./services/auth-service.js";
 import { subscribeToUserBoards, saveBoard, ensureMemberProfile } from "./services/boards-repository.js";
-import { claimInvites } from "./services/invites-repository.js";
-import { normalizeBoard, currentProfile, memberIdsOf } from "./features/boards/board-model.js";
+import { getPendingInvites, acceptInvite } from "./services/invites-repository.js";
+import { normalizeBoard, currentProfile, memberIdsOf, isAdmin } from "./features/boards/board-model.js";
 import { renderAccount, setAuthError, setAuthNotice, bindAuthEvents } from "./features/auth/auth.js";
-import { bindShellEvents, renderTabs, showToast } from "./features/shell/shell.js";
+import { bindShellEvents, renderTabs, showToast, showInviteNotifications } from "./features/shell/shell.js";
 import { renderRail, renderDashboard, bindBoardEvents } from "./features/boards/board-list.js";
 import { renderRoster, bindGameEvents } from "./features/games/games.js";
 import { renderSchedule, bindScheduleEvents } from "./features/schedule/schedule.js";
 import { renderHeaderAvatars, bindCrewEvents } from "./features/crew/crew.js";
 import { renderChat, bindChatEvents } from "./features/chat/chat.js";
+import { renderCommonGames, bindSteamEvents } from "./features/steam/steam.js";
 
 let lastBoardId = null;
 
@@ -57,11 +58,16 @@ function renderBoard(board) {
   elements.boardName.textContent = board.name;
   elements.boardSubtitle.textContent = `${count} ${count === 1 ? "member" : "members"} · ${board.games.length} games`;
   elements.boardOnline.textContent = `● ${count} online`;
+  elements.boardSettingsButton.classList.toggle("hidden", !isAdmin());
 
   renderHeaderAvatars(board);
   renderTabs();
-  if (store.boardTab === "roster") renderRoster(board);
-  else renderSchedule(board);
+  if (store.boardTab === "roster") {
+    renderRoster(board);
+    renderCommonGames(board);
+  } else {
+    renderSchedule(board);
+  }
   renderChat(board);
 }
 
@@ -91,11 +97,31 @@ async function handleAuthenticatedUser(user) {
   store.currentUser = user;
   renderApp();
 
-  claimInvites(store.services.functions)
-    .then((joined) => {
-      if (joined.length) showToast(`You were added to ${joined.map((b) => b.boardName).join(", ")}.`);
+  getPendingInvites(store.services.functions)
+    .then((pending) => {
+      if (!pending.length) return;
+
+      // Check if the user arrived via an email accept link (?acceptInvite=boardId).
+      const params = new URLSearchParams(window.location.search);
+      const autoAcceptId = params.get("acceptInvite");
+      if (autoAcceptId) {
+        window.history.replaceState({}, "", window.location.pathname);
+        const target = pending.find((i) => i.boardId === autoAcceptId);
+        if (target) {
+          acceptInvite(store.services.functions, target.boardId)
+            .then(() => showToast(`You joined ${target.boardName}!`))
+            .catch((err) => console.error("Auto-accept failed", err));
+          return;
+        }
+      }
+
+      showInviteNotifications(pending, (invite) =>
+        acceptInvite(store.services.functions, invite.boardId).then(() =>
+          showToast(`You joined ${invite.boardName}!`)
+        )
+      );
     })
-    .catch((error) => console.error("Failed to claim invites", error));
+    .catch((error) => console.error("Failed to load invites", error));
 
   if (store.unsubscribeBoards) store.unsubscribeBoards();
 
@@ -135,6 +161,7 @@ function startApp() {
   bindScheduleEvents();
   bindCrewEvents();
   bindChatEvents();
+  bindSteamEvents();
   setRenderHandler(renderApp);
 
   try {

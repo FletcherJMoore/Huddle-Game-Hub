@@ -1,4 +1,4 @@
-import { store, activeBoard, saveState, render } from "../../state/store.js";
+import { store, activeBoard, saveState, saveLocal, render } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
 import {
   normalizeBoard,
@@ -9,7 +9,8 @@ import {
 } from "./board-model.js";
 import { initialsFor, formatShortDate, sortSchedule } from "../../utils/format.js";
 import { EMOJI_OPTIONS, ACCENT_OPTIONS } from "../../utils/constants.js";
-import { openModal, closeModal, openBoard, showToast } from "../shell/shell.js";
+import { deleteBoard } from "../../services/boards-repository.js";
+import { openModal, closeModal, openBoard, goDashboard, showToast } from "../shell/shell.js";
 
 // ---- shared avatar helper ----
 function avatarEl(seed, name, className) {
@@ -209,11 +210,28 @@ function renderNeeds() {
 
 // ---------- CREATE BOARD ----------
 export function openCreateBoard() {
+  store.editingBoardId = null;
   store.createDraft = { emoji: EMOJI_OPTIONS[0], accent: ACCENT_OPTIONS[0] };
   elements.cbName.value = "";
+  elements.cbModalTitle.textContent = "New board";
+  elements.cbSubmitButton.textContent = "Create board";
+  elements.cbDeleteButton.classList.add("hidden");
   renderCreatePickers();
   openModal("createBoard");
   setTimeout(() => elements.cbName.focus(), 50);
+}
+
+export function openEditBoard() {
+  const board = activeBoard();
+  if (!board) return;
+  store.editingBoardId = board.id;
+  store.createDraft = { emoji: board.emoji, accent: board.accent };
+  elements.cbName.value = board.name;
+  elements.cbModalTitle.textContent = "Board settings";
+  elements.cbSubmitButton.textContent = "Save changes";
+  elements.cbDeleteButton.classList.remove("hidden");
+  renderCreatePickers();
+  openModal("createBoard");
 }
 
 function renderCreatePickers() {
@@ -267,12 +285,49 @@ function createBoard(name) {
   showToast(`Created ${board.name}`);
 }
 
+function saveBoardEdits(name) {
+  const board = store.state.boards.find((b) => b.id === store.editingBoardId);
+  if (!board) return;
+  board.name = name || board.name;
+  board.emoji = store.createDraft.emoji;
+  board.accent = store.createDraft.accent;
+  saveState();
+  closeModal();
+  render();
+  showToast("Board updated");
+}
+
+async function deleteCurrentBoard() {
+  const board = store.state.boards.find((b) => b.id === store.editingBoardId) ?? activeBoard();
+  if (!board) return;
+  if (!window.confirm(`Delete "${board.name}"? This removes the board and its games, schedule, and chat for everyone.`)) {
+    return;
+  }
+
+  store.state.boards = store.state.boards.filter((b) => b.id !== board.id);
+  store.state.activeBoardId = store.state.boards[0]?.id ?? null;
+  saveLocal();
+  closeModal();
+  goDashboard();
+  showToast(`Deleted ${board.name}`);
+
+  if (store.services && store.currentUser) {
+    deleteBoard(store.services.db, store.currentUser.uid, board.id).catch((e) =>
+      console.error("Delete board failed", e)
+    );
+  }
+}
+
 export function bindBoardEvents() {
   elements.newBoardButtonTop.addEventListener("click", openCreateBoard);
   elements.railCreate.addEventListener("click", openCreateBoard);
+  elements.boardSettingsButton.addEventListener("click", openEditBoard);
+  elements.cbDeleteButton.addEventListener("click", deleteCurrentBoard);
 
   elements.createBoardForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    createBoard(elements.cbName.value.trim());
+    const name = elements.cbName.value.trim();
+    if (store.editingBoardId) saveBoardEdits(name);
+    else createBoard(name);
   });
 }

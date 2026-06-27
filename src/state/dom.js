@@ -35,6 +35,7 @@ export const elements = {
   profileMenuName: $("profileMenuName"),
   profileMenuEmail: $("profileMenuEmail"),
   signOutButton: $("signOutButton"),
+  linkSteamButton: $("linkSteamButton"),
 
   // dashboard body
   dashWelcome: $("dashWelcome"),
@@ -56,6 +57,7 @@ export const elements = {
   boardSubtitle: $("boardSubtitle"),
   headerAvatars: $("headerAvatars"),
   inviteButton: $("inviteButton"),
+  boardSettingsButton: $("boardSettingsButton"),
 
   // tabs + views
   tabRoster: $("tabRoster"),
@@ -74,6 +76,9 @@ export const elements = {
   pendingCount: $("pendingCount"),
   rejectedList: $("rejectedList"),
   rejectedCount: $("rejectedCount"),
+  steamLink: $("steamLink"),
+  commonGames: $("commonGames"),
+  commonCount: $("commonCount"),
 
   // schedule
   proposeTimeButton: $("proposeTimeButton"),
@@ -100,6 +105,8 @@ export const elements = {
 
   // propose game
   proposeGameForm: $("proposeGameForm"),
+  pgModalTitle: $("pgModalTitle"),
+  pgSubmitButton: $("pgSubmitButton"),
   pgTitle: $("pgTitle"),
   pgVariant: $("pgVariant"),
   pgPlayers: $("pgPlayers"),
@@ -122,6 +129,9 @@ export const elements = {
 
   // create board
   createBoardForm: $("createBoardForm"),
+  cbModalTitle: $("cbModalTitle"),
+  cbSubmitButton: $("cbSubmitButton"),
+  cbDeleteButton: $("cbDeleteButton"),
   cbEmoji: $("cbEmoji"),
   cbAccent: $("cbAccent"),
   cbName: $("cbName"),

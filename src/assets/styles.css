@@ -1852,6 +1852,29 @@ option {
   margin-top: 3px;
 }
 
+.notif-item {
+  padding: 12px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.notif-msg {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0 0 8px;
+  line-height: 1.42;
+}
+
+.notif-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-sm {
+  padding: 4px 14px;
+  font-size: 12px;
+}
+
 .notif-empty {
   padding: 36px 16px;
   text-align: center;
@@ -2131,6 +2154,97 @@ option {
 
 .empty-state p {
   margin: 0;
+}
+
+/* ============ CRUD CONTROLS ============ */
+.btn-danger {
+  background: rgba(255, 92, 124, 0.12);
+  border-color: rgba(255, 92, 124, 0.4);
+  color: var(--rose);
+  margin-top: 10px;
+}
+
+.btn-danger:hover {
+  background: rgba(255, 92, 124, 0.18);
+}
+
+.mini-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mini-btn:hover {
+  color: var(--ink);
+  border-color: #3a3c52;
+}
+
+.mini-btn.del:hover {
+  color: var(--rose);
+  border-color: rgba(255, 92, 124, 0.4);
+}
+
+/* ============ STEAM ============ */
+.steam-head {
+  margin-top: 32px;
+}
+
+.dot-steam {
+  background: #66c0f4;
+  box-shadow: 0 0 10px #66c0f4;
+}
+
+.status-label.steam {
+  color: #66c0f4;
+}
+
+#steamLink {
+  margin-bottom: 14px;
+}
+
+#steamLink:empty {
+  display: none;
+}
+
+.steam-card {
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+
+.steam-card:hover {
+  transform: translateY(-3px);
+  border-color: #66c0f4;
+}
+
+.steam-card img {
+  width: 100%;
+  aspect-ratio: 460 / 215;
+  object-fit: cover;
+  display: block;
+  background: var(--page);
+}
+
+.steam-name {
+  padding: 8px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ============ RESPONSIVE ============ */

@@ -88,6 +88,26 @@ function setVote(gameId, kind) {
   });
 }
 
+// Small edit/delete controls appended to a card for editors.
+function cardActions(item) {
+  const frag = document.createDocumentFragment();
+  if (!canEdit()) return frag;
+  const edit = document.createElement("button");
+  edit.className = "mini-btn";
+  edit.type = "button";
+  edit.title = "Edit game";
+  edit.textContent = "✎";
+  edit.addEventListener("click", () => openEditGame(item));
+  const del = document.createElement("button");
+  del.className = "mini-btn del";
+  del.type = "button";
+  del.title = "Delete game";
+  del.textContent = "✕";
+  del.addEventListener("click", () => deleteGame(item.id));
+  frag.append(edit, del);
+  return frag;
+}
+
 // ---------- render ----------
 export function renderRoster(board) {
   const need = majority(board);
@@ -132,7 +152,7 @@ function rotationCard(board, item) {
   agreed.textContent = "✓ Agreed by the crew";
   const votes = document.createElement("div");
   votes.className = "vote-row";
-  votes.append(voteButton(item, "up", "▲"), voteButton(item, "down", "▼"));
+  votes.append(voteButton(item, "up", "▲"), voteButton(item, "down", "▼"), cardActions(item));
   foot.append(agreed, votes);
 
   card.append(top, foot);
@@ -167,7 +187,7 @@ function pendingCard(board, item) {
 
   const votes = document.createElement("div");
   votes.className = "vote-row";
-  votes.append(voteButton(item, "up", "👍"), voteButton(item, "down", "👎"));
+  votes.append(voteButton(item, "up", "👍"), voteButton(item, "down", "👎"), cardActions(item));
 
   top.append(id, votes);
   card.append(top);
@@ -245,7 +265,13 @@ function rejectedCard(item) {
     revive.textContent = "↺ revive";
     revive.title = "Revive — vote yes";
     revive.addEventListener("click", () => setVote(item.id, "up"));
-    card.append(revive);
+    const del = document.createElement("button");
+    del.className = "mini-btn del";
+    del.type = "button";
+    del.title = "Delete game";
+    del.textContent = "✕";
+    del.addEventListener("click", () => deleteGame(item.id));
+    card.append(revive, del);
   }
   return card;
 }
@@ -291,15 +317,48 @@ function selectedPlatforms() {
   return [...elements.pgPlatforms.querySelectorAll(".platform-opt.selected")].map((c) => c.dataset.platform);
 }
 
+function clearPlatformPicker() {
+  elements.pgPlatforms.querySelectorAll(".selected").forEach((c) => c.classList.remove("selected"));
+}
+
 export function openProposeGame() {
   if (!canEdit()) {
     showToast("You don't have edit access on this board");
     return;
   }
+  store.editingGameId = null;
   elements.proposeGameForm.reset();
-  elements.pgPlatforms.querySelectorAll(".selected").forEach((c) => c.classList.remove("selected"));
+  clearPlatformPicker();
+  elements.pgModalTitle.textContent = "Propose a game";
+  elements.pgSubmitButton.textContent = "Add to roster";
   openModal("proposeGame");
   setTimeout(() => elements.pgTitle.focus(), 50);
+}
+
+export function openEditGame(game) {
+  if (!canEdit()) return;
+  store.editingGameId = game.id;
+  elements.proposeGameForm.reset();
+  elements.pgTitle.value = game.title;
+  elements.pgVariant.value = game.variant || "";
+  elements.pgPlayers.value = game.players || "";
+  elements.pgPlatforms.querySelectorAll(".platform-opt").forEach((c) => {
+    c.classList.toggle("selected", (game.platforms || []).includes(c.dataset.platform));
+  });
+  elements.pgModalTitle.textContent = "Edit game";
+  elements.pgSubmitButton.textContent = "Save changes";
+  openModal("proposeGame");
+  setTimeout(() => elements.pgTitle.focus(), 50);
+}
+
+function deleteGame(id) {
+  const game = activeBoard()?.games.find((g) => g.id === id);
+  if (!game) return;
+  if (!window.confirm(`Delete "${game.title}"?`)) return;
+  updateActiveBoard((board) => {
+    board.games = board.games.filter((g) => g.id !== id);
+  });
+  showToast(`Deleted ${game.title}`);
 }
 
 export function bindGameEvents() {
@@ -316,14 +375,33 @@ export function bindGameEvents() {
     if (!canEdit()) return;
     const title = elements.pgTitle.value.trim();
     if (!title) return;
+    const variant = elements.pgVariant.value.trim();
+    const players = elements.pgPlayers.value.trim();
+    const platforms = selectedPlatforms().filter((p) => PLATFORMS.includes(p));
+
+    if (store.editingGameId) {
+      const id = store.editingGameId;
+      updateActiveBoard((board) => {
+        const g = board.games.find((x) => x.id === id);
+        if (!g) return;
+        g.title = title;
+        g.variant = variant;
+        g.players = players;
+        g.platforms = platforms;
+      });
+      closeModal();
+      showToast("Game updated");
+      return;
+    }
+
     updateActiveBoard((board) => {
       board.games.push({
         id: crypto.randomUUID(),
         title,
         genre: "",
-        variant: elements.pgVariant.value.trim(),
-        players: elements.pgPlayers.value.trim(),
-        platforms: selectedPlatforms().filter((p) => PLATFORMS.includes(p)),
+        variant,
+        players,
+        platforms,
         status: "maybe",
         approvals: { [store.currentUser.uid]: "up" },
         addedBy: store.currentUser.uid,

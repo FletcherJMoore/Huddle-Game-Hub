@@ -33,7 +33,9 @@ export const store = {
   notifOpen: false,
   profileOpen: false,
   wheelPick: null,
-  createDraft: { emoji: "🎮", accent: "#7c5cff" }
+  createDraft: { emoji: "🎮", accent: "#7c5cff" },
+  editingBoardId: null, // null = create mode; otherwise editing this board
+  editingGameId: null // null = propose mode; otherwise editing this game
 };
 
 export function activeBoard() {
