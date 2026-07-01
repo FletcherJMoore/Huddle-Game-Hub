@@ -122,6 +122,7 @@ export function normalizeBoard(board) {
     memberProfiles,
     memberIds: Object.keys(members),
     reads: board.reads ?? {},
+    downToPlay: board.downToPlay ?? {},
     games: (board.games ?? []).map(normalizeGame),
     schedule: (board.schedule ?? []).map(normalizeSession),
     messages: board.messages ?? []

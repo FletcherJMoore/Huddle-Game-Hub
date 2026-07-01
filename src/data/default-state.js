@@ -47,7 +47,7 @@ export const defaultState = {
       messages: [
         {
           id: crypto.randomUUID(),
-          author: "Huddle",
+          author: "Huddle Game Hub",
           authorUid: null,
           text: "Propose a game and give it a 👍 or 👎.",
           createdAt: new Date().toISOString()

@@ -4,11 +4,35 @@
 const $ = (id) => document.getElementById(id);
 
 export const elements = {
-  // screens
+  // shell
+  appShell: $("appShell"),
+  sessionTimer: $("sessionTimer"),
   authScreen: $("authScreen"),
   appRoot: $("appRoot"),
   dashboardScreen: $("dashboardScreen"),
   boardScreen: $("boardScreen"),
+
+  // rail + dropdowns
+  rail: $("rail"),
+  railLogo: $("railLogo"),
+  railBoards: $("railBoards"),
+  railCreate: $("railCreate"),
+  dropdownBackdrop: $("dropdownBackdrop"),
+  notifButton: $("notifButton"),
+  notifBadge: $("notifBadge"),
+  notifMenu: $("notifMenu"),
+  notifList: $("notifList"),
+  clearNotifsButton: $("clearNotifsButton"),
+  profileButton: $("profileButton"),
+  profileMenu: $("profileMenu"),
+  profileMenuAvatar: $("profileMenuAvatar"),
+  profileMenuName: $("profileMenuName"),
+  profileMenuEmail: $("profileMenuEmail"),
+  signOutButton: $("signOutButton"),
+  menuProfile: $("menuProfile"),
+  menuAccount: $("menuAccount"),
+  menuNotif: $("menuNotif"),
+  menuHelp: $("menuHelp"),
 
   // auth
   emailAuthForm: $("emailAuthForm"),
@@ -21,34 +45,14 @@ export const elements = {
   authNotice: $("authNotice"),
   authError: $("authError"),
 
-  // dashboard topbar
-  newBoardButtonTop: $("newBoardButtonTop"),
-  notifButton: $("notifButton"),
-  notifBadge: $("notifBadge"),
-  notifMenu: $("notifMenu"),
-  notifList: $("notifList"),
-  clearNotifsButton: $("clearNotifsButton"),
-  profileButton: $("profileButton"),
-  profileAvatar: $("profileAvatar"),
-  profileMenu: $("profileMenu"),
-  profileMenuAvatar: $("profileMenuAvatar"),
-  profileMenuName: $("profileMenuName"),
-  profileMenuEmail: $("profileMenuEmail"),
-  signOutButton: $("signOutButton"),
-  linkSteamButton: $("linkSteamButton"),
-
-  // dashboard body
+  // dashboard
   dashWelcome: $("dashWelcome"),
   needsStrip: $("needsStrip"),
   needsCount: $("needsCount"),
   needsActions: $("needsActions"),
   dashBoardCount: $("dashBoardCount"),
+  newBoardButtonTop: $("newBoardButtonTop"),
   boardCards: $("boardCards"),
-
-  // rail
-  railLogo: $("railLogo"),
-  railBoards: $("railBoards"),
-  railCreate: $("railCreate"),
 
   // board header
   boardEmoji: $("boardEmoji"),
@@ -56,6 +60,7 @@ export const elements = {
   boardOnline: $("boardOnline"),
   boardSubtitle: $("boardSubtitle"),
   headerAvatars: $("headerAvatars"),
+  boardMemberLabel: $("boardMemberLabel"),
   inviteButton: $("inviteButton"),
   boardSettingsButton: $("boardSettingsButton"),
 
@@ -88,6 +93,8 @@ export const elements = {
 
   // chat
   chatPanel: $("chatPanel"),
+  chatHeadInfo: $("chatHeadInfo"),
+  chatBody: $("chatBody"),
   chatToggle: $("chatToggle"),
   chatOnline: $("chatOnline"),
   chatLog: $("chatLog"),
@@ -118,6 +125,7 @@ export const elements = {
   inviteEmail: $("inviteEmail"),
   sendInviteButton: $("sendInviteButton"),
   inviteFeedback: $("inviteFeedback"),
+  memberList: $("memberList"),
   pendingInvites: $("pendingInvites"),
 
   // propose time
@@ -135,6 +143,45 @@ export const elements = {
   cbEmoji: $("cbEmoji"),
   cbAccent: $("cbAccent"),
   cbName: $("cbName"),
+
+  // settings modal
+  settingsModal: $("settingsModal"),
+  settingsPanel: $("settingsPanel"),
+  settingsNav: $("settingsNav"),
+  settingsTitle: $("settingsTitle"),
+  settingsSub: $("settingsSub"),
+  settingsBackButton: $("settingsBackButton"),
+  paneProfile: $("paneProfile"),
+  paneAccount: $("paneAccount"),
+  paneNotif: $("paneNotif"),
+  paneHelp: $("paneHelp"),
+  settingsAvatar: $("settingsAvatar"),
+  settingsName: $("settingsName"),
+  settingsEmail: $("settingsEmail"),
+  profileNameInput: $("profileNameInput"),
+  profileStatusInput: $("profileStatusInput"),
+  saveProfileButton: $("saveProfileButton"),
+  profileFeedback: $("profileFeedback"),
+  accountEmail: $("accountEmail"),
+  newPass: $("newPass"),
+  confirmPass: $("confirmPass"),
+  updatePassButton: $("updatePassButton"),
+  passFeedback: $("passFeedback"),
+  googleStatus: $("googleStatus"),
+  googleLinkButton: $("googleLinkButton"),
+  notifPrefs: $("notifPrefs"),
+  prefPlatforms: $("prefPlatforms"),
+  steamStatus: $("steamStatus"),
+  steamLinkButton: $("steamLinkButton"),
+  steamLibraryCard: $("steamLibraryCard"),
+  librarySearch: $("librarySearch"),
+  toggleHidden: $("toggleHidden"),
+  libraryViewLabel: $("libraryViewLabel"),
+  libraryGrid: $("libraryGrid"),
+  libraryPager: $("libraryPager"),
+  hiddenCount: $("hiddenCount"),
+  feedbackText: $("feedbackText"),
+  sendFeedbackButton: $("sendFeedbackButton"),
 
   emptyTemplate: $("emptyTemplate")
 };

@@ -1,11 +1,13 @@
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  linkWithPopup,
   onAuthStateChanged,
   sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  updatePassword,
   updateProfile
 } from "firebase/auth";
 
@@ -31,6 +33,19 @@ export function signInWithGoogle(auth) {
 
 export function setDisplayName(user, name) {
   return updateProfile(user, { displayName: name });
+}
+
+export function updateUserPassword(user, password) {
+  return updatePassword(user, password);
+}
+
+// Returns the providers already linked to the account (e.g. "google.com").
+export function linkedProviders(user) {
+  return (user?.providerData ?? []).map((p) => p.providerId);
+}
+
+export function linkGoogle(user) {
+  return linkWithPopup(user, new GoogleAuthProvider());
 }
 
 export function signOutUser(auth) {

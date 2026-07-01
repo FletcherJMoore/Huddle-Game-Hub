@@ -20,7 +20,6 @@ function tally(session) {
   };
 }
 
-// Consensus score: yes weighed heaviest, maybe partial, no penalised.
 function score(session) {
   const t = tally(session);
   return t.yes * 2 + t.maybe - t.no;
@@ -57,21 +56,21 @@ function renderHeatmap(board) {
 
   elements.heatmap.replaceChildren(
     ...DAY_LABELS.map((label, i) => {
-      const col = document.createElement("div");
-      col.className = "heat-day";
-      const cell = document.createElement("div");
-      cell.className = "heat-cell";
       const ratio = intensity[i] / max;
-      cell.style.background = intensity[i]
-        ? `rgba(124, 92, 255, ${0.15 + ratio * 0.6})`
-        : "rgba(255,255,255,0.03)";
-      cell.style.borderColor = i === bestDay && intensity[i] ? "rgba(124,92,255,0.6)" : "transparent";
+      const isBest = i === bestDay && intensity[i];
+
+      const col = document.createElement("div");
+      col.style.cssText = "flex:1;text-align:center;";
+      const cell = document.createElement("div");
+      cell.style.cssText = `height:64px;border-radius:8px;background:${
+        intensity[i] ? `rgba(124,92,255,${0.15 + ratio * 0.6})` : "rgba(255,255,255,0.03)"
+      };border:1px solid ${isBest ? "rgba(124,92,255,0.6)" : "transparent"};display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;`;
       const num = document.createElement("span");
+      num.style.cssText = `font-size:11px;font-weight:700;color:${ratio > 0.5 ? "#fff" : "#8b8da3"};`;
       num.textContent = intensity[i] ? String(intensity[i]) : "";
-      num.style.color = ratio > 0.5 ? "#fff" : "#8b8da3";
       cell.append(num);
       const lbl = document.createElement("div");
-      lbl.className = "heat-label";
+      lbl.style.cssText = "font-size:11px;color:#8b8da3;margin-top:6px;font-weight:600;";
       lbl.textContent = label;
       col.append(cell, lbl);
       return col;
@@ -84,78 +83,81 @@ function renderHeatmap(board) {
 
 function sessionCard(session, isBest) {
   const card = document.createElement("div");
-  card.className = `session-card${isBest ? " best" : ""}`;
+  card.style.cssText = `background:#13141d;border:1px solid ${isBest ? "#56d36450" : "#23253560"};border-radius:14px;padding:16px 18px;position:relative;`;
 
   if (isBest) {
     const badge = document.createElement("span");
-    badge.className = "session-badge";
+    badge.style.cssText =
+      "position:absolute;top:-9px;left:16px;background:#56d364;color:#0b0c12;font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:3px 9px;border-radius:999px;";
     badge.textContent = "★ TOP CONSENSUS";
     card.append(badge);
   }
 
   const row = document.createElement("div");
-  row.className = "session-row";
+  row.style.cssText = "display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;";
 
-  const when = document.createElement("div");
-  when.className = "session-when";
-  const date = document.createElement("div");
-  date.className = "session-date";
+  const left = document.createElement("div");
+  left.style.cssText = "display:flex;align-items:center;gap:14px;";
+  const dateBox = document.createElement("div");
+  dateBox.style.cssText = "text-align:center;background:#0b0c12;border-radius:11px;padding:8px 13px;min-width:58px;";
   const dow = document.createElement("div");
-  dow.className = "dow";
+  dow.style.cssText = "font-size:11px;font-weight:700;color:var(--accent,#7c5cff);text-transform:uppercase;letter-spacing:.05em;";
   dow.textContent = dowShort(session.date);
   const day = document.createElement("div");
-  day.className = "day";
+  day.style.cssText = "font-family:'Space Grotesk';font-weight:700;font-size:19px;line-height:1;margin-top:2px;";
   day.textContent = dayNum(session.date);
-  date.append(dow, day);
+  dateBox.append(dow, day);
   const detail = document.createElement("div");
   const time = document.createElement("div");
-  time.className = "session-time";
+  time.style.cssText = "font-weight:700;font-size:15.5px;";
   time.textContent = sessionTimeLabel(session.start, session.end);
   const label = document.createElement("div");
-  label.className = "session-label";
+  label.style.cssText = "font-size:12px;color:#8b8da3;margin-top:3px;";
   label.textContent = session.activity || "Game night";
   detail.append(time, label);
-  when.append(date, detail);
+  left.append(dateBox, detail);
 
-  const vote = document.createElement("div");
-  vote.className = "session-vote";
+  const right = document.createElement("div");
+  right.style.cssText = "display:flex;align-items:center;gap:16px;";
   const t = tally(session);
   const total = Math.max(1, t.yes + t.maybe + t.no);
   const tallyBox = document.createElement("div");
-  tallyBox.className = "session-tally";
+  tallyBox.style.cssText = "text-align:right;";
   const txt = document.createElement("div");
-  txt.className = "txt";
+  txt.style.cssText = "font-size:12.5px;color:#c9cbe0;font-weight:600;";
   txt.textContent = `${t.yes} yes · ${t.maybe} maybe · ${t.no} no`;
   const bar = document.createElement("div");
-  bar.className = "tally-bar";
-  ["yes", "maybe", "no"].forEach((k) => {
+  bar.style.cssText = "display:flex;height:6px;width:130px;border-radius:4px;overflow:hidden;margin-top:6px;background:#0b0c12;";
+  [["yes", "#56d364"], ["maybe", "#ffb13d"], ["no", "#ff5c7c"]].forEach(([k, color]) => {
     const seg = document.createElement("div");
-    seg.className = k;
-    seg.style.width = `${(t[k] / total) * 100}%`;
+    seg.style.cssText = `width:${(t[k] / total) * 100}%;background:${color};`;
     bar.append(seg);
   });
   tallyBox.append(txt, bar);
 
   const buttons = document.createElement("div");
-  buttons.className = "session-buttons";
+  buttons.style.cssText = "display:flex;gap:5px;";
   buttons.append(
-    voteBtn(session, "yes", "Yes"),
-    voteBtn(session, "maybe", "Maybe"),
-    voteBtn(session, "no", "No")
+    voteBtn(session, "yes", "Yes", "#56d364"),
+    voteBtn(session, "maybe", "Maybe", "#ffb13d"),
+    voteBtn(session, "no", "No", "#ff5c7c")
   );
-  vote.append(tallyBox, buttons);
+  right.append(tallyBox, buttons);
 
-  row.append(when, vote);
+  row.append(left, right);
   card.append(row);
 
   if (isBest) {
     const confirm = document.createElement("div");
-    confirm.className = "session-confirm";
+    confirm.style.cssText =
+      "margin-top:13px;padding-top:13px;border-top:1px solid #ffffff0a;display:flex;align-items:center;justify-content:space-between;";
     const note = document.createElement("span");
+    note.style.cssText = "font-size:12px;color:#a3a5bb;";
     note.textContent = `${t.yes} of the crew are in for ${formatShortDate(session.date)}.`;
     const cal = document.createElement("button");
-    cal.className = "cal";
     cal.type = "button";
+    cal.style.cssText =
+      "font-size:12px;font-weight:600;color:var(--accent,#7c5cff);background:#7c5cff14;border:1px solid #7c5cff33;border-radius:8px;padding:6px 12px;cursor:pointer;";
     cal.textContent = "＋ Add to calendar";
     cal.addEventListener("click", () => addToCalendar(session));
     confirm.append(note, cal);
@@ -165,11 +167,14 @@ function sessionCard(session, isBest) {
   return card;
 }
 
-function voteBtn(session, kind, label) {
+function voteBtn(session, kind, label, color) {
   const btn = document.createElement("button");
-  const mine = session.votes?.[store.currentUser?.uid] === kind;
-  btn.className = `sv-btn ${kind}${mine ? " on" : ""}`;
   btn.type = "button";
+  const mine = session.votes?.[store.currentUser?.uid] === kind;
+  const tone = mine
+    ? `background:${color}22;border:1px solid ${color}55;color:${color};`
+    : "background:#15161f;border:1px solid #2a2c3d;color:#8b8da3;";
+  btn.style.cssText = `border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;${tone}`;
   btn.textContent = label;
   if (canEdit()) btn.addEventListener("click", () => setSessionVote(session.id, kind));
   else btn.disabled = true;
@@ -193,7 +198,7 @@ function addToCalendar(session) {
   const end = fmt(session.date, session.end || session.start);
   const url =
     "https://calendar.google.com/calendar/render?action=TEMPLATE" +
-    `&text=${encodeURIComponent(`Huddle: ${session.activity || "Game night"}`)}` +
+    `&text=${encodeURIComponent(`Huddle Game Hub: ${session.activity || "Game night"}`)}` +
     `&dates=${start}/${end}`;
   window.open(url, "_blank", "noopener");
 }

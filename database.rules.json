@@ -36,6 +36,11 @@
       "$boardId": {
         ".read": "auth != null && root.child('boards').child($boardId).child('members').child(auth.uid).exists()"
       }
+    },
+    "steamUsers": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
     }
   }
 }

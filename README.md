@@ -1,4 +1,4 @@
-# Huddle
+# Huddle Game Hub
 
 A simple shared planning board for scheduling times, collecting activity ideas, tracking people, and chatting around a plan.
 
@@ -63,7 +63,7 @@ firebase deploy
 
 Boards are invite-only by email — no actual email is sent. An admin enters a
 teammate's email in the Crew panel, and that person is added to the board
-automatically the next time they sign in to Huddle with that address. A small
+automatically the next time they sign in to Huddle Game Hub with that address. A small
 `claimMyInvites` Cloud Function does the join server-side so the database rules
 can stay strict (no client-side self-join).
 

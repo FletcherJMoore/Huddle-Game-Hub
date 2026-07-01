@@ -61,3 +61,12 @@ export async function acceptInvite(functions, boardId) {
   const result = await callable({ boardId });
   return result.data;
 }
+
+// Removes a member from a board (admin only). Server-side so the removed user's
+// own userBoards pointer can be cleared, dropping the board from their app.
+export async function removeMember(functions, boardId, uid) {
+  if (!functions) throw new Error("Firebase functions not initialised.");
+  const callable = httpsCallable(functions, "removeMember");
+  const result = await callable({ boardId, uid });
+  return result.data;
+}

@@ -21,8 +21,6 @@ export function approvalScore(item) {
   return countVotes(item, "up") - countVotes(item, "down");
 }
 
-// Consensus model: a majority of 👍 (outnumbering 👎) puts a game in rotation;
-// a majority of 👎 rejects it; otherwise it's pending.
 function consensusStatus(item, board) {
   const need = majority(board);
   const up = countVotes(item, "up");
@@ -40,40 +38,51 @@ function gameMeta(item) {
   return parts.join(" · ") || "No details yet";
 }
 
-function cover(item, size) {
+// Cover: gradient + initials mark (roster games have no art source).
+function coverInner(item, markSize) {
   const el = document.createElement("div");
-  el.className = "game-cover";
-  el.style.background = avatarColor(item.title);
+  el.style.cssText = `width:100%;height:100%;background:linear-gradient(135deg,${avatarColor(item.title)},#0b0c12);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk';font-weight:700;font-size:${markSize};color:#ffffffd0;`;
   el.textContent = initialsFor(item.title);
-  if (size) el.style.fontSize = size;
   return el;
 }
 
-function nameRow(item) {
-  const row = document.createElement("div");
-  row.className = "game-name-row";
-  const name = document.createElement("span");
-  name.className = "game-name";
-  name.textContent = item.title;
-  row.append(name);
-  if (item.variant) {
-    const v = document.createElement("span");
-    v.className = "variant-chip";
-    v.textContent = item.variant;
-    row.append(v);
-  }
-  return row;
+function variantChip(item, size) {
+  if (!item.variant) return null;
+  const v = document.createElement("span");
+  v.style.cssText = `font-family:'JetBrains Mono';font-size:${size};font-weight:600;color:var(--accent,#7c5cff);background:#7c5cff1a;padding:2px 6px;border-radius:5px;`;
+  v.textContent = item.variant;
+  return v;
 }
 
-function voteButton(item, kind, glyph) {
+function voteButton(item, kind, glyph, big) {
   const btn = document.createElement("button");
-  const mine = item.approvals?.[store.currentUser?.uid] === kind;
-  btn.className = `vote-btn ${kind}${mine ? " on" : ""}`;
   btn.type = "button";
+  const mine = item.approvals?.[store.currentUser?.uid] === kind;
+  const tone = kind === "up" ? "#56d364" : "#ff5c7c";
+  const on = mine
+    ? `background:${tone}22;border:1px solid ${tone}55;color:${tone};`
+    : "background:#15161f;border:1px solid #2a2c3d;color:#8b8da3;";
+  const pad = big ? "7px 13px" : "5px 9px";
+  const fs = big ? "13px" : "12px";
+  btn.style.cssText = `display:flex;align-items:center;gap:5px;border-radius:${big ? "9px" : "8px"};padding:${pad};font-size:${fs};font-weight:700;cursor:pointer;${on}`;
   btn.textContent = `${glyph} ${countVotes(item, kind)}`;
   if (canEdit()) btn.addEventListener("click", () => setVote(item.id, kind));
   else btn.disabled = true;
   return btn;
+}
+
+function miniBtn(glyph, title, onClick) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.title = title;
+  b.style.cssText =
+    "background:none;border:none;color:#5a5c72;font-size:13px;cursor:pointer;padding:2px 4px;";
+  b.textContent = glyph;
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return b;
 }
 
 function setVote(gameId, kind) {
@@ -86,26 +95,6 @@ function setVote(gameId, kind) {
     else game.approvals[uid] = kind;
     game.status = consensusStatus(game, board);
   });
-}
-
-// Small edit/delete controls appended to a card for editors.
-function cardActions(item) {
-  const frag = document.createDocumentFragment();
-  if (!canEdit()) return frag;
-  const edit = document.createElement("button");
-  edit.className = "mini-btn";
-  edit.type = "button";
-  edit.title = "Edit game";
-  edit.textContent = "✎";
-  edit.addEventListener("click", () => openEditGame(item));
-  const del = document.createElement("button");
-  del.className = "mini-btn del";
-  del.type = "button";
-  del.title = "Delete game";
-  del.textContent = "✕";
-  del.addEventListener("click", () => deleteGame(item.id));
-  frag.append(edit, del);
-  return frag;
 }
 
 // ---------- render ----------
@@ -122,7 +111,7 @@ export function renderRoster(board) {
   elements.rejectedCount.textContent = String(rejected.length);
 
   elements.rotationList.replaceChildren(
-    ...(rotation.length ? rotation.map((g) => rotationCard(board, g)) : [emptyState("Nothing agreed yet")])
+    ...(rotation.length ? rotation.map((g) => rotationCard(g)) : [emptyState("Nothing agreed yet")])
   );
   elements.pendingList.replaceChildren(
     ...(pending.length ? pending.map((g) => pendingCard(board, g)) : [emptyState("No games up for a vote")])
@@ -132,146 +121,182 @@ export function renderRoster(board) {
   );
 }
 
-function rotationCard(board, item) {
+function rotationCard(item) {
   const card = document.createElement("div");
-  card.className = "game-card rotation";
+  card.style.cssText = "background:#13141d;border:1px solid #56d36426;border-radius:14px;overflow:hidden;";
 
-  const top = document.createElement("div");
-  top.className = "game-top";
-  const info = document.createElement("div");
+  const coverWrap = document.createElement("div");
+  coverWrap.style.cssText = "position:relative;height:106px;background:#0b0c12;";
+  coverWrap.append(coverInner(item, "36px"));
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:absolute;inset:0;background:linear-gradient(180deg,rgba(19,20,29,0) 45%,#13141d 100%);";
+  coverWrap.append(overlay);
+
+  const body = document.createElement("div");
+  body.style.cssText = "padding:12px 14px 13px;";
+
+  const titleRow = document.createElement("div");
+  titleRow.style.cssText = "display:flex;align-items:center;gap:6px;flex-wrap:wrap;";
+  const name = document.createElement("span");
+  name.style.cssText = "font-weight:700;font-size:14.5px;";
+  name.textContent = item.title;
+  titleRow.append(name);
+  const chip = variantChip(item, "10px");
+  if (chip) titleRow.append(chip);
+
   const meta = document.createElement("div");
-  meta.className = "game-meta";
+  meta.style.cssText = "font-size:11.5px;color:#6b6d85;margin-top:3px;margin-bottom:12px;";
   meta.textContent = gameMeta(item);
-  info.append(nameRow(item), meta);
-  top.append(cover(item), info);
 
   const foot = document.createElement("div");
-  foot.className = "game-foot";
+  foot.style.cssText = "display:flex;align-items:center;justify-content:space-between;";
   const agreed = document.createElement("span");
-  agreed.className = "agreed";
+  agreed.style.cssText = "font-size:11.5px;color:#56d364;font-weight:600;";
   agreed.textContent = "✓ Agreed by the crew";
   const votes = document.createElement("div");
-  votes.className = "vote-row";
-  votes.append(voteButton(item, "up", "▲"), voteButton(item, "down", "▼"), cardActions(item));
+  votes.style.cssText = "display:flex;gap:6px;align-items:center;";
+  votes.append(voteButton(item, "up", "▲", false), voteButton(item, "down", "▼", false));
+  if (canEdit()) {
+    votes.append(miniBtn("✎", "Edit game", () => openEditGame(item)), miniBtn("✕", "Delete game", () => deleteGame(item.id)));
+  }
   foot.append(agreed, votes);
 
-  card.append(top, foot);
+  body.append(titleRow, meta, foot);
+  card.append(coverWrap, body);
   return card;
 }
 
 function pendingCard(board, item) {
   const card = document.createElement("div");
-  card.className = "game-card pending";
+  card.style.cssText = "background:#13141d;border:1px solid #ffb13d2e;border-radius:14px;padding:16px;";
 
   const top = document.createElement("div");
-  top.className = "pending-top";
+  top.style.cssText = "display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;";
 
-  const id = document.createElement("div");
-  id.className = "pending-id";
+  const left = document.createElement("div");
+  left.style.cssText = "display:flex;gap:13px;flex:1;min-width:230px;";
+  const cover = document.createElement("div");
+  cover.style.cssText = "width:92px;height:54px;border-radius:9px;overflow:hidden;flex-shrink:0;background:#0b0c12;";
+  cover.append(coverInner(item, "22px"));
   const info = document.createElement("div");
+  info.style.cssText = "min-width:0;";
+  const titleRow = document.createElement("div");
+  titleRow.style.cssText = "display:flex;align-items:center;gap:7px;flex-wrap:wrap;";
+  const name = document.createElement("span");
+  name.style.cssText = "font-weight:700;font-size:15.5px;";
+  name.textContent = item.title;
+  titleRow.append(name);
+  const chip = variantChip(item, "10.5px");
+  if (chip) titleRow.append(chip);
   const meta = document.createElement("div");
-  meta.className = "game-meta";
+  meta.style.cssText = "font-size:12px;color:#8b8da3;margin-top:4px;";
   meta.textContent = gameMeta(item);
-  info.append(nameRow(item), meta);
+  info.append(titleRow, meta);
   if (item.addedBy) {
     const prop = document.createElement("div");
-    prop.className = "game-proposer";
-    const av = document.createElement("span");
-    av.className = "av";
-    av.style.background = avatarColor(item.addedBy);
+    prop.style.cssText = "font-size:11.5px;color:#6b6d85;margin-top:6px;display:flex;align-items:center;gap:6px;";
+    const av = document.createElement("div");
+    av.style.cssText = `width:18px;height:18px;border-radius:50%;background:${avatarColor(item.addedBy)};display:inline-flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:700;color:#0b0c12;`;
     av.textContent = initialsFor(plainName(board, item.addedBy));
     prop.append(av, document.createTextNode(`Proposed by ${plainName(board, item.addedBy)}`));
     info.append(prop);
   }
-  id.append(cover(item, "20px"), info);
+  left.append(cover, info);
 
-  const votes = document.createElement("div");
-  votes.className = "vote-row";
-  votes.append(voteButton(item, "up", "👍"), voteButton(item, "down", "👎"), cardActions(item));
+  const right = document.createElement("div");
+  right.style.cssText = "display:flex;flex-direction:column;align-items:flex-end;gap:9px;min-width:150px;";
+  const voteRow = document.createElement("div");
+  voteRow.style.cssText = "display:flex;gap:8px;align-items:center;";
+  voteRow.append(voteButton(item, "up", "👍", true), voteButton(item, "down", "👎", true));
+  if (canEdit()) {
+    voteRow.append(miniBtn("✎", "Edit game", () => openEditGame(item)), miniBtn("✕", "Delete game", () => deleteGame(item.id)));
+  }
+  right.append(voteRow);
 
-  top.append(id, votes);
+  top.append(left, right);
   card.append(top);
 
   // progress
   const need = majority(board);
   const up = countVotes(item, "up");
-  const wrap = document.createElement("div");
-  wrap.className = "progress-wrap";
-
+  const prog = document.createElement("div");
+  prog.style.cssText = "margin-top:14px;";
   const head = document.createElement("div");
-  head.className = "progress-head";
+  head.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;";
   const lbl = document.createElement("span");
-  lbl.className = "lbl";
+  lbl.style.cssText = "font-size:11.5px;color:#a3a5bb;font-weight:600;";
   lbl.textContent = up >= need ? "Ready for rotation" : "Gathering votes";
   const req = document.createElement("span");
-  req.className = "req";
+  req.style.cssText = "font-size:11px;color:#6b6d85;";
   req.textContent = `${up} / ${need} needed`;
   head.append(lbl, req);
-
   const track = document.createElement("div");
-  track.className = "progress-track";
+  track.style.cssText = "height:7px;border-radius:4px;background:#0b0c12;overflow:hidden;";
   const fill = document.createElement("div");
-  fill.className = "progress-fill";
-  fill.style.width = `${Math.min(100, (up / need) * 100)}%`;
+  fill.style.cssText = `height:100%;width:${Math.min(100, (up / need) * 100)}%;background:linear-gradient(90deg,#ffb13d,#56d364);border-radius:4px;transition:width .3s;`;
   track.append(fill);
-  wrap.append(head, track);
+  prog.append(head, track);
 
-  // waiting on
   const waiting = memberIdsOf(board).filter((uid) => item.approvals?.[uid] === undefined);
   if (waiting.length) {
     const row = document.createElement("div");
-    row.className = "waiting-row";
-    row.append(document.createTextNode("Still waiting on"));
+    row.style.cssText = "display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap;";
+    const txt = document.createElement("span");
+    txt.style.cssText = "font-size:11.5px;color:#6b6d85;";
+    txt.textContent = "Still waiting on";
     const avs = document.createElement("div");
-    avs.className = "avs";
+    avs.style.cssText = "display:flex;";
     waiting.slice(0, 4).forEach((uid) => {
       const av = document.createElement("div");
-      av.className = "av";
-      av.style.background = avatarColor(uid);
-      av.textContent = initialsFor(plainName(board, uid));
       av.title = plainName(board, uid);
+      av.style.cssText = `width:22px;height:22px;border-radius:50%;background:${avatarColor(uid)};border:2px solid #13141d;margin-left:-6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#0b0c12;`;
+      av.textContent = initialsFor(plainName(board, uid));
       avs.append(av);
     });
-    row.append(avs);
+    row.append(txt, avs);
     if (canEdit()) {
       const nudge = document.createElement("button");
-      nudge.className = "nudge-btn";
       nudge.type = "button";
+      nudge.style.cssText =
+        "font-size:11px;font-weight:600;color:var(--accent,#7c5cff);background:#7c5cff14;border:1px solid #7c5cff33;border-radius:7px;padding:4px 9px;cursor:pointer;margin-left:2px;";
       nudge.textContent = "🔔 Nudge";
       nudge.addEventListener("click", () => nudgeCrew(item));
       row.append(nudge);
     }
-    wrap.append(row);
+    prog.append(row);
   }
 
-  card.append(wrap);
+  card.append(prog);
   return card;
 }
 
 function rejectedCard(item) {
   const card = document.createElement("div");
-  card.className = "rejected-card";
+  card.style.cssText =
+    "background:#101019;border:1px solid #ffffff08;border-radius:11px;padding:9px 13px;display:flex;align-items:center;gap:10px;opacity:.6;";
   const name = document.createElement("span");
-  name.className = "name";
+  name.style.cssText = "font-weight:600;font-size:13px;text-decoration:line-through;color:#a3a5bb;";
   name.textContent = item.title;
+  card.append(name);
+  const chip = variantChip(item, "10px");
+  if (chip) {
+    chip.style.color = "#6b6d85";
+    chip.style.background = "#ffffff0a";
+    card.append(chip);
+  }
   const down = document.createElement("span");
-  down.className = "down";
+  down.style.cssText = "font-size:11px;color:#ff5c7c;";
   down.textContent = `👎 ${countVotes(item, "down")}`;
-  card.append(name, down);
+  card.append(down);
   if (canEdit()) {
     const revive = document.createElement("button");
-    revive.className = "revive-btn";
     revive.type = "button";
-    revive.textContent = "↺ revive";
     revive.title = "Revive — vote yes";
+    revive.style.cssText = "font-size:11px;color:#8b8da3;background:none;border:none;cursor:pointer;";
+    revive.textContent = "↺ revive";
     revive.addEventListener("click", () => setVote(item.id, "up"));
-    const del = document.createElement("button");
-    del.className = "mini-btn del";
-    del.type = "button";
-    del.title = "Delete game";
-    del.textContent = "✕";
-    del.addEventListener("click", () => deleteGame(item.id));
-    card.append(revive, del);
+    card.append(revive);
+    card.append(miniBtn("✕", "Delete game", () => deleteGame(item.id)));
   }
   return card;
 }
@@ -281,7 +306,7 @@ function nudgeCrew(item) {
     board.messages = board.messages ?? [];
     board.messages.push({
       id: crypto.randomUUID(),
-      author: "Huddle",
+      author: "Huddle Game Hub",
       authorUid: null,
       text: `🔔 ${displayName()} nudged the crew to vote on ${item.title}.`,
       createdAt: new Date().toISOString()
@@ -302,23 +327,32 @@ function spinWheel() {
   elements.wheelResult.classList.remove("hidden");
   elements.wheelResult.replaceChildren();
   const spark = document.createElement("span");
-  spark.textContent = "🎡";
   spark.style.fontSize = "22px";
+  spark.textContent = "🎡";
   const text = document.createElement("span");
+  text.style.fontSize = "14px";
   text.append(document.createTextNode("The wheel says... "));
   const b = document.createElement("b");
+  b.style.cssText = "color:var(--accent,#7c5cff);font-weight:700;";
   b.textContent = pick.title;
   text.append(b, document.createTextNode(" tonight!"));
   elements.wheelResult.append(spark, text);
 }
 
-// ---------- propose game ----------
+// ---------- propose / edit game ----------
 function selectedPlatforms() {
   return [...elements.pgPlatforms.querySelectorAll(".platform-opt.selected")].map((c) => c.dataset.platform);
 }
 
+function paintPlatform(chip, selected) {
+  chip.classList.toggle("selected", selected);
+  chip.style.background = selected ? "#7c5cff1a" : "#15161f";
+  chip.style.borderColor = selected ? "var(--accent,#7c5cff)" : "#2a2c3d";
+  chip.style.color = selected ? "var(--accent,#7c5cff)" : "#8b8da3";
+}
+
 function clearPlatformPicker() {
-  elements.pgPlatforms.querySelectorAll(".selected").forEach((c) => c.classList.remove("selected"));
+  elements.pgPlatforms.querySelectorAll(".platform-opt").forEach((c) => paintPlatform(c, false));
 }
 
 export function openProposeGame() {
@@ -343,7 +377,7 @@ export function openEditGame(game) {
   elements.pgVariant.value = game.variant || "";
   elements.pgPlayers.value = game.players || "";
   elements.pgPlatforms.querySelectorAll(".platform-opt").forEach((c) => {
-    c.classList.toggle("selected", (game.platforms || []).includes(c.dataset.platform));
+    paintPlatform(c, (game.platforms || []).includes(c.dataset.platform));
   });
   elements.pgModalTitle.textContent = "Edit game";
   elements.pgSubmitButton.textContent = "Save changes";
@@ -367,7 +401,7 @@ export function bindGameEvents() {
 
   elements.pgPlatforms.addEventListener("click", (event) => {
     const chip = event.target.closest(".platform-opt");
-    if (chip) chip.classList.toggle("selected");
+    if (chip) paintPlatform(chip, !chip.classList.contains("selected"));
   });
 
   elements.proposeGameForm.addEventListener("submit", (event) => {
