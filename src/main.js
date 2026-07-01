@@ -6,7 +6,7 @@ import { getFirebaseServices } from "./services/firebase-service.js";
 import { watchAuthState, signOutUser } from "./services/auth-service.js";
 import { subscribeToUserBoards, saveBoard, ensureMemberProfile } from "./services/boards-repository.js";
 import { getPendingInvites, acceptInvite } from "./services/invites-repository.js";
-import { normalizeBoard, currentProfile, memberIdsOf, isAdmin } from "./features/boards/board-model.js";
+import { normalizeBoard, currentProfile, memberIdsOf, canManage } from "./features/boards/board-model.js";
 import { renderAccount, setAuthError, setAuthNotice, bindAuthEvents } from "./features/auth/auth.js";
 import { bindShellEvents, renderTabs, showToast, showInviteNotifications } from "./features/shell/shell.js";
 import { renderRail, renderDashboard, bindBoardEvents } from "./features/boards/board-list.js";
@@ -15,6 +15,8 @@ import { renderSchedule, bindScheduleEvents } from "./features/schedule/schedule
 import { renderHeaderAvatars, bindCrewEvents } from "./features/crew/crew.js";
 import { renderChat, bindChatEvents } from "./features/chat/chat.js";
 import { renderCommonGames, bindSteamEvents } from "./features/steam/steam.js";
+import { updateTitleBadge, notifyIncoming, bindNotificationEvents } from "./features/notifications/notifications.js";
+import { enablePush } from "./services/push-service.js";
 
 let lastBoardId = null;
 
@@ -43,6 +45,8 @@ function renderApp() {
     store.view = "dashboard";
     renderDashboard();
   }
+
+  updateTitleBadge();
 }
 
 function renderBoard(board) {
@@ -58,7 +62,7 @@ function renderBoard(board) {
   elements.boardName.textContent = board.name;
   elements.boardSubtitle.textContent = `${count} ${count === 1 ? "member" : "members"} · ${board.games.length} games`;
   elements.boardOnline.textContent = `● ${count} online`;
-  elements.boardSettingsButton.classList.toggle("hidden", !isAdmin());
+  elements.boardSettingsButton.classList.toggle("hidden", !canManage());
 
   renderHeaderAvatars(board);
   renderTabs();
@@ -96,6 +100,9 @@ async function handleAuthenticatedUser(user) {
 
   store.currentUser = user;
   renderApp();
+
+  // Refresh this device's push token if the user already granted permission.
+  enablePush(store.services, user.uid, { silent: true }).catch(() => {});
 
   getPendingInvites(store.services.functions)
     .then((pending) => {
@@ -139,6 +146,7 @@ async function handleAuthenticatedUser(user) {
     saveLocal();
     store.isApplyingCloudState = false;
     renderApp();
+    notifyIncoming();
     syncOwnProfiles();
   });
 }
@@ -162,6 +170,7 @@ function startApp() {
   bindCrewEvents();
   bindChatEvents();
   bindSteamEvents();
+  bindNotificationEvents();
   setRenderHandler(renderApp);
 
   try {

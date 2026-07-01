@@ -47,18 +47,48 @@ export function majority(board) {
   return Math.floor(memberIdsOf(board).length / 2) + 1;
 }
 
-export function normalizeRole(role) {
-  return ["admin", "editor", "viewer"].includes(role) ? role : "viewer";
+// Chat messages posted after the current user last read the board, excluding
+// their own. Shared by the board badges and the tab-title notification count.
+export function unreadCount(board) {
+  const msgs = board?.messages ?? [];
+  if (!msgs.length) return 0;
+  const lastRead = board.reads?.[store.currentUser?.uid] ?? "";
+  return msgs.filter((m) => m.createdAt > lastRead && m.authorUid !== store.currentUser?.uid).length;
 }
 
+// Roles: owner (board creator) > editor > member. Legacy data used
+// admin/editor/viewer (and `true`); we interpret those on read via
+// canonicalRole and never rewrite stored values (which would trip the
+// "members unchanged" write rule for non-owners).
+export function canonicalRole(role) {
+  if (role === true || role === "admin" || role === "owner") return "owner";
+  if (role === "editor") return "editor";
+  return "member";
+}
+
+// Canonical role of the current user on a board, or null if not a member.
 export function roleForBoard(board) {
-  const role = board?.members?.[store.currentUser?.uid];
-  if (role === true) return "admin";
-  return normalizeRole(role);
+  const raw = board?.members?.[store.currentUser?.uid];
+  return raw === undefined || raw === null ? null : canonicalRole(raw);
 }
 
+export function isMemberOf(board) {
+  return roleForBoard(board) !== null;
+}
+
+export function isOwnerOf(board) {
+  return roleForBoard(board) === "owner";
+}
+
+// Editors + owner can invite people and edit board settings.
+export function canManageBoard(board) {
+  const role = roleForBoard(board);
+  return role === "owner" || role === "editor";
+}
+
+// Any member can use the board (vote, propose, chat, spin).
 export function canEditBoard(board) {
-  return ["admin", "editor"].includes(roleForBoard(board));
+  return isMemberOf(board);
 }
 
 export function currentRole() {
@@ -66,11 +96,17 @@ export function currentRole() {
 }
 
 export function canEdit() {
-  return canEditBoard(activeBoard());
+  return isMemberOf(activeBoard());
 }
 
-export function isAdmin() {
-  return currentRole() === "admin";
+// Editors + owner: manage settings and invites.
+export function canManage() {
+  return canManageBoard(activeBoard());
+}
+
+// Owner only: manage roles, transfer ownership, delete the board.
+export function isOwner() {
+  return isOwnerOf(activeBoard());
 }
 
 export function normalizeGame(raw) {
@@ -105,10 +141,9 @@ export function normalizeSession(raw) {
 
 export function normalizeBoard(board) {
   const members = board.members ?? {};
-  Object.keys(members).forEach((uid) => {
-    members[uid] = members[uid] === true ? "admin" : normalizeRole(members[uid]);
-  });
-  if (store.currentUser && !members[store.currentUser.uid]) members[store.currentUser.uid] = "admin";
+  // Seed the creator as owner for a brand-new local board. Existing members keep
+  // their stored role string (legacy admin/viewer are interpreted, not rewritten).
+  if (store.currentUser && !members[store.currentUser.uid]) members[store.currentUser.uid] = "owner";
 
   const memberProfiles = board.memberProfiles ?? {};
   if (store.currentUser) memberProfiles[store.currentUser.uid] = currentProfile();

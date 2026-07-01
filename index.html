@@ -93,6 +93,7 @@
                 </div>
                 <div class="popover-section">
                   <button class="menu-item" id="linkSteamButton" type="button">🎮 Link Steam</button>
+                  <button class="menu-item" id="enablePushButton" type="button">🔔 Enable notifications</button>
                 </div>
                 <div class="popover-section">
                   <button class="menu-item danger" id="signOutButton" type="button">↩ Log out</button>
@@ -339,6 +340,10 @@
           <div class="modal-actions">
             <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
             <button type="submit" class="btn btn-accent btn-grow" id="cbSubmitButton">Create board</button>
+          </div>
+          <div class="cb-members hidden" id="cbMembersSection">
+            <label>Members &amp; roles</label>
+            <div class="cb-members-list" id="cbMembers"></div>
           </div>
           <button type="button" class="btn btn-danger btn-block hidden" id="cbDeleteButton">Delete board</button>
         </form>

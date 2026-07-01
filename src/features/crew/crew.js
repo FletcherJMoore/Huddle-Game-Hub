@@ -1,6 +1,6 @@
 import { store, activeBoard } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
-import { isAdmin, memberIdsOf, avatarColor, plainName, displayName } from "../boards/board-model.js";
+import { canManage, memberIdsOf, avatarColor, plainName, displayName } from "../boards/board-model.js";
 import { initialsFor } from "../../utils/format.js";
 import { isValidEmail } from "../../utils/invite.js";
 import { createInvite, revokeInvite, subscribeToInvites } from "../../services/invites-repository.js";
@@ -46,7 +46,7 @@ export function openInvite() {
   pendingInvites = [];
   renderPending();
 
-  if (store.services && isAdmin()) {
+  if (store.services && canManage()) {
     unsubscribeInvites = subscribeToInvites(store.services.db, board.id, (invites) => {
       pendingInvites = invites;
       renderPending();
@@ -58,7 +58,7 @@ export function openInvite() {
 }
 
 function renderPending() {
-  if (!isAdmin() || !pendingInvites.length) {
+  if (!canManage() || !pendingInvites.length) {
     elements.pendingInvites.replaceChildren();
     return;
   }
@@ -99,7 +99,7 @@ async function handleInvite(rawEmail) {
   if (!isValidEmail(email)) return setFeedback("That doesn't look like a valid email.", true);
 
   const board = activeBoard();
-  if (!isAdmin()) return setFeedback("Only admins can invite people.", true);
+  if (!canManage()) return setFeedback("Only owners and editors can invite people.", true);
   if (email === store.currentUser?.email?.toLowerCase()) return setFeedback("That's you 🙂", true);
   if (Object.values(board.memberProfiles ?? {}).some((p) => p.email?.toLowerCase() === email)) {
     return setFeedback("They're already in this board.", true);
@@ -107,7 +107,7 @@ async function handleInvite(rawEmail) {
 
   setFeedback("Inviting…");
   try {
-    await createInvite(store.services.db, board, email, "editor", {
+    await createInvite(store.services.db, board, email, "member", {
       uid: store.currentUser.uid,
       name: displayName()
     });

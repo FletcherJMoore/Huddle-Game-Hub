@@ -36,6 +36,7 @@ export const elements = {
   profileMenuEmail: $("profileMenuEmail"),
   signOutButton: $("signOutButton"),
   linkSteamButton: $("linkSteamButton"),
+  enablePushButton: $("enablePushButton"),
 
   // dashboard body
   dashWelcome: $("dashWelcome"),
@@ -135,6 +136,8 @@ export const elements = {
   cbEmoji: $("cbEmoji"),
   cbAccent: $("cbAccent"),
   cbName: $("cbName"),
+  cbMembersSection: $("cbMembersSection"),
+  cbMembers: $("cbMembers"),
 
   emptyTemplate: $("emptyTemplate")
 };

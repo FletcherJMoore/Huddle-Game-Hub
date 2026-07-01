@@ -3,7 +3,7 @@
     "boards": {
       "$boardId": {
         ".read": "auth != null && data.child('members').child(auth.uid).exists()",
-        ".write": "auth != null && ((!data.exists() && newData.child('members').child(auth.uid).val() === 'admin') || data.child('members').child(auth.uid).val() === true || data.child('members').child(auth.uid).val() === 'admin' || (data.child('members').child(auth.uid).val() === 'editor' && newData.child('members').val() === data.child('members').val()))",
+        ".write": "auth != null && ((!data.exists() && newData.child('members').child(auth.uid).exists()) || data.child('members').child(auth.uid).exists())",
         "memberProfiles": {
           "$memberUid": {
             ".write": "auth != null && auth.uid === $memberUid"
@@ -21,20 +21,26 @@
     },
     "invites": {
       "$boardId": {
-        ".read": "auth != null && root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'admin'",
-        ".write": "auth != null && root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'admin'"
+        ".read": "auth != null && (root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'owner' || root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'admin' || root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'editor')",
+        ".write": "auth != null && (root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'owner' || root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'admin' || root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'editor')"
       }
     },
     "emailInvites": {
       "$emailKey": {
         "$boardId": {
-          ".write": "auth != null && root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'admin'"
+          ".write": "auth != null && (root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'owner' || root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'admin' || root.child('boards').child($boardId).child('members').child(auth.uid).val() === 'editor')"
         }
       }
     },
     "boardSteam": {
       "$boardId": {
         ".read": "auth != null && root.child('boards').child($boardId).child('members').child(auth.uid).exists()"
+      }
+    },
+    "fcmTokens": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
       }
     }
   }

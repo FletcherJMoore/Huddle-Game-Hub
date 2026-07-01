@@ -24,4 +24,9 @@ export const AVATAR_COLORS = [
   "#ff5c7c"
 ];
 
+// Board roles. Owner is assigned at creation / via transfer; the rest are
+// assignable in the member manager.
+export const ROLE_LABELS = { owner: "Owner", editor: "Editor", member: "Member" };
+export const ASSIGNABLE_ROLES = ["editor", "member"];
+
 export const STORAGE_KEY = "huddle-state-v2";
