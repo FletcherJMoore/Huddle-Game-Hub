@@ -4,7 +4,7 @@ import { store, activeBoard, saveLocal, setRenderHandler } from "./state/store.j
 import { elements } from "./state/dom.js";
 import { getFirebaseServices } from "./services/firebase-service.js";
 import { watchAuthState, signOutUser } from "./services/auth-service.js";
-import { subscribeToUserBoards, saveBoard, ensureMemberProfile } from "./services/boards-repository.js";
+import { subscribeToUserBoards, ensureMemberProfile } from "./services/boards-repository.js";
 import { getPendingInvites, acceptInvite } from "./services/invites-repository.js";
 import { normalizeBoard, currentProfile, memberIdsOf, isAdmin } from "./features/boards/board-model.js";
 import { renderAccount, setAuthError, setAuthNotice, bindAuthEvents } from "./features/auth/auth.js";
@@ -139,11 +139,6 @@ function renderBoard(board) {
   renderChat(board);
 }
 
-async function uploadLocalBoardsForUser() {
-  const boards = store.state.boards.map((board) => normalizeBoard(board));
-  await Promise.all(boards.map((board) => saveBoard(store.services.db, board, store.currentUser.uid)));
-}
-
 function syncOwnProfiles() {
   if (!store.services || !store.currentUser) return;
   const profile = currentProfile();
@@ -193,15 +188,10 @@ async function handleAuthenticatedUser(user) {
   boardsBaselineSet = false;
 
   store.unsubscribeBoards = subscribeToUserBoards(store.services.db, user.uid, async (boards) => {
-    if (!boards.length) {
-      await uploadLocalBoardsForUser();
-      return;
-    }
-
     store.isApplyingCloudState = true;
     store.state.boards = boards.map((board) => normalizeBoard(board));
     if (!store.state.boards.some((board) => board.id === store.state.activeBoardId)) {
-      store.state.activeBoardId = store.state.boards[0].id;
+      store.state.activeBoardId = store.state.boards[0]?.id ?? null;
     }
     saveLocal();
     store.isApplyingCloudState = false;
