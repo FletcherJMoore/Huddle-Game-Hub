@@ -33,7 +33,7 @@ export function renderAccount() {
   const initials = initialsFor(name);
   const email = store.currentUser?.email || "";
 
-  elements.profileAvatar.textContent = initials;
+  elements.profileButton.textContent = initials;
   elements.profileMenuAvatar.textContent = initials;
   elements.profileMenuName.textContent = name;
   elements.profileMenuEmail.textContent = email;

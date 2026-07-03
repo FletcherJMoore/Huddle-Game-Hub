@@ -22,16 +22,19 @@ export const store = {
   state: loadState(),
   services: null,
   currentUser: null,
+  authResolved: false, // true once Firebase reports initial auth state
   unsubscribeBoards: null,
   isApplyingCloudState: false,
 
   // view / UI state
-  view: "dashboard", // "dashboard" | "board"
+  view: "dashboard", // "dashboard" | "board" | "profile"
   boardTab: "roster", // "roster" | "schedule"
+  settingsTab: "profile", // "profile" | "account" | "notif" | "help"
   chatCollapsed: false,
   modal: null, // null | "proposeGame" | "invite" | "proposeTime" | "createBoard"
   notifOpen: false,
   profileOpen: false,
+  settingsOpen: false,
   wheelPick: null,
   createDraft: { emoji: "🎮", accent: "#7c5cff" },
   editingBoardId: null, // null = create mode; otherwise editing this board

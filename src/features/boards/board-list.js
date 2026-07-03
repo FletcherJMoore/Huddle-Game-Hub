@@ -42,7 +42,8 @@ function counts(board) {
 }
 
 function nextSessionLabel(board) {
-  const next = sortSchedule(board.schedule ?? []).find((s) => `${s.date}` >= new Date().toISOString().slice(0, 10));
+  const today = new Date().toISOString().slice(0, 10);
+  const next = sortSchedule(board.schedule ?? []).find((s) => `${s.date}` >= today);
   if (!next) return "No game night yet";
   return `Next: ${formatShortDate(next.date)}`;
 }
@@ -50,30 +51,23 @@ function nextSessionLabel(board) {
 // ---------- RAIL ----------
 export function renderRail() {
   const items = store.state.boards.map((board) => {
-    const item = document.createElement("div");
-    item.className = `rail-item${board.id === store.state.activeBoardId ? " active" : ""}`;
+    const active = board.id === store.state.activeBoardId && store.view === "board";
+
+    const wrap = document.createElement("div");
+    wrap.style.cssText =
+      "position:relative;width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex-shrink:0;";
 
     const bar = document.createElement("span");
-    bar.className = "bar";
+    bar.style.cssText = `position:absolute;left:-14px;width:4px;border-radius:0 3px 3px 0;background:var(--accent,#7c5cff);height:${active ? "30px" : "10px"};transition:height .15s;`;
 
     const ic = document.createElement("div");
-    ic.className = "ic";
-    ic.style.background = board.accent;
-    ic.textContent = board.emoji;
     ic.title = board.name;
+    ic.style.cssText = `width:46px;height:46px;border-radius:${active ? "14px" : "50%"};background:${board.accent};display:flex;align-items:center;justify-content:center;font-size:21px;cursor:pointer;border:${active ? "2px solid rgba(255,255,255,0.28)" : "2px solid transparent"};transition:border-radius .15s;`;
+    ic.textContent = board.emoji;
 
-    item.append(bar, ic);
-
-    const unread = unreadCount(board);
-    if (unread) {
-      const badge = document.createElement("span");
-      badge.className = "unread";
-      badge.textContent = unread > 9 ? "9+" : String(unread);
-      item.append(badge);
-    }
-
-    item.addEventListener("click", () => openBoard(board.id));
-    return item;
+    wrap.append(bar, ic);
+    wrap.addEventListener("click", () => openBoard(board.id));
+    return wrap;
   });
   elements.railBoards.replaceChildren(...items);
 }
@@ -93,57 +87,76 @@ export function renderDashboard() {
 }
 
 function boardCard(board) {
+  const ids = memberIdsOf(board);
+  const c = counts(board);
+  const unread = unreadCount(board);
+
   const card = document.createElement("div");
-  card.className = "board-card";
+  card.style.cssText =
+    "background:#14151e;border:1px solid #23253560;border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .14s,border-color .14s;";
   card.addEventListener("click", () => openBoard(board.id));
+  card.addEventListener("mouseenter", () => {
+    card.style.transform = "translateY(-3px)";
+    card.style.borderColor = "#3a3c52";
+  });
+  card.addEventListener("mouseleave", () => {
+    card.style.transform = "";
+    card.style.borderColor = "#23253560";
+  });
 
   const header = document.createElement("div");
-  header.className = "board-card-header";
-  header.style.background = `linear-gradient(135deg, ${board.accent}55, ${board.accent}18)`;
+  header.style.cssText = `height:88px;background:linear-gradient(135deg,${board.accent}aa,${board.accent}22);position:relative;display:flex;align-items:center;padding:0 20px;`;
   const emoji = document.createElement("div");
-  emoji.className = "board-card-emoji";
+  emoji.style.cssText =
+    "width:50px;height:50px;border-radius:14px;background:#0b0c12cc;display:flex;align-items:center;justify-content:center;font-size:25px;backdrop-filter:blur(4px);";
   emoji.textContent = board.emoji;
   header.append(emoji);
-  const unread = unreadCount(board);
   if (unread) {
     const badge = document.createElement("span");
-    badge.className = "board-card-new";
+    badge.style.cssText =
+      "position:absolute;top:12px;right:14px;background:#ff5c7c;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:3px 8px;";
     badge.textContent = `${unread} new`;
     header.append(badge);
   }
 
   const body = document.createElement("div");
-  body.className = "board-card-body";
+  body.style.cssText = "padding:16px 18px 18px;";
 
   const name = document.createElement("div");
-  name.className = "board-card-name";
+  name.style.cssText = "font-family:'Space Grotesk';font-weight:600;font-size:17px;margin-bottom:3px;";
   name.textContent = board.name;
 
-  const ids = memberIdsOf(board);
   const sub = document.createElement("div");
-  sub.className = "board-card-sub";
-  sub.textContent = `${ids.length} ${ids.length === 1 ? "member" : "members"}`;
+  sub.style.cssText = "font-size:12.5px;color:#6b6d85;margin-bottom:14px;";
+  sub.textContent = board.subtitle || `${ids.length} ${ids.length === 1 ? "member" : "members"}`;
 
-  const members = document.createElement("div");
-  members.className = "board-card-members";
-  ids.slice(0, 4).forEach((uid) => members.append(avatarEl(uid, plainName(board, uid), "av")));
-  if (ids.length > 4) {
-    const more = document.createElement("span");
-    more.className = "more";
-    more.textContent = `+${ids.length - 4}`;
-    members.append(more);
-  }
+  const memberRow = document.createElement("div");
+  memberRow.style.cssText = "display:flex;align-items:center;justify-content:space-between;";
+  const avatars = document.createElement("div");
+  avatars.style.cssText = "display:flex;align-items:center;";
+  ids.slice(0, 4).forEach((uid) => {
+    const av = document.createElement("div");
+    av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${avatarColor(uid)};border:2px solid #14151e;margin-left:-7px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#0b0c12;`;
+    av.textContent = initialsFor(plainName(board, uid));
+    avatars.append(av);
+  });
+  const memberLabel = document.createElement("span");
+  memberLabel.style.cssText = "margin-left:8px;font-size:12px;color:#8b8da3;";
+  memberLabel.textContent = `${ids.length} ${ids.length === 1 ? "member" : "members"}`;
+  avatars.append(memberLabel);
+  memberRow.append(avatars);
 
   const tags = document.createElement("div");
-  tags.className = "board-card-tags";
-  const c = counts(board);
+  tags.style.cssText = "display:flex;gap:7px;margin-top:15px;flex-wrap:wrap;";
   const rot = document.createElement("span");
-  rot.className = "tag tag-green";
+  rot.style.cssText =
+    "font-size:11.5px;font-weight:600;color:#56d364;background:#56d36412;border:1px solid #56d36430;padding:4px 9px;border-radius:8px;";
   rot.textContent = `${c.rotation} in rotation`;
   tags.append(rot);
   if (c.pending) {
     const pend = document.createElement("span");
-    pend.className = "tag tag-amber";
+    pend.style.cssText =
+      "font-size:11.5px;font-weight:600;color:#ffb13d;background:#ffb13d12;border:1px solid #ffb13d30;padding:4px 9px;border-radius:8px;";
     pend.textContent = `${c.pending} to vote`;
     tags.append(pend);
   }
@@ -153,19 +166,21 @@ function boardCard(board) {
   const cal = icon("calendar", { size: 14, className: "ico" });
   next.append(cal, document.createTextNode(nextSessionLabel(board)));
 
-  body.append(name, sub, members, tags, next);
+  body.append(name, sub, memberRow, tags, next);
   card.append(header, body);
   return card;
 }
 
 function createCard() {
   const card = document.createElement("div");
-  card.className = "board-card create";
+  card.style.cssText =
+    "border:1.5px dashed #2f3145;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240px;cursor:pointer;color:#6b6d85;transition:border-color .15s,color .15s;";
   card.addEventListener("click", openCreateBoard);
   const plus = document.createElement("div");
-  plus.className = "plus";
+  plus.style.cssText = "font-size:32px;font-weight:300;margin-bottom:6px;";
   plus.textContent = "+";
   const label = document.createElement("div");
+  label.style.cssText = "font-size:14px;font-weight:600;";
   label.textContent = "New board";
   card.append(plus, label);
   return card;
@@ -190,13 +205,14 @@ function renderNeeds() {
   elements.needsActions.replaceChildren(
     ...top.map((a) => {
       const btn = document.createElement("button");
-      btn.className = "need-action";
       btn.type = "button";
       const ico = icon(a.icon, { size: 19 });
       const meta = document.createElement("span");
-      const title = document.createElement("strong");
+      const title = document.createElement("span");
+      title.style.cssText = "display:block;font-size:13.5px;font-weight:700;color:#edeef5;";
       title.textContent = a.title;
       const sub = document.createElement("span");
+      sub.style.cssText = "display:block;font-size:12px;color:#8b8da3;margin-top:2px;";
       sub.textContent = a.sub;
       meta.append(title, sub);
       btn.append(ico, meta);
@@ -411,7 +427,8 @@ function renderCreatePickers() {
     ...EMOJI_OPTIONS.map((glyph) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = `emoji-opt${glyph === store.createDraft.emoji ? " selected" : ""}`;
+      const sel = glyph === store.createDraft.emoji;
+      b.style.cssText = `width:44px;height:44px;border-radius:12px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:${sel ? "#7c5cff1a" : "#15161f"};border:1px solid ${sel ? "var(--accent,#7c5cff)" : "#2a2c3d"};`;
       b.textContent = glyph;
       b.addEventListener("click", () => {
         store.createDraft.emoji = glyph;
@@ -424,8 +441,8 @@ function renderCreatePickers() {
     ...ACCENT_OPTIONS.map((hex) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = `accent-opt${hex === store.createDraft.accent ? " selected" : ""}`;
-      b.style.background = hex;
+      const sel = hex === store.createDraft.accent;
+      b.style.cssText = `width:32px;height:32px;border-radius:50%;cursor:pointer;background:${hex};border:${sel ? "2px solid #fff" : "2px solid transparent"};box-shadow:${sel ? `0 0 14px -2px ${hex}` : "none"};`;
       b.addEventListener("click", () => {
         store.createDraft.accent = hex;
         renderCreatePickers();
