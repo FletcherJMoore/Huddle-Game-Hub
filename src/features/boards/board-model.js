@@ -2,7 +2,7 @@
 // small derived helpers the redesigned views need (avatar colors, majority).
 
 import { store, activeBoard } from "../../state/store.js";
-import { PLATFORMS, BUCKET_KEYS, AVATAR_COLORS, ACCENT_OPTIONS, EMOJI_OPTIONS } from "../../utils/constants.js";
+import { PLATFORMS, GAME_TAGS, BUCKET_KEYS, AVATAR_COLORS, ACCENT_OPTIONS, EMOJI_OPTIONS } from "../../utils/constants.js";
 
 export function displayName() {
   const user = store.currentUser;
@@ -114,6 +114,7 @@ export function normalizeGame(raw) {
   const platforms = Array.isArray(raw.platforms)
     ? raw.platforms.filter((p) => PLATFORMS.includes(p))
     : [];
+  const tags = Array.isArray(raw.tags) ? raw.tags.filter((t) => GAME_TAGS.includes(t)) : [];
   return {
     id: raw.id ?? crypto.randomUUID(),
     title: raw.title ?? "Untitled game",
@@ -121,6 +122,8 @@ export function normalizeGame(raw) {
     variant: raw.variant ?? "",
     players: raw.players ?? "",
     platforms,
+    tags,
+    steamAppId: raw.steamAppId ?? null,
     status,
     approvals: raw.approvals ?? {},
     addedBy: raw.addedBy ?? null,

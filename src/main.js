@@ -18,6 +18,7 @@ import { renderNotifications, updateTitleBadge, notifyIncoming, bindNotification
 import { renderCommonGames, bindSteamEvents } from "./features/steam/steam.js";
 import { renderProfile, bindProfileEvents } from "./features/profile/profile.js";
 import { enablePush } from "./services/push-service.js";
+import { hydrateIcons } from "./utils/icons.js";
 
 let lastBoardId = null;
 
@@ -228,6 +229,7 @@ function handleSignedOutUser() {
 }
 
 function startApp() {
+  hydrateIcons();
   bindAuthEvents();
   bindShellEvents();
   bindBoardEvents();

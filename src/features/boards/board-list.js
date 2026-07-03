@@ -11,7 +11,7 @@ import {
   isOwnerOf,
   canonicalRole
 } from "./board-model.js";
-import { initialsFor, formatShortDate, sortSchedule } from "../../utils/format.js";
+import { initialsFor, formatShortDate, sortSchedule, dowShort, dayNum, sessionTimeLabel } from "../../utils/format.js";
 import { EMOJI_OPTIONS, ACCENT_OPTIONS, ROLE_LABELS, ASSIGNABLE_ROLES } from "../../utils/constants.js";
 import { deleteBoard } from "../../services/boards-repository.js";
 import {
@@ -20,9 +20,11 @@ import {
   removeBoardMember
 } from "../../services/invites-repository.js";
 import { openModal, closeModal, openBoard, goDashboard, showToast } from "../shell/shell.js";
+import { icon } from "../../utils/icons.js";
+import { emptyState } from "../../components/empty-state.js";
 
 // ---- shared avatar helper ----
-function avatarEl(seed, name, className) {
+export function avatarEl(seed, name, className) {
   const el = document.createElement("div");
   el.className = className;
   el.style.background = avatarColor(seed);
@@ -77,6 +79,7 @@ export function renderDashboard() {
   }`;
 
   renderNeeds();
+  renderUpcoming();
 
   const cards = store.state.boards.map((board) => boardCard(board));
   cards.push(createCard());
@@ -159,11 +162,8 @@ function boardCard(board) {
   }
 
   const next = document.createElement("div");
-  next.style.cssText =
-    "margin-top:13px;padding-top:13px;border-top:1px solid #ffffff0a;font-size:12.5px;color:#a3a5bb;display:flex;align-items:center;gap:7px;";
-  const cal = document.createElement("span");
-  cal.style.color = "var(--accent,#7c5cff)";
-  cal.textContent = "📅";
+  next.className = "board-card-next";
+  const cal = icon("calendar", { size: 14, className: "ico" });
   next.append(cal, document.createTextNode(nextSessionLabel(board)));
 
   body.append(name, sub, memberRow, tags, next);
@@ -192,25 +192,21 @@ function renderNeeds() {
   store.state.boards.forEach((board) => {
     (board.games ?? [])
       .filter((g) => g.status === "maybe" && !g.approvals?.[uid])
-      .forEach((g) => actions.push({ icon: "🗳", title: `Vote: ${g.title}`, sub: board.name, boardId: board.id, tab: "roster" }));
+      .forEach((g) => actions.push({ icon: "gamepad-2", title: `Vote: ${g.title}`, sub: board.name, boardId: board.id, tab: "roster" }));
     (board.schedule ?? [])
       .filter((s) => s.votes?.[uid] === undefined)
-      .forEach(() => actions.push({ icon: "📅", title: "Vote on a time", sub: board.name, boardId: board.id, tab: "schedule" }));
+      .forEach((s) => actions.push({ icon: "calendar", title: `Vote on a time`, sub: board.name, boardId: board.id, tab: "schedule" }));
   });
 
   const top = actions.slice(0, 4);
-  elements.needsStrip.classList.toggle("hidden", top.length === 0);
+  elements.needsSection.classList.toggle("hidden", top.length === 0);
   elements.needsCount.textContent = String(actions.length);
 
   elements.needsActions.replaceChildren(
     ...top.map((a) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.style.cssText =
-        "display:flex;align-items:center;gap:11px;background:#0e0f17;border:1px solid #23253580;border-radius:13px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s;";
-      const ico = document.createElement("span");
-      ico.style.fontSize = "19px";
-      ico.textContent = a.icon;
+      const ico = icon(a.icon, { size: 19 });
       const meta = document.createElement("span");
       const title = document.createElement("span");
       title.style.cssText = "display:block;font-size:13.5px;font-weight:700;color:#edeef5;";
@@ -225,6 +221,58 @@ function renderNeeds() {
         openBoard(a.boardId);
       });
       return btn;
+    })
+  );
+}
+
+// Cross-board glanceable list of the soonest scheduled sessions — a summary,
+// not a voting surface (that's still the board's own Schedule tab).
+function renderUpcoming() {
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = [];
+  store.state.boards.forEach((board) => {
+    sortSchedule(board.schedule ?? [])
+      .filter((s) => s.date >= today)
+      .forEach((s) => rows.push({ session: s, boardId: board.id, boardName: board.name, boardEmoji: board.emoji }));
+  });
+  rows.sort((a, b) => `${a.session.date}T${a.session.start}`.localeCompare(`${b.session.date}T${b.session.start}`));
+  const top = rows.slice(0, 5);
+
+  if (!top.length) {
+    elements.upcomingList.replaceChildren(emptyState("No game nights on the calendar yet"));
+    return;
+  }
+
+  elements.upcomingList.replaceChildren(
+    ...top.map(({ session, boardId, boardName, boardEmoji }) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "upcoming-row";
+
+      const date = document.createElement("div");
+      date.className = "upcoming-date";
+      const dow = document.createElement("span");
+      dow.className = "dow";
+      dow.textContent = dowShort(session.date);
+      const day = document.createElement("span");
+      day.className = "day";
+      day.textContent = dayNum(session.date);
+      date.append(dow, day);
+
+      const meta = document.createElement("div");
+      meta.className = "upcoming-meta";
+      const title = document.createElement("strong");
+      title.textContent = session.activity || "Game night";
+      const sub = document.createElement("span");
+      sub.textContent = `${boardEmoji} ${boardName} · ${sessionTimeLabel(session.start, session.end)}`;
+      meta.append(title, sub);
+
+      row.append(date, meta);
+      row.addEventListener("click", () => {
+        store.boardTab = "schedule";
+        openBoard(boardId);
+      });
+      return row;
     })
   );
 }

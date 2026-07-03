@@ -5,6 +5,7 @@
 import { store, render } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
 import { enablePush, pushSupported, currentPermission } from "../../services/push-service.js";
+import { icon } from "../../utils/icons.js";
 
 const MODALS = {
   proposeGame: elements.modalProposeGame,
@@ -44,11 +45,8 @@ export function toggleChat() {
 }
 
 function applyChatState() {
-  const collapsed = store.chatCollapsed;
-  elements.chatPanel.style.width = collapsed ? "58px" : "330px";
-  elements.chatHeadInfo.classList.toggle("hidden", collapsed);
-  elements.chatBody.classList.toggle("hidden", collapsed);
-  elements.chatToggle.textContent = collapsed ? "⟩" : "⟨";
+  elements.chatPanel.classList.toggle("collapsed", store.chatCollapsed);
+  elements.chatToggle.replaceChildren(icon(store.chatCollapsed ? "chevron-right" : "chevron-left"));
 }
 
 export function openModal(name) {
@@ -164,23 +162,27 @@ export function updateNotifBadge() {
 
 // ---------- push notification toggle ----------
 
+function setPushButtonLabel(btn, text) {
+  btn.replaceChildren(icon("bell"), document.createTextNode(text));
+}
+
 export function updatePushButton() {
   const btn = elements.enablePushButton;
   if (!btn) return;
   if (!pushSupported()) {
-    btn.textContent = "🔔 Notifications unsupported";
+    setPushButtonLabel(btn, "Notifications unsupported");
     btn.disabled = true;
     return;
   }
   const perm = currentPermission();
   if (perm === "granted") {
-    btn.textContent = "🔔 Notifications on";
+    setPushButtonLabel(btn, "Notifications on");
     btn.disabled = true;
   } else if (perm === "denied") {
-    btn.textContent = "🔕 Notifications blocked";
+    setPushButtonLabel(btn, "Notifications blocked");
     btn.disabled = true;
   } else {
-    btn.textContent = "🔔 Enable notifications";
+    setPushButtonLabel(btn, "Enable notifications");
     btn.disabled = false;
   }
 }

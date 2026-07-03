@@ -50,9 +50,11 @@ export const elements = {
   linkSteamButton: $("linkSteamButton"),
   enablePushButton: $("enablePushButton"),
   dashWelcome: $("dashWelcome"),
+  needsSection: $("needsSection"),
   needsStrip: $("needsStrip"),
   needsCount: $("needsCount"),
   needsActions: $("needsActions"),
+  upcomingList: $("upcomingList"),
   dashBoardCount: $("dashBoardCount"),
   newBoardButtonTop: $("newBoardButtonTop"),
   boardCards: $("boardCards"),
@@ -121,6 +123,10 @@ export const elements = {
   pgVariant: $("pgVariant"),
   pgPlayers: $("pgPlayers"),
   pgPlatforms: $("pgPlatforms"),
+  pgTags: $("pgTags"),
+  pgSteamSearch: $("pgSteamSearch"),
+  pgSteamSuggest: $("pgSteamSuggest"),
+  pgSteamLinked: $("pgSteamLinked"),
 
   // invite
   inviteBoardName: $("inviteBoardName"),
