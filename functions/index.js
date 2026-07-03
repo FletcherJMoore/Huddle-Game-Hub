@@ -1,4 +1,4 @@
-// Huddle Cloud Functions.
+// Huddle Game Hub Cloud Functions.
 //
 // getPendingInvites: returns boards the caller has been invited to without
 //   joining them. Used to populate the in-app notification bell.
@@ -6,8 +6,10 @@
 // acceptInvite: called when the user explicitly accepts one invite (in-app
 //   bell or email link). Grants membership via Admin SDK and clears the invite.
 //
-// sendInviteEmail: DB trigger — fires when an admin writes a new invite record
-//   and sends an email via Resend so the invitee knows they were invited.
+// sendInviteEmail: DB trigger — fires when an admin writes a new invite record.
+//   If the invitee already has a verified account, membership is granted
+//   immediately (so the board streams into their app live) and the invite is
+//   cleared. Either way an email goes out via Resend so they know they're in.
 
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onValueCreated } = require("firebase-functions/v2/database");
@@ -169,7 +171,8 @@ exports.removeMember = onCall(async (request) => {
     [`boards/${boardId}/members/${targetUid}`]: null,
     [`boards/${boardId}/memberProfiles/${targetUid}`]: null,
     [`boards/${boardId}/reads/${targetUid}`]: null,
-    [`userBoards/${targetUid}/${boardId}`]: null
+    [`userBoards/${targetUid}/${boardId}`]: null,
+    [`boardSteam/${boardId}/${targetUid}`]: null
   });
   return { ok: true };
 });
@@ -186,21 +189,44 @@ exports.sendInviteEmail = onValueCreated(
     if (!invite || !invite.email) return;
 
     const boardId = event.params.boardId;
+    const key = event.params.emailKey;
+
+    // If the invitee already has a verified account, grant membership right away
+    // so the board appears in their app instantly (their live userBoards
+    // subscription picks it up) instead of waiting for them to next sign in.
+    // No account yet -> fall through and email them; they'll join on login.
+    try {
+      const userRecord = await admin.auth().getUserByEmail(invite.email);
+      if (userRecord && userRecord.emailVerified) {
+        await grantMembership(
+          boardId,
+          userRecord.uid,
+          { name: userRecord.displayName || invite.email.split("@")[0], email: invite.email },
+          invite.role || "editor"
+        );
+        await clearInvite(boardId, key);
+      }
+    } catch (err) {
+      if (err.code !== "auth/user-not-found") {
+        console.error("Live invite grant failed", err);
+      }
+    }
+
     const resend = new Resend(process.env.RESEND_API_KEY);
     const appUrl = process.env.APP_URL || "https://huddle-b73f3.web.app/";
     const fromEmail = process.env.INVITE_FROM_EMAIL || "noreply@huddlegames.org";
 
     const inviterName = invite.invitedByName || "Someone";
-    const boardName = invite.boardName || "a Huddle board";
+    const boardName = invite.boardName || "a Huddle Game Hub board";
     const acceptUrl = `${appUrl}?acceptInvite=${boardId}`;
 
     await resend.emails.send({
-      from: `Huddle <${fromEmail}>`,
+      from: `Huddle Game Hub <${fromEmail}>`,
       to: invite.email,
-      subject: `${inviterName} invited you to ${boardName} on Huddle`,
+      subject: `${inviterName} invited you to ${boardName} on Huddle Game Hub`,
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#1a1b2e;color:#e2e4f0;border-radius:12px;">
-          <h1 style="font-size:24px;margin:0 0 8px;">You're invited to Huddle</h1>
+          <h1 style="font-size:24px;margin:0 0 8px;">You're invited to Huddle Game Hub</h1>
           <p style="margin:0 0 24px;color:#a0a3b8;">
             <strong>${inviterName}</strong> invited you to join <strong>${boardName}</strong>.
           </p>
@@ -380,12 +406,21 @@ exports.steamReturn = onRequest({ region: "us-central1", secrets: ["STEAM_API_KE
       console.error("Steam owned games failed", e.message);
     }
 
-    // 5. Write the library to every board the user belongs to.
+    // 5. Store the full library privately, then share everything EXCEPT the
+    //    games the user has hidden. Hidden games never reach the shared node.
+    const hiddenSnap = await admin.database().ref(`steamUsers/${uid}/hidden`).get();
+    const hidden = hiddenSnap.val() || {};
+    const shared = {};
+    Object.entries(games).forEach(([appid, name]) => {
+      if (!hidden[appid]) shared[appid] = name;
+    });
+
     const boardsSnap = await admin.database().ref(`userBoards/${uid}`).get();
-    const payload = { steamId, persona, games, updatedAt: Date.now() };
-    const updates = { [`steamUsers/${uid}`]: { steamId, persona, updatedAt: Date.now() } };
+    const updates = {
+      [`steamUsers/${uid}`]: { steamId, persona, games, hidden, updatedAt: Date.now() }
+    };
     Object.keys(boardsSnap.val() || {}).forEach((bid) => {
-      updates[`boardSteam/${bid}/${uid}`] = payload;
+      updates[`boardSteam/${bid}/${uid}`] = { steamId, persona, games: shared, updatedAt: Date.now() };
     });
     await admin.database().ref().update(updates);
 
@@ -394,4 +429,39 @@ exports.steamReturn = onRequest({ region: "us-central1", secrets: ["STEAM_API_KE
     console.error("steamReturn error", error);
     res.redirect(`${appUrl}?steam=error`);
   }
+});
+
+// Update which of the caller's games are hidden, and re-derive the shared library
+// (full minus hidden) on every board they belong to. Hidden games are removed
+// from the shared node entirely, so co-members never see them.
+exports.updateHiddenGames = onCall(async (request) => {
+  const auth = request.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Sign in first.");
+  const uid = auth.uid;
+
+  const raw = request.data?.hidden || {};
+  const hidden = Array.isArray(raw) ? Object.fromEntries(raw.map((a) => [String(a), true])) : raw;
+
+  const userSnap = await admin.database().ref(`steamUsers/${uid}`).get();
+  const user = userSnap.val();
+  if (!user || !user.games) throw new HttpsError("failed-precondition", "Link Steam first.");
+
+  const shared = {};
+  Object.entries(user.games).forEach(([appid, name]) => {
+    if (!hidden[appid]) shared[appid] = name;
+  });
+
+  const boardsSnap = await admin.database().ref(`userBoards/${uid}`).get();
+  const updates = { [`steamUsers/${uid}/hidden`]: hidden };
+  Object.keys(boardsSnap.val() || {}).forEach((bid) => {
+    updates[`boardSteam/${bid}/${uid}`] = {
+      steamId: user.steamId,
+      persona: user.persona || "",
+      games: shared,
+      updatedAt: Date.now()
+    };
+  });
+  await admin.database().ref().update(updates);
+
+  return { hiddenCount: Object.keys(hidden).length, sharedCount: Object.keys(shared).length };
 });

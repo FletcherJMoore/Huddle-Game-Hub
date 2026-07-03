@@ -4,8 +4,7 @@
 import { store, activeBoard, saveLocal, pushBoard, updateActiveBoard } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
 import { canEditBoard, memberIdsOf, plainName, avatarColor, displayName } from "../boards/board-model.js";
-import { initialsFor, timeLabel, sessionTimeLabel, formatShortDate } from "../../utils/format.js";
-import { sortSchedule } from "../../utils/format.js";
+import { initialsFor, timeLabel, sessionTimeLabel, formatShortDate, sortSchedule } from "../../utils/format.js";
 import { emptyState } from "../../components/empty-state.js";
 
 let lastThreadBoardId = null;
@@ -30,7 +29,7 @@ export function renderChat(board = activeBoard()) {
   if (!board || !store.currentUser) return;
 
   const count = memberIdsOf(board).length;
-  elements.chatOnline.textContent = `${count} ${count === 1 ? "member" : "members"}`;
+  elements.chatOnline.textContent = `${count} online now`;
 
   if (!store.chatCollapsed) markRead(board);
   renderThread(board);
@@ -56,43 +55,42 @@ function renderThread(board) {
 }
 
 function messageEl(board, message) {
-  // System messages (nudges, polls, shares) render centered.
+  // System messages render centered.
   if (!message.authorUid) {
     const sys = document.createElement("div");
-    sys.className = "chat-system";
+    sys.style.cssText = "text-align:center;font-size:11.5px;color:#6b6d85;padding:2px 8px;";
     sys.textContent = message.text;
     return sys;
   }
 
   const mine = message.authorUid === store.currentUser?.uid;
-  const wrap = document.createElement("div");
-  wrap.className = `msg${mine ? " mine" : ""}`;
+  const name = mine ? "You" : plainName(board, message.authorUid) || message.author || "Teammate";
+  const color = mine ? "var(--accent,#7c5cff)" : avatarColor(message.authorUid);
 
-  const name = plainName(board, message.authorUid) || message.author || "Teammate";
+  const wrap = document.createElement("div");
+  wrap.style.cssText = `display:flex;gap:10px;${mine ? "flex-direction:row-reverse;" : ""}`;
 
   if (!mine) {
     const av = document.createElement("div");
-    av.className = "av";
-    av.style.background = avatarColor(message.authorUid);
-    av.textContent = initialsFor(name);
+    av.style.cssText = `width:30px;height:30px;border-radius:50%;background:${avatarColor(message.authorUid)};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0b0c12;`;
+    av.textContent = initialsFor(name === "You" ? displayName() : name);
     wrap.append(av);
   }
 
   const body = document.createElement("div");
-  body.className = "msg-body";
+  body.style.cssText = `min-width:0;${mine ? "display:flex;flex-direction:column;align-items:flex-end;" : ""}`;
   const meta = document.createElement("div");
-  meta.className = "msg-meta";
+  meta.style.cssText = "display:flex;align-items:baseline;gap:7px;margin-bottom:3px;";
   const nm = document.createElement("span");
-  nm.className = "name";
-  nm.style.color = mine ? "var(--accent)" : avatarColor(message.authorUid);
-  nm.textContent = mine ? "You" : name;
+  nm.style.cssText = `font-size:12.5px;font-weight:700;color:${color};`;
+  nm.textContent = name;
   const time = document.createElement("span");
-  time.className = "time";
+  time.style.cssText = "font-size:10.5px;color:#5a5c72;";
   time.textContent = timeLabel(message.createdAt);
   meta.append(nm, time);
 
   const bubble = document.createElement("div");
-  bubble.className = "msg-bubble";
+  bubble.style.cssText = `font-size:13.5px;line-height:1.45;color:#d7d8e6;background:${mine ? "#7c5cff22" : "#15161f"};border:1px solid ${mine ? "#7c5cff44" : "#23253560"};padding:8px 11px;border-radius:${mine ? "12px 12px 4px 12px" : "12px 12px 12px 4px"};display:inline-block;`;
   bubble.textContent = message.text;
 
   body.append(meta, bubble);
@@ -111,7 +109,7 @@ function postMessage(text, { system = false } = {}) {
     b.messages = b.messages ?? [];
     b.messages.push({
       id: crypto.randomUUID(),
-      author: system ? "Huddle" : displayName(),
+      author: system ? "Huddle Game Hub" : displayName(),
       authorUid: system ? null : store.currentUser.uid,
       text: value,
       createdAt: new Date().toISOString()

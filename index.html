@@ -3,357 +3,428 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Huddle — Plan your game rotation</title>
+    <title>Huddle Game Hub — Plan your game rotation</title>
   </head>
   <body>
-    <!-- ambient background glow -->
-    <div class="ambient" aria-hidden="true">
-      <span class="blob blob-1"></span>
-      <span class="blob blob-2"></span>
-    </div>
+    <div id="appShell" style="--accent:#7c5cff; min-height:100vh; background:#0b0c12; color:#edeef5; font-family:'Manrope',-apple-system,sans-serif; position:relative; overflow-x:hidden;">
 
-    <!-- ============ AUTH ============ -->
-    <section class="auth-screen" id="authScreen" aria-label="Sign in">
-      <div class="auth-card">
-        <div class="auth-pitch">
-          <div class="brand">
-            <div class="brand-mark" aria-hidden="true">
-              <span></span><span></span><span></span>
-            </div>
-            <span class="brand-word">Huddle</span>
-          </div>
-          <h1 class="auth-headline">Game nights,<br />minus the group-chat chaos.</h1>
-          <p class="auth-sub">Boards for every crew. Vote on what to play, find a night that works for everyone, and talk trash — all in one place.</p>
-          <div class="auth-tags">
-            <span class="pill">🗳 Majority voting</span>
-            <span class="pill">📆 Consensus scheduling</span>
-            <span class="pill">💬 Built-in chat</span>
-          </div>
-        </div>
-
-        <form class="auth-form" id="emailAuthForm">
-          <div class="eyebrow accent">Welcome to Huddle</div>
-          <p class="auth-form-sub">Free forever for your friend groups.</p>
-
-          <label for="authName">Display name</label>
-          <input id="authName" type="text" placeholder="e.g. Alex" autocomplete="name" />
-
-          <label for="authEmail">Email</label>
-          <input id="authEmail" type="email" placeholder="you@email.com" autocomplete="email" required />
-
-          <label for="authPassword">Password</label>
-          <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" minlength="6" required />
-
-          <button class="btn btn-accent btn-block" id="emailSignInButton" type="submit">Log in →</button>
-          <button class="btn btn-ghost btn-block" id="emailSignUpButton" type="button">Create my account</button>
-
-          <div class="auth-divider"><span>or</span></div>
-          <button class="btn btn-surface btn-block" id="googleSignInButton" type="button">Continue with Google</button>
-
-          <p class="auth-notice hidden" id="authNotice" role="status"></p>
-          <p class="auth-error hidden" id="authError" role="alert"></p>
-        </form>
+      <!-- ambient glow blobs -->
+      <div style="position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;">
+        <div style="position:absolute;top:-160px;right:-120px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle, var(--accent,#7c5cff) 0%, transparent 68%);opacity:.16;filter:blur(20px);animation:hb-float 26s ease-in-out infinite;"></div>
+        <div style="position:absolute;bottom:-200px;left:-140px;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle, #00e0b8 0%, transparent 68%);opacity:.10;filter:blur(20px);animation:hb-float2 30s ease-in-out infinite;"></div>
       </div>
-    </section>
 
-    <!-- ============ APP ============ -->
-    <div class="app-root hidden" id="appRoot">
-      <!-- ---------- DASHBOARD ---------- -->
-      <section class="dashboard hidden" id="dashboardScreen">
-        <div class="dash-topbar">
-          <div class="brand">
-            <div class="brand-mark sm" aria-hidden="true"><span></span><span></span><span></span></div>
-            <span class="brand-word sm">Huddle</span>
-          </div>
-          <div class="topbar-actions">
-            <button class="btn btn-accent" id="newBoardButtonTop" type="button">+ New board</button>
-            <div class="menu-anchor">
-              <button class="icon-btn" id="notifButton" type="button" aria-label="Notifications">
-                🔔<span class="dot-badge hidden" id="notifBadge">0</span>
-              </button>
-              <div class="popover hidden" id="notifMenu">
-                <div class="popover-head">
-                  <strong>Notifications</strong>
-                  <button class="link-btn" id="clearNotifsButton" type="button">Clear all</button>
-                </div>
-                <div class="popover-body" id="notifList"></div>
+      <div style="position:relative;z-index:1;">
+
+      <!-- session countdown -->
+      <div id="sessionTimer" class="hidden" title="Time left before you'll need to sign in again" style="position:fixed;top:14px;right:16px;z-index:55;font-family:'JetBrains Mono';font-size:12px;font-weight:600;color:#8b8da3;background:#14151e;border:1px solid #2a2c3d;border-radius:9px;padding:6px 11px;"></div>
+
+      <!-- ============ PERSISTENT RAIL ============ -->
+      <div id="rail" class="hidden" style="position:fixed;left:0;top:0;bottom:0;width:76px;background:#0a0b11;border-right:1px solid #ffffff0a;display:flex;flex-direction:column;align-items:center;padding:14px 0 16px;gap:10px;z-index:45;">
+        <button id="railLogo" title="Home" type="button" style="width:44px;height:44px;border-radius:13px;background:#15161f;border:1px solid #2a2c3d;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-shadow:0 0 20px -6px var(--accent,#7c5cff);">
+          <span style="display:flex;gap:3px;align-items:flex-end;"><span style="width:3.5px;height:8px;background:var(--accent,#7c5cff);border-radius:2px;"></span><span style="width:3.5px;height:14px;background:var(--accent,#7c5cff);border-radius:2px;"></span><span style="width:3.5px;height:11px;background:var(--accent,#7c5cff);border-radius:2px;"></span></span>
+        </button>
+        <div style="width:30px;height:1px;background:#ffffff14;flex-shrink:0;"></div>
+        <div id="railBoards" style="display:flex;flex-direction:column;align-items:center;gap:10px;"></div>
+        <button id="railCreate" title="New board" type="button" style="width:46px;height:46px;border-radius:50%;background:#15161f;border:1px solid #2a2c3d;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:300;color:#56d364;cursor:pointer;flex-shrink:0;">+</button>
+        <div style="flex:1;min-height:4px;"></div>
+        <div style="position:relative;flex-shrink:0;">
+          <button id="notifButton" title="Notifications" type="button" style="position:relative;width:44px;height:44px;border-radius:13px;background:#15161f;border:1px solid #2a2c3d;color:#c9cbe0;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span id="notifBadge" class="hidden" style="position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:10px;background:#ff5c7c;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #0a0b11;box-shadow:0 0 10px -1px #ff5c7c;">0</span>
+          </button>
+        </div>
+        <div style="position:relative;flex-shrink:0;">
+          <button id="profileButton" title="You" type="button" style="width:44px;height:44px;border-radius:50%;background:var(--accent,#7c5cff);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;cursor:pointer;border:none;box-shadow:0 0 0 2px #0a0b11, 0 0 0 3px transparent;">U</button>
+        </div>
+      </div>
+
+      <!-- dropdown backdrop -->
+      <div id="dropdownBackdrop" class="hidden" style="position:fixed;inset:0;z-index:46;"></div>
+
+      <!-- notifications panel -->
+      <div id="notifMenu" class="hidden" style="position:fixed;left:84px;bottom:14px;width:348px;background:#14151e;border:1px solid #2a2c3d;border-radius:15px;box-shadow:0 30px 80px -20px #000;z-index:48;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid #ffffff0d;">
+          <span style="font-family:'Space Grotesk';font-weight:700;font-size:14.5px;">Notifications</span>
+          <button id="clearNotifsButton" type="button" style="font-size:12px;color:#8b8da3;background:none;border:none;cursor:pointer;font-weight:600;">Clear all</button>
+        </div>
+        <div id="notifList" style="max-height:362px;overflow-y:auto;"></div>
+      </div>
+
+      <!-- profile panel -->
+      <div id="profileMenu" class="hidden" style="position:fixed;left:84px;bottom:14px;width:252px;background:#14151e;border:1px solid #2a2c3d;border-radius:15px;box-shadow:0 30px 80px -20px #000;z-index:48;overflow:hidden;">
+        <div style="padding:15px;display:flex;gap:12px;align-items:center;border-bottom:1px solid #ffffff0d;">
+          <div id="profileMenuAvatar" style="width:42px;height:42px;border-radius:50%;background:var(--accent,#7c5cff);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;flex-shrink:0;">U</div>
+          <div style="min-width:0;"><div id="profileMenuName" style="font-weight:700;font-size:14.5px;">User</div><div id="profileMenuEmail" style="font-size:12px;color:#6b6d85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div></div>
+        </div>
+        <div style="padding:6px;">
+          <button id="menuProfile" type="button" style="width:100%;display:flex;align-items:center;gap:11px;padding:10px 11px;background:none;border:none;border-radius:9px;cursor:pointer;color:#dcdde8;font-size:13.5px;font-weight:500;text-align:left;"><span style="font-size:15px;width:18px;text-align:center;">👤</span>Profile &amp; status</button>
+          <button id="menuAccount" type="button" style="width:100%;display:flex;align-items:center;gap:11px;padding:10px 11px;background:none;border:none;border-radius:9px;cursor:pointer;color:#dcdde8;font-size:13.5px;font-weight:500;text-align:left;"><span style="font-size:15px;width:18px;text-align:center;">⚙️</span>Account settings</button>
+          <button id="menuNotif" type="button" style="width:100%;display:flex;align-items:center;gap:11px;padding:10px 11px;background:none;border:none;border-radius:9px;cursor:pointer;color:#dcdde8;font-size:13.5px;font-weight:500;text-align:left;"><span style="font-size:15px;width:18px;text-align:center;">🔔</span>Notifications</button>
+          <button id="menuHelp" type="button" style="width:100%;display:flex;align-items:center;gap:11px;padding:10px 11px;background:none;border:none;border-radius:9px;cursor:pointer;color:#dcdde8;font-size:13.5px;font-weight:500;text-align:left;"><span style="font-size:15px;width:18px;text-align:center;">❓</span>Help &amp; feedback</button>
+        </div>
+        <div style="padding:6px;border-top:1px solid #ffffff0d;">
+          <button id="signOutButton" type="button" style="width:100%;display:flex;align-items:center;gap:11px;padding:10px 11px;background:none;border:none;border-radius:9px;cursor:pointer;color:#ff5c7c;font-size:13.5px;font-weight:600;text-align:left;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>Log out</button>
+        </div>
+      </div>
+
+      <!-- ============ AUTH ============ -->
+      <section id="authScreen" class="hidden" aria-label="Sign in" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px;">
+        <div id="authCard" style="width:100%;max-width:980px;display:grid;grid-template-columns:1.1fr 1fr;gap:0;border:1px solid #23253550;border-radius:24px;overflow:hidden;background:linear-gradient(180deg,#14151e,#101019);box-shadow:0 40px 120px -40px #000;">
+          <div id="authPitch" style="padding:48px 44px;border-right:1px solid #ffffff0f;position:relative;">
+            <div style="display:flex;align-items:center;gap:11px;margin-bottom:40px;">
+              <div style="width:38px;height:38px;border-radius:11px;background:var(--accent,#7c5cff);display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px -2px var(--accent,#7c5cff);">
+                <span style="display:flex;gap:3px;align-items:flex-end;"><span style="width:4px;height:9px;background:#0b0c12;border-radius:2px;display:block;"></span><span style="width:4px;height:15px;background:#0b0c12;border-radius:2px;display:block;"></span><span style="width:4px;height:11px;background:#0b0c12;border-radius:2px;display:block;"></span></span>
               </div>
+              <span style="font-family:'Space Grotesk';font-weight:700;font-size:23px;letter-spacing:-.02em;">Huddle Game Hub</span>
             </div>
-            <div class="menu-anchor">
-              <button class="avatar-btn" id="profileButton" type="button" aria-label="Profile menu">
-                <span class="avatar" id="profileAvatar">U</span>
-              </button>
-              <div class="popover popover-sm hidden" id="profileMenu">
-                <div class="popover-user">
-                  <span class="avatar" id="profileMenuAvatar">U</span>
-                  <div class="popover-user-meta">
-                    <strong id="profileMenuName">User</strong>
-                    <span id="profileMenuEmail"></span>
+            <h1 style="font-family:'Space Grotesk';font-weight:700;font-size:38px;line-height:1.08;letter-spacing:-.025em;margin:0 0 16px;">Game nights,<br>minus the group-chat chaos.</h1>
+            <p style="color:#a3a5bb;font-size:15.5px;line-height:1.55;margin:0 0 32px;max-width:380px;">Boards for every crew. Vote on what to play, find a night that works for everyone, and talk trash — all in one place.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <span style="font-size:12.5px;font-weight:600;color:#c9cbe0;background:#ffffff0a;border:1px solid #ffffff12;padding:7px 12px;border-radius:999px;">🗳 Majority voting</span>
+              <span style="font-size:12.5px;font-weight:600;color:#c9cbe0;background:#ffffff0a;border:1px solid #ffffff12;padding:7px 12px;border-radius:999px;">📆 Consensus scheduling</span>
+              <span style="font-size:12.5px;font-weight:600;color:#c9cbe0;background:#ffffff0a;border:1px solid #ffffff12;padding:7px 12px;border-radius:999px;">💬 Built-in chat</span>
+            </div>
+          </div>
+          <form id="emailAuthForm" style="padding:48px 44px;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent,#7c5cff);margin-bottom:8px;">Welcome to Huddle Game Hub</div>
+            <p style="color:#6b6d85;font-size:13.5px;margin:0 0 26px;">Free forever for your friend groups.</p>
+            <label for="authName" style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Display name</label>
+            <input id="authName" type="text" placeholder="e.g. Alex" autocomplete="name" style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:11px;padding:13px 14px;color:#edeef5;font-size:14.5px;margin-bottom:16px;">
+            <label for="authEmail" style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Email</label>
+            <input id="authEmail" type="email" placeholder="you@email.com" autocomplete="email" required style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:11px;padding:13px 14px;color:#edeef5;font-size:14.5px;margin-bottom:16px;">
+            <label for="authPassword" style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Password</label>
+            <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" minlength="6" required style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:11px;padding:13px 14px;color:#edeef5;font-size:14.5px;margin-bottom:24px;">
+            <button id="emailSignInButton" type="submit" style="width:100%;background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:11px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 30px -6px var(--accent,#7c5cff);">Log in →</button>
+            <button id="emailSignUpButton" type="button" style="width:100%;background:#15161f;border:1px solid #2a2c3d;color:#c9cbe0;border-radius:11px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;">Create my account</button>
+            <div style="display:flex;align-items:center;gap:12px;margin:20px 0;"><div style="flex:1;height:1px;background:#ffffff10;"></div><span style="font-size:11.5px;color:#6b6d85;">or continue with</span><div style="flex:1;height:1px;background:#ffffff10;"></div></div>
+            <button id="googleSignInButton" type="button" style="width:100%;display:flex;align-items:center;justify-content:center;gap:11px;background:#ffffff;color:#1f1f1f;border:none;border-radius:11px;padding:13px;font-size:14.5px;font-weight:600;cursor:pointer;">
+              <svg viewBox="0 0 48 48" width="19" height="19" style="display:block;flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
+              Continue with Google
+            </button>
+            <p id="authNotice" class="hidden" role="status" style="margin:14px 0 0;font-size:12.5px;color:#8be59a;"></p>
+            <p id="authError" class="hidden" role="alert" style="margin:14px 0 0;font-size:12.5px;color:#ff9aac;"></p>
+          </form>
+        </div>
+      </section>
+
+      <!-- ============ APP ROOT ============ -->
+      <div id="appRoot" class="hidden">
+        <!-- ---------- DASHBOARD ---------- -->
+        <section id="dashboardScreen" class="hidden" style="padding-left:76px;">
+          <div style="max-width:1180px;margin:0 auto;padding:26px 28px 80px;">
+            <div style="margin-bottom:8px;"><h1 id="dashWelcome" style="font-family:'Space Grotesk';font-weight:700;font-size:27px;letter-spacing:-.02em;margin:0;">Welcome back 👋</h1></div>
+            <p style="color:#a3a5bb;font-size:14.5px;margin:0 0 26px;">Here's what your crews need from you.</p>
+
+            <div id="needsStrip" style="background:linear-gradient(135deg,#16131f,#121119);border:1px solid #ffffff0d;border-radius:18px;padding:20px 22px;margin-bottom:30px;">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:15px;">
+                <span style="font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent,#7c5cff);">⚡ Needs you</span>
+                <span id="needsCount" style="background:var(--accent,#7c5cff);color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;">0</span>
+              </div>
+              <div id="needsActions" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;">
+              <div style="display:flex;align-items:baseline;gap:10px;"><h2 style="font-family:'Space Grotesk';font-weight:600;font-size:18px;margin:0;">Your boards</h2><span id="dashBoardCount" style="font-size:13px;color:#6b6d85;">0 boards</span></div>
+              <button id="newBoardButtonTop" type="button" style="background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:10px;padding:10px 15px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 0 24px -8px var(--accent,#7c5cff);white-space:nowrap;">+ New board</button>
+            </div>
+            <div id="boardCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;"></div>
+          </div>
+        </section>
+
+        <!-- ---------- BOARD VIEW ---------- -->
+        <section id="boardScreen" class="hidden" style="display:flex;height:100vh;overflow:hidden;margin-left:76px;">
+          <div style="flex:1;display:flex;flex-direction:column;min-width:0;background:#0d0e16;">
+            <!-- board header -->
+            <header style="padding:18px 26px;border-bottom:1px solid #ffffff0a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+              <div>
+                <div style="display:flex;align-items:center;gap:11px;">
+                  <span id="boardEmoji" style="font-size:23px;">🎮</span>
+                  <h1 id="boardName" style="font-family:'Space Grotesk';font-weight:700;font-size:21px;letter-spacing:-.02em;margin:0;">Board</h1>
+                  <span id="boardOnline" style="font-size:12px;color:#56d364;background:#56d36412;border:1px solid #56d36430;padding:3px 9px;border-radius:999px;font-weight:600;">● 0 online</span>
+                </div>
+                <div id="boardSubtitle" style="font-size:12.5px;color:#6b6d85;margin-top:4px;"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;">
+                <div style="display:flex;align-items:center;">
+                  <div id="headerAvatars" style="display:flex;align-items:center;"></div>
+                  <span id="boardMemberLabel" style="margin-left:9px;font-size:12.5px;color:#8b8da3;"></span>
+                </div>
+                <button id="inviteButton" type="button" style="background:#15161f;border:1px solid #2a2c3d;color:#edeef5;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;">+ Invite</button>
+                <button id="boardSettingsButton" class="hidden" type="button" title="Board settings" style="background:#15161f;border:1px solid #2a2c3d;color:#a3a5bb;border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:15px;">⚙</button>
+              </div>
+            </header>
+
+            <!-- tabs -->
+            <div style="padding:0 26px;border-bottom:1px solid #ffffff0a;display:flex;gap:4px;flex-shrink:0;">
+              <button id="tabRoster" type="button" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:14px 14px 13px;font-size:14px;font-weight:600;color:#edeef5;border-bottom:2px solid var(--accent,#7c5cff);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"></line><line x1="8" y1="9" x2="8" y2="13"></line><line x1="15" y1="12" x2="15.01" y2="12"></line><line x1="18" y1="10" x2="18.01" y2="10"></line><rect x="2" y="6" width="20" height="12" rx="6"></rect></svg>Game Roster</button>
+              <button id="tabSchedule" type="button" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:14px 14px 13px;font-size:14px;font-weight:600;color:#8b8da3;border-bottom:2px solid transparent;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Schedule</button>
+            </div>
+
+            <!-- content scroll -->
+            <div style="flex:1;overflow-y:auto;padding:24px 26px;">
+              <!-- ROSTER -->
+              <section id="rosterView">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+                  <div>
+                    <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:17px;margin:0;">What should we play?</h2>
+                    <p id="rosterSubtitle" style="font-size:12.5px;color:#6b6d85;margin:3px 0 0;">Majority moves a game into rotation.</p>
+                  </div>
+                  <div style="display:flex;gap:10px;">
+                    <button id="spinButton" type="button" title="Can't decide? Pick a random game from rotation" style="background:#15161f;border:1px solid #2a2c3d;color:#edeef5;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;">🎡 Spin the wheel</button>
+                    <button id="proposeGameButton" type="button" style="background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:10px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 0 22px -8px var(--accent,#7c5cff);">+ Propose a game</button>
                   </div>
                 </div>
-                <div class="popover-section">
-                  <button class="menu-item" id="linkSteamButton" type="button">🎮 Link Steam</button>
-                  <button class="menu-item" id="enablePushButton" type="button">🔔 Enable notifications</button>
+                <div id="wheelResult" class="hidden" style="background:linear-gradient(135deg,#1a1430,#121119);border:1px solid var(--accent,#7c5cff);border-radius:14px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;animation:hb-pop .3s;"></div>
+
+                <div style="display:flex;align-items:center;gap:9px;margin:0 0 13px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#56d364;box-shadow:0 0 10px #56d364;"></span>
+                  <h3 style="font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#56d364;margin:0;">In Rotation</h3>
+                  <span id="rotationCount" style="font-size:12px;color:#6b6d85;">0</span>
                 </div>
-                <div class="popover-section">
-                  <button class="menu-item danger" id="signOutButton" type="button">↩ Log out</button>
+                <div id="rotationList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:30px;"></div>
+
+                <div style="display:flex;align-items:center;gap:9px;margin:0 0 13px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#ffb13d;box-shadow:0 0 10px #ffb13d;"></span>
+                  <h3 style="font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#ffb13d;margin:0;">Pending Vote</h3>
+                  <span id="pendingCount" style="font-size:12px;color:#6b6d85;">0</span>
                 </div>
-              </div>
+                <div id="pendingList" style="display:flex;flex-direction:column;gap:12px;margin-bottom:30px;"></div>
+
+                <div style="display:flex;align-items:center;gap:9px;margin:0 0 13px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#ff5c7c;"></span>
+                  <h3 style="font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#ff5c7c;margin:0;">Rejected</h3>
+                  <span id="rejectedCount" style="font-size:12px;color:#6b6d85;">0</span>
+                </div>
+                <div id="rejectedList" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:30px;"></div>
+
+                <div style="display:flex;align-items:center;gap:9px;margin:0 0 13px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#66c0f4;box-shadow:0 0 10px #66c0f4;"></span>
+                  <h3 style="font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#66c0f4;margin:0;">Games You All Own</h3>
+                  <span id="commonCount" style="font-size:12px;color:#6b6d85;">0</span>
+                </div>
+                <div id="steamLink"></div>
+                <div id="commonGames" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;"></div>
+              </section>
+
+              <!-- SCHEDULE -->
+              <section id="scheduleView" class="hidden">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+                  <div>
+                    <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:17px;margin:0;">When are we playing?</h2>
+                    <p style="font-size:12.5px;color:#6b6d85;margin:3px 0 0;">Vote Yes / Maybe / No on proposed times. Best consensus rises to the top.</p>
+                  </div>
+                  <button id="proposeTimeButton" type="button" style="background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:10px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 0 22px -8px var(--accent,#7c5cff);">+ Propose a time</button>
+                </div>
+
+                <div style="background:#13141d;border:1px solid #23253560;border-radius:14px;padding:16px 18px;margin-bottom:24px;">
+                  <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8b8da3;margin-bottom:13px;">This week's free-time heatmap</div>
+                  <div id="heatmap" style="display:flex;gap:8px;"></div>
+                  <div style="font-size:11.5px;color:#6b6d85;margin-top:11px;">🟣 Darker = more of the crew is free. <b id="bestDayLabel" style="color:#c9cbe0;"></b></div>
+                </div>
+
+                <div id="sessionList" style="display:flex;flex-direction:column;gap:13px;"></div>
+              </section>
             </div>
           </div>
-        </div>
 
-        <h1 class="dash-welcome" id="dashWelcome">Welcome back 👋</h1>
-        <p class="dash-lede">Here's what your crews need from you.</p>
-
-        <div class="needs-strip" id="needsStrip">
-          <div class="needs-head">
-            <span class="eyebrow accent">⚡ Needs you</span>
-            <span class="count-pill" id="needsCount">0</span>
-          </div>
-          <div class="needs-actions" id="needsActions"></div>
-        </div>
-
-        <div class="section-head">
-          <h2>Your boards</h2>
-          <span class="muted" id="dashBoardCount">0 boards</span>
-        </div>
-        <div class="board-grid" id="boardCards"></div>
-      </section>
-
-      <!-- ---------- BOARD VIEW ---------- -->
-      <section class="board-screen hidden" id="boardScreen">
-        <!-- rail -->
-        <aside class="rail" aria-label="Boards">
-          <button class="rail-logo" id="railLogo" type="button" aria-label="Dashboard">
-            <span class="brand-mark sm" aria-hidden="true"><span></span><span></span><span></span></span>
-          </button>
-          <div class="rail-divider"></div>
-          <div class="rail-boards" id="railBoards"></div>
-          <button class="rail-create" id="railCreate" type="button" aria-label="New board">+</button>
-        </aside>
-
-        <!-- main -->
-        <main class="board-main">
-          <header class="board-head">
-            <div class="board-head-id">
-              <div class="board-title-row">
-                <span class="board-emoji" id="boardEmoji">🎮</span>
-                <h1 id="boardName">Board</h1>
-                <span class="online-pill" id="boardOnline">● 0 online</span>
-              </div>
-              <div class="board-subtitle muted" id="boardSubtitle"></div>
+          <!-- chat panel -->
+          <aside id="chatPanel" style="width:330px;flex-shrink:0;background:#0a0b11;border-left:1px solid #ffffff0a;display:flex;flex-direction:column;transition:width .2s;overflow:hidden;">
+            <div style="padding:16px 18px;border-bottom:1px solid #ffffff0a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+              <div id="chatHeadInfo"><div style="font-family:'Space Grotesk';font-weight:600;font-size:15px;"># general</div><div id="chatOnline" style="font-size:11.5px;color:#6b6d85;margin-top:2px;">0 online now</div></div>
+              <button id="chatToggle" type="button" style="background:#15161f;border:1px solid #2a2c3d;color:#a3a5bb;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px;flex-shrink:0;">⟨</button>
             </div>
-            <div class="board-head-actions">
-              <div class="avatar-cluster" id="headerAvatars"></div>
-              <button class="btn btn-surface" id="inviteButton" type="button">+ Invite</button>
-              <button class="icon-btn sm hidden" id="boardSettingsButton" type="button" aria-label="Board settings" title="Board settings">⚙</button>
-            </div>
-          </header>
-
-          <nav class="board-tabs">
-            <button class="tab active" id="tabRoster" type="button">🎮 Game Roster</button>
-            <button class="tab" id="tabSchedule" type="button">📅 Schedule</button>
-          </nav>
-
-          <div class="board-content">
-            <!-- ROSTER -->
-            <section class="roster" id="rosterView">
-              <div class="content-head">
-                <div>
-                  <h2>What should we play?</h2>
-                  <p class="muted" id="rosterSubtitle">Majority moves a game into rotation.</p>
+            <div id="chatBody" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+              <div id="chatLog" style="flex:1;overflow-y:auto;padding:16px 16px 8px;display:flex;flex-direction:column;gap:14px;"></div>
+              <form id="chatForm" style="padding:12px 14px;border-top:1px solid #ffffff0a;flex-shrink:0;">
+                <div style="display:flex;gap:8px;align-items:center;background:#13141d;border:1px solid #2a2c3d;border-radius:11px;padding:5px 5px 5px 13px;">
+                  <input id="chatMessage" type="text" placeholder="Message # general…" maxlength="400" autocomplete="off" style="flex:1;background:none;border:none;color:#edeef5;font-size:13.5px;">
+                  <button type="submit" aria-label="Send" style="display:flex;align-items:center;justify-content:center;background:var(--accent,#7c5cff);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:#fff;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
                 </div>
-                <div class="content-head-actions">
-                  <button class="btn btn-surface" id="spinButton" type="button">🎡 Spin the wheel</button>
-                  <button class="btn btn-accent" id="proposeGameButton" type="button">+ Propose a game</button>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                  <button id="quickPollButton" type="button" style="font-size:11px;color:#a3a5bb;background:#13141d;border:1px solid #2a2c3d;border-radius:7px;padding:4px 9px;cursor:pointer;">📊 Quick poll</button>
+                  <button id="shareSessionButton" type="button" style="font-size:11px;color:#a3a5bb;background:#13141d;border:1px solid #2a2c3d;border-radius:7px;padding:4px 9px;cursor:pointer;">📅 Share next session</button>
                 </div>
-              </div>
-
-              <div class="wheel-result hidden" id="wheelResult"></div>
-
-              <div class="roster-section-head">
-                <span class="status-dot dot-green"></span>
-                <h3 class="status-label green">In Rotation</h3>
-                <span class="muted" id="rotationCount">0</span>
-              </div>
-              <div class="rotation-grid" id="rotationList"></div>
-
-              <div class="roster-section-head">
-                <span class="status-dot dot-amber"></span>
-                <h3 class="status-label amber">Pending Vote</h3>
-                <span class="muted" id="pendingCount">0</span>
-              </div>
-              <div class="pending-list" id="pendingList"></div>
-
-              <div class="roster-section-head">
-                <span class="status-dot dot-rose"></span>
-                <h3 class="status-label rose">Rejected</h3>
-                <span class="muted" id="rejectedCount">0</span>
-              </div>
-              <div class="rejected-list" id="rejectedList"></div>
-
-              <div class="roster-section-head steam-head">
-                <span class="status-dot dot-steam"></span>
-                <h3 class="status-label steam">Games You All Own</h3>
-                <span class="muted" id="commonCount">0</span>
-              </div>
-              <div id="steamLink"></div>
-              <div class="rotation-grid steam-grid" id="commonGames"></div>
-            </section>
-
-            <!-- SCHEDULE -->
-            <section class="schedule hidden" id="scheduleView">
-              <div class="content-head">
-                <div>
-                  <h2>When are we playing?</h2>
-                  <p class="muted">Vote Yes / Maybe / No on proposed times. Best consensus rises to the top.</p>
-                </div>
-                <button class="btn btn-accent" id="proposeTimeButton" type="button">+ Propose a time</button>
-              </div>
-
-              <div class="heatmap-card">
-                <div class="eyebrow">This week's free-time heatmap</div>
-                <div class="heatmap" id="heatmap"></div>
-                <div class="heatmap-note muted">🟣 Darker = more of the crew is free. <b id="bestDayLabel"></b></div>
-              </div>
-
-              <div class="session-list" id="sessionList"></div>
-            </section>
-          </div>
-        </main>
-
-        <!-- chat panel -->
-        <aside class="chat-panel" id="chatPanel" aria-label="Chat">
-          <div class="chat-head">
-            <div class="chat-head-id">
-              <strong># general</strong>
-              <span class="muted" id="chatOnline">0 online now</span>
+              </form>
             </div>
-            <button class="icon-btn sm" id="chatToggle" type="button" aria-label="Collapse chat">‹</button>
-          </div>
-          <div class="chat-log" id="chatLog"></div>
-          <form class="chat-composer" id="chatForm">
-            <div class="composer-row">
-              <input id="chatMessage" type="text" placeholder="Message # general…" maxlength="400" autocomplete="off" />
-              <button class="composer-send" type="submit" aria-label="Send">➤</button>
+          </aside>
+        </section>
+      </div>
+
+      <!-- ============ MODALS ============ -->
+      <div id="modalRoot" class="hidden" style="position:fixed;inset:0;z-index:50;background:#06070bcc;backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:24px;">
+        <!-- propose game -->
+        <div id="modalProposeGame" class="hidden" role="dialog" aria-modal="true" style="width:100%;max-width:460px;background:linear-gradient(180deg,#16171f,#101019);border:1px solid #2a2c3d;border-radius:20px;padding:26px;box-shadow:0 40px 120px -40px #000;animation:hb-pop .2s;">
+          <h3 id="pgModalTitle" style="font-family:'Space Grotesk';font-weight:700;font-size:20px;margin:0 0 4px;">Propose a game</h3>
+          <p style="font-size:13px;color:#8b8da3;margin:0 0 22px;">It'll land in Pending — your vote counts as the first 👍.</p>
+          <form id="proposeGameForm">
+            <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Game title</label>
+            <input id="pgTitle" type="text" placeholder="e.g. Valheim" maxlength="64" required style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;margin-bottom:15px;">
+            <div style="display:flex;gap:12px;margin-bottom:15px;">
+              <div style="flex:1;"><label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Version / Edition <span style="color:#5a5c72;font-weight:500;">(optional)</span></label><input id="pgVariant" type="text" placeholder="e.g. Java, Bedrock" maxlength="40" style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;"></div>
+              <div style="width:120px;"><label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Players</label><input id="pgPlayers" type="text" placeholder="1-4" maxlength="12" style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;"></div>
             </div>
-            <div class="composer-quick">
-              <button class="chip-btn" id="quickPollButton" type="button">📊 Quick poll</button>
-              <button class="chip-btn" id="shareSessionButton" type="button">📅 Share next session</button>
+            <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:9px;display:block;">Platform</label>
+            <div id="pgPlatforms" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;">
+              <button type="button" class="platform-opt" data-platform="PC" style="font-size:12.5px;font-weight:600;padding:8px 13px;border-radius:9px;cursor:pointer;background:#15161f;border:1px solid #2a2c3d;color:#8b8da3;">PC</button>
+              <button type="button" class="platform-opt" data-platform="Xbox" style="font-size:12.5px;font-weight:600;padding:8px 13px;border-radius:9px;cursor:pointer;background:#15161f;border:1px solid #2a2c3d;color:#8b8da3;">Xbox</button>
+              <button type="button" class="platform-opt" data-platform="PS5" style="font-size:12.5px;font-weight:600;padding:8px 13px;border-radius:9px;cursor:pointer;background:#15161f;border:1px solid #2a2c3d;color:#8b8da3;">PS5</button>
+              <button type="button" class="platform-opt" data-platform="Switch" style="font-size:12.5px;font-weight:600;padding:8px 13px;border-radius:9px;cursor:pointer;background:#15161f;border:1px solid #2a2c3d;color:#8b8da3;">Switch</button>
+              <button type="button" class="platform-opt" data-platform="Mobile" style="font-size:12.5px;font-weight:600;padding:8px 13px;border-radius:9px;cursor:pointer;background:#15161f;border:1px solid #2a2c3d;color:#8b8da3;">Mobile</button>
             </div>
+            <div style="display:flex;gap:10px;"><button type="button" class="modal-cancel" style="flex:1;background:#15161f;border:1px solid #2a2c3d;color:#c9cbe0;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button><button type="submit" id="pgSubmitButton" style="flex:2;background:var(--accent,#7c5cff);border:none;color:#fff;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Add to roster</button></div>
           </form>
-        </aside>
-      </section>
-    </div>
+        </div>
 
-    <!-- ============ MODALS ============ -->
-    <div class="modal-backdrop hidden" id="modalRoot">
-      <!-- propose game -->
-      <div class="modal hidden" id="modalProposeGame" role="dialog" aria-modal="true">
-        <h3 id="pgModalTitle">Propose a game</h3>
-        <p class="modal-sub">It'll land in Pending — your vote counts as the first 👍.</p>
-        <form id="proposeGameForm">
-          <label for="pgTitle">Game title</label>
-          <input id="pgTitle" type="text" placeholder="e.g. Valheim" maxlength="64" required />
-          <div class="field-row">
-            <div class="field-grow">
-              <label for="pgVariant">Version / Edition <span class="optional">(optional)</span></label>
-              <input id="pgVariant" type="text" placeholder="e.g. Java, Bedrock" maxlength="40" />
-            </div>
-            <div class="field-narrow">
-              <label for="pgPlayers">Players</label>
-              <input id="pgPlayers" type="text" placeholder="1-4" maxlength="12" />
-            </div>
-          </div>
-          <label>Platform</label>
-          <div class="platform-picker" id="pgPlatforms">
-            <button type="button" class="platform-opt" data-platform="PC">PC</button>
-            <button type="button" class="platform-opt" data-platform="Xbox">Xbox</button>
-            <button type="button" class="platform-opt" data-platform="PS5">PS5</button>
-            <button type="button" class="platform-opt" data-platform="Switch">Switch</button>
-            <button type="button" class="platform-opt" data-platform="Mobile">Mobile</button>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
-            <button type="submit" class="btn btn-accent btn-grow" id="pgSubmitButton">Add to roster</button>
-          </div>
-        </form>
-      </div>
+        <!-- invite -->
+        <div id="modalInvite" class="hidden" role="dialog" aria-modal="true" style="width:100%;max-width:460px;background:linear-gradient(180deg,#16171f,#101019);border:1px solid #2a2c3d;border-radius:20px;padding:26px;box-shadow:0 40px 120px -40px #000;animation:hb-pop .2s;">
+          <h3 style="font-family:'Space Grotesk';font-weight:700;font-size:20px;margin:0 0 4px;">Invite to <span id="inviteBoardName">this board</span></h3>
+          <p style="font-size:13px;color:#8b8da3;margin:0 0 22px;">They'll join automatically the next time they sign in with this email.</p>
+          <form id="inviteForm">
+            <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Invite by email</label>
+            <div style="display:flex;gap:8px;margin-bottom:10px;"><input id="inviteEmail" type="email" placeholder="friend@email.com" autocomplete="off" style="flex:1;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;"><button type="submit" id="sendInviteButton" style="background:var(--accent,#7c5cff);border:none;color:#fff;border-radius:10px;padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;">Send</button></div>
+            <p id="inviteFeedback" class="hidden" role="status" style="margin:0 0 8px;font-size:12.5px;color:#8be59a;"></p>
+          </form>
+          <div id="memberList" style="margin:20px 0 0;"></div>
+          <div id="pendingInvites" style="margin-bottom:18px;"></div>
+          <button type="button" class="modal-cancel" style="width:100%;background:#15161f;border:1px solid #2a2c3d;color:#c9cbe0;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Done</button>
+        </div>
 
-      <!-- invite -->
-      <div class="modal hidden" id="modalInvite" role="dialog" aria-modal="true">
-        <h3>Invite to <span id="inviteBoardName">this board</span></h3>
-        <p class="modal-sub">They'll join automatically the next time they sign in with this email.</p>
-        <form id="inviteForm">
-          <label for="inviteEmail">Invite by email</label>
-          <div class="field-row tight">
-            <input id="inviteEmail" type="email" placeholder="friend@email.com" autocomplete="off" />
-            <button type="submit" class="btn btn-accent" id="sendInviteButton">Send</button>
-          </div>
-          <p class="field-feedback hidden" id="inviteFeedback" role="status"></p>
-        </form>
-        <div class="pending-invites" id="pendingInvites"></div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-surface btn-block modal-cancel">Done</button>
+        <!-- propose time -->
+        <div id="modalProposeTime" class="hidden" role="dialog" aria-modal="true" style="width:100%;max-width:460px;background:linear-gradient(180deg,#16171f,#101019);border:1px solid #2a2c3d;border-radius:20px;padding:26px;box-shadow:0 40px 120px -40px #000;animation:hb-pop .2s;">
+          <h3 style="font-family:'Space Grotesk';font-weight:700;font-size:20px;margin:0 0 4px;">Propose a time</h3>
+          <p style="font-size:13px;color:#8b8da3;margin:0 0 22px;">The crew votes Yes / Maybe / No to find consensus.</p>
+          <form id="proposeTimeForm">
+            <div style="display:flex;gap:12px;margin-bottom:15px;">
+              <div style="flex:1;"><label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Day</label><input id="ptDate" type="date" required style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;"></div>
+              <div style="width:110px;"><label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Start</label><input id="ptStart" type="time" required style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;"></div>
+              <div style="width:110px;"><label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">End</label><input id="ptEnd" type="time" required style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;"></div>
+            </div>
+            <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Note <span style="color:#5a5c72;font-weight:500;">(optional)</span></label>
+            <input id="ptLabel" type="text" placeholder="e.g. Helldivers raid night" maxlength="60" style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;margin-bottom:24px;">
+            <div style="display:flex;gap:10px;"><button type="button" class="modal-cancel" style="flex:1;background:#15161f;border:1px solid #2a2c3d;color:#c9cbe0;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button><button type="submit" style="flex:2;background:var(--accent,#7c5cff);border:none;color:#fff;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Propose time</button></div>
+          </form>
+        </div>
+
+        <!-- create board -->
+        <div id="modalCreateBoard" class="hidden" role="dialog" aria-modal="true" style="width:100%;max-width:460px;background:linear-gradient(180deg,#16171f,#101019);border:1px solid #2a2c3d;border-radius:20px;padding:26px;box-shadow:0 40px 120px -40px #000;animation:hb-pop .2s;">
+          <h3 id="cbModalTitle" style="font-family:'Space Grotesk';font-weight:700;font-size:20px;margin:0 0 18px;">New board</h3>
+          <form id="createBoardForm">
+            <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:9px;display:block;">Icon</label>
+            <div id="cbEmoji" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;"></div>
+            <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:9px;display:block;">Accent</label>
+            <div id="cbAccent" style="display:flex;gap:10px;margin-bottom:18px;"></div>
+            <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Name</label>
+            <input id="cbName" type="text" placeholder="e.g. Local Legends" maxlength="42" required style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;margin-bottom:24px;">
+            <div style="display:flex;gap:10px;"><button type="button" class="modal-cancel" style="flex:1;background:#15161f;border:1px solid #2a2c3d;color:#c9cbe0;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button><button type="submit" id="cbSubmitButton" style="flex:2;background:var(--accent,#7c5cff);border:none;color:#fff;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Create board</button></div>
+            <div id="cbMembersSection" class="hidden" style="display:grid;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid #ffffff0d;">
+              <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;display:block;">Members &amp; roles</label>
+              <div id="cbMembers" style="display:grid;gap:6px;max-height:240px;overflow-y:auto;"></div>
+            </div>
+            <button type="button" id="cbDeleteButton" class="hidden" style="width:100%;margin-top:10px;background:transparent;border:1px solid #ff5c7c55;color:#ff5c7c;border-radius:10px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;">Delete board</button>
+          </form>
         </div>
       </div>
 
-      <!-- propose time -->
-      <div class="modal hidden" id="modalProposeTime" role="dialog" aria-modal="true">
-        <h3>Propose a time</h3>
-        <p class="modal-sub">The crew votes Yes / Maybe / No to find consensus.</p>
-        <form id="proposeTimeForm">
-          <div class="field-row">
-            <div class="field-grow">
-              <label for="ptDate">Day</label>
-              <input id="ptDate" type="date" required />
+      <!-- ============ SETTINGS MODAL ============ -->
+      <div id="settingsModal" class="hidden" style="position:fixed;inset:0;z-index:50;background:#06070bcc;backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:28px;">
+        <div id="settingsPanel" style="width:min(900px,100%);height:min(86vh,650px);background:linear-gradient(180deg,#16171f,#101019);border:1px solid #2a2c3d;border-radius:20px;display:flex;flex-direction:row;overflow:hidden;box-shadow:0 40px 120px -40px #000;">
+          <div id="settingsNav" style="width:236px;flex-shrink:0;border-right:1px solid #ffffff0d;display:flex;flex-direction:column;padding:18px 12px;gap:3px;"></div>
+          <div style="flex:1;overflow-y:auto;padding:30px 34px 40px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:26px;">
+              <div>
+                <h2 id="settingsTitle" style="font-family:'Space Grotesk';font-weight:700;font-size:22px;letter-spacing:-.02em;margin:0;">Profile &amp; status</h2>
+                <p id="settingsSub" style="font-size:13px;color:#8b8da3;margin:5px 0 0;">How the rest of your crew sees you.</p>
+              </div>
+              <button id="settingsBackButton" type="button" style="width:34px;height:34px;border-radius:9px;background:#15161f;border:1px solid #2a2c3d;color:#a3a5bb;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
-            <div class="field-narrow">
-              <label for="ptStart">Start</label>
-              <input id="ptStart" type="time" required />
+
+            <!-- PROFILE & STATUS -->
+            <div id="paneProfile">
+              <div style="display:flex;align-items:center;gap:16px;margin-bottom:26px;">
+                <div id="settingsAvatar" style="width:66px;height:66px;border-radius:50%;background:var(--accent,#7c5cff);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:23px;color:#fff;flex-shrink:0;box-shadow:0 0 26px -6px var(--accent,#7c5cff);">U</div>
+                <div>
+                  <strong id="settingsName" style="font-size:15px;display:block;">User</strong>
+                  <span id="settingsEmail" style="font-size:12.5px;color:#6b6d85;"></span>
+                </div>
+              </div>
+              <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Display name</label>
+              <input id="profileNameInput" type="text" maxlength="42" autocomplete="name" placeholder="Your name" style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;margin-bottom:16px;">
+              <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Status message</label>
+              <input id="profileStatusInput" type="text" maxlength="60" placeholder="What are you up to?" style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;margin-bottom:18px;">
+              <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:9px;display:block;">Favorite platforms</label>
+              <div id="prefPlatforms" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px;"></div>
+              <button id="saveProfileButton" type="button" style="background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 0 24px -8px var(--accent,#7c5cff);">Save changes</button>
+              <p id="profileFeedback" class="hidden" role="status" style="margin:10px 0 0;font-size:12.5px;color:#8be59a;"></p>
             </div>
-            <div class="field-narrow">
-              <label for="ptEnd">End</label>
-              <input id="ptEnd" type="time" required />
+
+            <!-- ACCOUNT -->
+            <div id="paneAccount" class="hidden">
+              <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Email address</label>
+              <input id="accountEmail" type="email" disabled style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;margin-bottom:26px;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8b8da3;margin:0 0 12px;">Change password</div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:13px;">
+                <div style="flex:1;min-width:180px;"><label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">New password</label><input id="newPass" type="password" minlength="6" autocomplete="new-password" placeholder="••••••••" style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;"></div>
+                <div style="flex:1;min-width:180px;"><label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Confirm password</label><input id="confirmPass" type="password" minlength="6" autocomplete="new-password" placeholder="••••••••" style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;"></div>
+              </div>
+              <button id="updatePassButton" type="button" style="background:#15161f;border:1px solid #2a2c3d;color:#edeef5;border-radius:10px;padding:10px 18px;font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:8px;">Update password</button>
+              <p id="passFeedback" class="hidden" role="status" style="margin:0 0 22px;font-size:12.5px;color:#8be59a;"></p>
+              <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8b8da3;margin:0 0 6px;">Connected accounts</div>
+              <div style="display:flex;align-items:center;gap:13px;padding:14px 0;border-bottom:1px solid #ffffff08;">
+                <div style="width:42px;height:42px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 48 48" width="21" height="21"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg></div>
+                <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:#edeef5;">Google</div><div id="googleStatus" style="font-size:12px;color:#6b6d85;">Not connected</div></div>
+                <button id="googleLinkButton" type="button" style="background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Link</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:13px;padding:14px 0;border-bottom:1px solid #ffffff08;">
+                <div style="width:42px;height:42px;border-radius:11px;background:#0b1722;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" width="22" height="22" fill="#66c0f4"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0z"></path></svg></div>
+                <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:#edeef5;">Steam</div><div id="steamStatus" style="font-size:12px;color:#6b6d85;">Not linked</div></div>
+                <button id="steamLinkButton" type="button" style="background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Link Steam</button>
+              </div>
+
+              <div id="steamLibraryCard" class="hidden" style="margin-top:24px;">
+                <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8b8da3;margin:0 0 10px;">Your Steam library</div>
+                <p style="font-size:12.5px;color:#6b6d85;margin:0 0 14px;">Hidden games go to a private folder only you can see — they never appear on any board.</p>
+                <input id="librarySearch" type="search" placeholder="Search your games…" autocomplete="off" style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:11px 13px;color:#edeef5;font-size:14px;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+                  <button id="toggleHidden" type="button" style="background:#15161f;border:1px solid #2a2c3d;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;color:#8b8da3;cursor:pointer;">🔒 Hidden <span id="hiddenCount"></span></button>
+                  <span id="libraryViewLabel" style="font-size:12.5px;color:#6b6d85;"></span>
+                </div>
+                <div id="libraryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;"></div>
+                <div id="libraryPager" style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;"></div>
+              </div>
+            </div>
+
+            <!-- NOTIFICATIONS -->
+            <div id="paneNotif" class="hidden">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8b8da3;margin:0 0 4px;">Activity</div>
+              <div id="notifPrefs"></div>
+              <button id="enablePushButton" type="button" style="margin-top:18px;background:#15161f;border:1px solid #2a2c3d;color:#edeef5;border-radius:10px;padding:10px 16px;font-size:13.5px;font-weight:700;cursor:pointer;">Enable notifications</button>
+              <div style="font-size:12px;color:#6b6d85;margin-top:16px;display:flex;align-items:center;gap:7px;"><span style="color:var(--accent,#7c5cff);">✦</span>Changes are saved automatically.</div>
+            </div>
+
+            <!-- HELP -->
+            <div id="paneHelp" class="hidden">
+              <a href="mailto:fletcherjmoore14@gmail.com?subject=Huddle%20Game%20Hub%20help" style="text-decoration:none;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #ffffff08;cursor:pointer;text-align:left;">
+                <span style="min-width:0;"><span style="display:block;font-size:14px;font-weight:600;color:#edeef5;">How Huddle Game Hub works</span><span style="display:block;font-size:12px;color:#6b6d85;margin-top:2px;">Voting, scheduling, and rotation explained</span></span>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b6d85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </a>
+              <a href="mailto:fletcherjmoore14@gmail.com?subject=Huddle%20Game%20Hub%20bug" style="text-decoration:none;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #ffffff08;cursor:pointer;text-align:left;">
+                <span style="min-width:0;"><span style="display:block;font-size:14px;font-weight:600;color:#edeef5;">Report a problem</span><span style="display:block;font-size:12px;color:#6b6d85;margin-top:2px;">Something broken? Let us know</span></span>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b6d85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </a>
+              <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8b8da3;margin:28px 0 9px;">Send feedback</div>
+              <textarea id="feedbackText" placeholder="Tell us what's working, what's not, or what you'd love to see…" style="width:100%;min-height:104px;resize:vertical;background:#0c0d15;border:1px solid #2a2c3d;border-radius:11px;padding:13px 14px;color:#edeef5;font-size:14px;line-height:1.5;margin-bottom:13px;"></textarea>
+              <button id="sendFeedbackButton" type="button" style="background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:10px;padding:11px 20px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 0 24px -8px var(--accent,#7c5cff);">Send feedback</button>
+              <div style="margin-top:30px;padding-top:18px;border-top:1px solid #ffffff0a;font-size:12px;color:#6b6d85;">Huddle Game Hub · © 2026</div>
             </div>
           </div>
-          <label for="ptLabel">Note <span class="optional">(optional)</span></label>
-          <input id="ptLabel" type="text" placeholder="e.g. Helldivers raid night" maxlength="60" />
-          <div class="modal-actions">
-            <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
-            <button type="submit" class="btn btn-accent btn-grow">Propose time</button>
-          </div>
-        </form>
+        </div>
       </div>
 
-      <!-- create board -->
-      <div class="modal hidden" id="modalCreateBoard" role="dialog" aria-modal="true">
-        <h3 id="cbModalTitle">New board</h3>
-        <form id="createBoardForm">
-          <label>Icon</label>
-          <div class="emoji-picker" id="cbEmoji"></div>
-          <label>Accent</label>
-          <div class="accent-picker" id="cbAccent"></div>
-          <label for="cbName">Name</label>
-          <input id="cbName" type="text" placeholder="e.g. Local Legends" maxlength="42" required />
-          <div class="modal-actions">
-            <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
-            <button type="submit" class="btn btn-accent btn-grow" id="cbSubmitButton">Create board</button>
-          </div>
-          <div class="cb-members hidden" id="cbMembersSection">
-            <label>Members &amp; roles</label>
-            <div class="cb-members-list" id="cbMembers"></div>
-          </div>
-          <button type="button" class="btn btn-danger btn-block hidden" id="cbDeleteButton">Delete board</button>
-        </form>
       </div>
     </div>
 
-    <template id="emptyTemplate">
-      <div class="empty-state"><p></p></div>
-    </template>
-
+    <template id="emptyTemplate"><div class="empty-state"><p></p></div></template>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

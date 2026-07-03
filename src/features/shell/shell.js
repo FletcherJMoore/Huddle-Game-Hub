@@ -1,5 +1,6 @@
-// App chrome: screen routing, board tabs, chat collapse, modal + menu plumbing,
-// and the toast. Pure UI state — feature modules call these to drive navigation.
+// App chrome: screen routing, board tabs, chat collapse, modal + dropdown
+// plumbing, and the toast. Pure UI state — feature modules call these to drive
+// navigation. All visuals match the Huddle Game Hub design (inline styles).
 
 import { store, render } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
@@ -43,8 +44,11 @@ export function toggleChat() {
 }
 
 function applyChatState() {
-  elements.chatPanel.classList.toggle("collapsed", store.chatCollapsed);
-  elements.chatToggle.textContent = store.chatCollapsed ? "›" : "‹";
+  const collapsed = store.chatCollapsed;
+  elements.chatPanel.style.width = collapsed ? "58px" : "330px";
+  elements.chatHeadInfo.classList.toggle("hidden", collapsed);
+  elements.chatBody.classList.toggle("hidden", collapsed);
+  elements.chatToggle.textContent = collapsed ? "⟩" : "⟨";
 }
 
 export function openModal(name) {
@@ -64,8 +68,12 @@ export function closeMenus() {
   store.profileOpen = false;
   elements.notifMenu.classList.add("hidden");
   elements.profileMenu.classList.add("hidden");
-  elements.notifButton.setAttribute("aria-expanded", "false");
-  elements.profileButton.setAttribute("aria-expanded", "false");
+  elements.dropdownBackdrop.classList.add("hidden");
+}
+
+function syncDropdownBackdrop() {
+  const open = store.notifOpen || store.profileOpen;
+  elements.dropdownBackdrop.classList.toggle("hidden", !open);
 }
 
 function toggleNotif() {
@@ -73,6 +81,7 @@ function toggleNotif() {
   store.profileOpen = false;
   elements.notifMenu.classList.toggle("hidden", !store.notifOpen);
   elements.profileMenu.classList.add("hidden");
+  syncDropdownBackdrop();
 }
 
 function toggleProfile() {
@@ -80,19 +89,21 @@ function toggleProfile() {
   store.notifOpen = false;
   elements.profileMenu.classList.toggle("hidden", !store.profileOpen);
   elements.notifMenu.classList.add("hidden");
+  syncDropdownBackdrop();
 }
 
-// Render board tab active state + active view.
+// Render board tab active state + active view (inline styling to match design).
 export function renderTabs() {
   const roster = store.boardTab === "roster";
-  elements.tabRoster.classList.toggle("active", roster);
-  elements.tabSchedule.classList.toggle("active", !roster);
+  elements.tabRoster.style.color = roster ? "#edeef5" : "#8b8da3";
+  elements.tabRoster.style.borderBottomColor = roster ? "var(--accent,#7c5cff)" : "transparent";
+  elements.tabSchedule.style.color = roster ? "#8b8da3" : "#edeef5";
+  elements.tabSchedule.style.borderBottomColor = roster ? "transparent" : "var(--accent,#7c5cff)";
   elements.rosterView.classList.toggle("hidden", !roster);
   elements.scheduleView.classList.toggle("hidden", roster);
 }
 
-// ---------- invite notifications ----------
-
+// ---------- invite notifications (board invites, accept/decline) ----------
 export function showInviteNotifications(invites, onAccept) {
   if (!invites.length) return;
 
@@ -100,31 +111,37 @@ export function showInviteNotifications(invites, onAccept) {
     const item = document.createElement("div");
     item.className = "notif-item";
     item.dataset.boardId = invite.boardId;
+    item.style.cssText = "padding:12px 15px;border-bottom:1px solid #ffffff0d;";
 
     const msg = document.createElement("p");
-    msg.className = "notif-msg";
+    msg.style.cssText = "font-size:13px;color:#dcdde8;margin:0 0 9px;line-height:1.42;";
     msg.textContent = `${invite.invitedByName} invited you to ${invite.boardName}`;
 
     const actions = document.createElement("div");
-    actions.className = "notif-actions";
+    actions.style.cssText = "display:flex;gap:10px;align-items:center;";
 
     const acceptBtn = document.createElement("button");
     acceptBtn.type = "button";
-    acceptBtn.className = "btn-primary btn-sm";
+    acceptBtn.style.cssText =
+      "background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;";
     acceptBtn.textContent = "Accept";
     acceptBtn.addEventListener("click", () => {
       acceptBtn.disabled = true;
       acceptBtn.textContent = "Joining…";
-      onAccept(invite).then(() => item.remove()).catch(() => {
-        acceptBtn.disabled = false;
-        acceptBtn.textContent = "Accept";
-      });
-      updateNotifBadge();
+      onAccept(invite)
+        .then(() => {
+          item.remove();
+          updateNotifBadge();
+        })
+        .catch(() => {
+          acceptBtn.disabled = false;
+          acceptBtn.textContent = "Accept";
+        });
     });
 
     const declineBtn = document.createElement("button");
     declineBtn.type = "button";
-    declineBtn.className = "link-btn";
+    declineBtn.style.cssText = "background:none;border:none;color:#8b8da3;font-size:12px;font-weight:600;cursor:pointer;";
     declineBtn.textContent = "Decline";
     declineBtn.addEventListener("click", () => {
       item.remove();
@@ -140,7 +157,7 @@ export function showInviteNotifications(invites, onAccept) {
 }
 
 export function updateNotifBadge() {
-  const count = elements.notifList.querySelectorAll(".notif-item").length;
+  const count = elements.notifList.querySelectorAll(".notif-item, .notif-activity").length;
   elements.notifBadge.textContent = count;
   elements.notifBadge.classList.toggle("hidden", count === 0);
 }
@@ -196,18 +213,16 @@ export function showToast(message) {
 
   const toast = document.createElement("div");
   toast.className = "app-toast";
+  toast.style.cssText =
+    "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:60;background:#1b1c28;border:1px solid #2a2c3d;border-radius:12px;padding:13px 20px;font-size:13.5px;font-weight:600;box-shadow:0 20px 50px -15px #000;animation:hb-toast 2.6s ease forwards;display:flex;align-items:center;gap:9px;";
   const spark = document.createElement("span");
-  spark.className = "spark";
+  spark.style.color = "var(--accent,#7c5cff)";
   spark.textContent = "✦";
   const text = document.createElement("span");
   text.textContent = message;
   toast.append(spark, text);
   document.body.append(toast);
-  requestAnimationFrame(() => toast.classList.add("visible"));
-  toastTimer = setTimeout(() => {
-    toast.classList.remove("visible");
-    setTimeout(() => toast.remove(), 300);
-  }, 3200);
+  toastTimer = setTimeout(() => toast.remove(), 2600);
 }
 
 export function bindShellEvents() {
@@ -218,17 +233,12 @@ export function bindShellEvents() {
 
   elements.notifButton.addEventListener("click", toggleNotif);
   elements.profileButton.addEventListener("click", toggleProfile);
+  elements.dropdownBackdrop.addEventListener("click", closeMenus);
   elements.enablePushButton.addEventListener("click", handleEnablePush);
   updatePushButton();
   elements.clearNotifsButton.addEventListener("click", () => {
     elements.notifList.replaceChildren();
     elements.notifBadge.classList.add("hidden");
-  });
-
-  // Close menus / modal on outside click + Escape.
-  document.addEventListener("click", (event) => {
-    const inMenu = event.target.closest(".menu-anchor");
-    if (!inMenu && (store.notifOpen || store.profileOpen)) closeMenus();
   });
 
   elements.modalRoot.addEventListener("click", (event) => {
