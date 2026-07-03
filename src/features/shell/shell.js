@@ -168,22 +168,29 @@ function setPushButtonLabel(btn, text) {
 
 export function updatePushButton() {
   const btn = elements.enablePushButton;
+  const settingsBtn = elements.enablePushButtonSettings;
   if (!btn) return;
+
+  const apply = (text, disabled) => {
+    setPushButtonLabel(btn, text);
+    btn.disabled = disabled;
+    if (settingsBtn) {
+      settingsBtn.textContent = text;
+      settingsBtn.disabled = disabled;
+    }
+  };
+
   if (!pushSupported()) {
-    setPushButtonLabel(btn, "Notifications unsupported");
-    btn.disabled = true;
+    apply("Notifications unsupported", true);
     return;
   }
   const perm = currentPermission();
   if (perm === "granted") {
-    setPushButtonLabel(btn, "Notifications on");
-    btn.disabled = true;
+    apply("Notifications on", true);
   } else if (perm === "denied") {
-    setPushButtonLabel(btn, "Notifications blocked");
-    btn.disabled = true;
+    apply("Notifications blocked", true);
   } else {
-    setPushButtonLabel(btn, "Enable notifications");
-    btn.disabled = false;
+    apply("Enable notifications", false);
   }
 }
 
@@ -237,6 +244,7 @@ export function bindShellEvents() {
   elements.profileButton.addEventListener("click", toggleProfile);
   elements.dropdownBackdrop.addEventListener("click", closeMenus);
   elements.enablePushButton.addEventListener("click", handleEnablePush);
+  elements.enablePushButtonSettings?.addEventListener("click", handleEnablePush);
   updatePushButton();
   elements.clearNotifsButton.addEventListener("click", () => {
     elements.notifList.replaceChildren();

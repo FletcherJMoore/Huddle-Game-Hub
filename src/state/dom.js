@@ -190,6 +190,7 @@ export const elements = {
   googleStatus: $("googleStatus"),
   googleLinkButton: $("googleLinkButton"),
   notifPrefs: $("notifPrefs"),
+  enablePushButtonSettings: $("enablePushButtonSettings"),
   prefPlatforms: $("prefPlatforms"),
   steamStatus: $("steamStatus"),
   steamLinkButton: $("steamLinkButton"),
