@@ -144,12 +144,21 @@ export function normalizeSession(raw) {
 
 export function normalizeBoard(board) {
   const members = board.members ?? {};
-  // Seed the creator as owner for a brand-new local board. Existing members keep
-  // their stored role string (legacy admin/viewer are interpreted, not rewritten).
-  if (store.currentUser && !members[store.currentUser.uid]) members[store.currentUser.uid] = "owner";
+  // Seed the creator as owner only for a genuinely brand-new local board (no
+  // members at all yet). If the board already has members but *this* user's
+  // entry is missing — e.g. a partial/dangling membership from an invite
+  // that didn't fully complete — do NOT silently promote them to owner:
+  // that would grant owner-only UI (settings, member roles) for a board the
+  // server doesn't actually consider them a member of, and any resulting
+  // owner-only action would just fail server-side with permission-denied.
+  if (store.currentUser && Object.keys(members).length === 0) {
+    members[store.currentUser.uid] = "owner";
+  }
 
   const memberProfiles = board.memberProfiles ?? {};
-  if (store.currentUser) memberProfiles[store.currentUser.uid] = currentProfile();
+  if (store.currentUser && members[store.currentUser.uid]) {
+    memberProfiles[store.currentUser.uid] = currentProfile();
+  }
 
   return {
     ...board,
@@ -162,6 +171,7 @@ export function normalizeBoard(board) {
     reads: board.reads ?? {},
     games: (board.games ?? []).map(normalizeGame),
     schedule: (board.schedule ?? []).map(normalizeSession),
-    messages: board.messages ?? []
+    messages: board.messages ?? [],
+    tonightPick: board.tonightPick ?? null
   };
 }
