@@ -11,7 +11,7 @@ import {
   isOwnerOf,
   canonicalRole
 } from "./board-model.js";
-import { initialsFor, formatShortDate, sortSchedule } from "../../utils/format.js";
+import { initialsFor, formatShortDate, sortSchedule, dowShort, dayNum, sessionTimeLabel } from "../../utils/format.js";
 import { EMOJI_OPTIONS, ACCENT_OPTIONS, ROLE_LABELS, ASSIGNABLE_ROLES } from "../../utils/constants.js";
 import { deleteBoard } from "../../services/boards-repository.js";
 import {
@@ -21,6 +21,7 @@ import {
 } from "../../services/invites-repository.js";
 import { openModal, closeModal, openBoard, goDashboard, showToast } from "../shell/shell.js";
 import { icon } from "../../utils/icons.js";
+import { emptyState } from "../../components/empty-state.js";
 
 // ---- shared avatar helper ----
 function avatarEl(seed, name, className) {
@@ -84,6 +85,7 @@ export function renderDashboard() {
   }`;
 
   renderNeeds();
+  renderUpcoming();
 
   const cards = store.state.boards.map((board) => boardCard(board));
   cards.push(createCard());
@@ -182,7 +184,7 @@ function renderNeeds() {
   });
 
   const top = actions.slice(0, 4);
-  elements.needsStrip.classList.toggle("hidden", top.length === 0);
+  elements.needsSection.classList.toggle("hidden", top.length === 0);
   elements.needsCount.textContent = String(actions.length);
 
   elements.needsActions.replaceChildren(
@@ -203,6 +205,58 @@ function renderNeeds() {
         openBoard(a.boardId);
       });
       return btn;
+    })
+  );
+}
+
+// Cross-board glanceable list of the soonest scheduled sessions — a summary,
+// not a voting surface (that's still the board's own Schedule tab).
+function renderUpcoming() {
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = [];
+  store.state.boards.forEach((board) => {
+    sortSchedule(board.schedule ?? [])
+      .filter((s) => s.date >= today)
+      .forEach((s) => rows.push({ session: s, boardId: board.id, boardName: board.name, boardEmoji: board.emoji }));
+  });
+  rows.sort((a, b) => `${a.session.date}T${a.session.start}`.localeCompare(`${b.session.date}T${b.session.start}`));
+  const top = rows.slice(0, 5);
+
+  if (!top.length) {
+    elements.upcomingList.replaceChildren(emptyState("No game nights on the calendar yet"));
+    return;
+  }
+
+  elements.upcomingList.replaceChildren(
+    ...top.map(({ session, boardId, boardName, boardEmoji }) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "upcoming-row";
+
+      const date = document.createElement("div");
+      date.className = "upcoming-date";
+      const dow = document.createElement("span");
+      dow.className = "dow";
+      dow.textContent = dowShort(session.date);
+      const day = document.createElement("span");
+      day.className = "day";
+      day.textContent = dayNum(session.date);
+      date.append(dow, day);
+
+      const meta = document.createElement("div");
+      meta.className = "upcoming-meta";
+      const title = document.createElement("strong");
+      title.textContent = session.activity || "Game night";
+      const sub = document.createElement("span");
+      sub.textContent = `${boardEmoji} ${boardName} · ${sessionTimeLabel(session.start, session.end)}`;
+      meta.append(title, sub);
+
+      row.append(date, meta);
+      row.addEventListener("click", () => {
+        store.boardTab = "schedule";
+        openBoard(boardId);
+      });
+      return row;
     })
   );
 }

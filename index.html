@@ -106,19 +106,30 @@
         <h1 class="dash-welcome" id="dashWelcome">Welcome back 👋</h1>
         <p class="dash-lede">Here's what your crews need from you.</p>
 
-        <div class="needs-strip" id="needsStrip">
-          <div class="needs-head">
-            <span class="eyebrow accent">⚡ Needs you</span>
+        <section class="dash-section" id="needsSection">
+          <div class="section-head">
+            <h2>Needs your vote</h2>
             <span class="count-pill" id="needsCount">0</span>
           </div>
-          <div class="needs-actions" id="needsActions"></div>
-        </div>
+          <div class="needs-strip" id="needsStrip">
+            <div class="needs-actions" id="needsActions"></div>
+          </div>
+        </section>
 
-        <div class="section-head">
-          <h2>Your boards</h2>
-          <span class="muted" id="dashBoardCount">0 boards</span>
-        </div>
-        <div class="board-grid" id="boardCards"></div>
+        <section class="dash-section">
+          <div class="section-head">
+            <h2>Upcoming game nights</h2>
+          </div>
+          <div class="upcoming-list" id="upcomingList"></div>
+        </section>
+
+        <section class="dash-section">
+          <div class="section-head">
+            <h2>Your crews</h2>
+            <span class="muted" id="dashBoardCount">0 boards</span>
+          </div>
+          <div class="board-grid" id="boardCards"></div>
+        </section>
       </section>
 
       <!-- ---------- BOARD VIEW ---------- -->

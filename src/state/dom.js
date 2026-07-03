@@ -40,9 +40,11 @@ export const elements = {
 
   // dashboard body
   dashWelcome: $("dashWelcome"),
+  needsSection: $("needsSection"),
   needsStrip: $("needsStrip"),
   needsCount: $("needsCount"),
   needsActions: $("needsActions"),
+  upcomingList: $("upcomingList"),
   dashBoardCount: $("dashBoardCount"),
   boardCards: $("boardCards"),
 
