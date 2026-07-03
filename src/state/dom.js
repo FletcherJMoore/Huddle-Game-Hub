@@ -62,6 +62,15 @@ export const elements = {
   inviteButton: $("inviteButton"),
   boardSettingsButton: $("boardSettingsButton"),
 
+  // tonight panel
+  tonightPanel: $("tonightPanel"),
+  tonightCollapseButton: $("tonightCollapseButton"),
+  tonightBody: $("tonightBody"),
+  tonightPick: $("tonightPick"),
+  tonightSession: $("tonightSession"),
+  tonightSpinButton: $("tonightSpinButton"),
+  tonightConfirmButton: $("tonightConfirmButton"),
+
   // tabs + views
   tabRoster: $("tabRoster"),
   tabSchedule: $("tabSchedule"),

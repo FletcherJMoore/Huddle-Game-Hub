@@ -162,6 +162,31 @@
             </div>
           </header>
 
+          <section class="tonight-panel" id="tonightPanel">
+            <div class="tonight-head">
+              <span class="eyebrow accent">Tonight</span>
+              <button class="icon-btn sm" id="tonightCollapseButton" type="button" aria-label="Collapse Tonight panel">
+                <span class="ico" data-icon="chevron-left"></span>
+              </button>
+            </div>
+            <div class="tonight-body" id="tonightBody">
+              <div class="tonight-col">
+                <div class="tonight-label">What are we playing?</div>
+                <div id="tonightPick"></div>
+                <div class="tonight-actions">
+                  <button class="btn btn-surface btn-sm" id="tonightSpinButton" type="button">
+                    <span class="ico" data-icon="dices"></span>Spin
+                  </button>
+                  <button class="btn btn-accent btn-sm" id="tonightConfirmButton" type="button">Confirm we're playing</button>
+                </div>
+              </div>
+              <div class="tonight-col">
+                <div class="tonight-label">When's the next session?</div>
+                <div id="tonightSession"></div>
+              </div>
+            </div>
+          </section>
+
           <nav class="board-tabs">
             <button class="tab active" id="tabRoster" type="button"><span class="ico" data-icon="gamepad-2"></span>Game Roster</button>
             <button class="tab" id="tabSchedule" type="button"><span class="ico" data-icon="calendar"></span>Schedule</button>

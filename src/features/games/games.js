@@ -43,7 +43,7 @@ function gameMeta(item) {
   return parts.join(" · ") || "No details yet";
 }
 
-function cover(item, size) {
+export function cover(item, size) {
   const el = document.createElement("div");
   el.className = "game-cover";
   if (item.steamAppId) {
@@ -355,14 +355,20 @@ function nudgeCrew(item) {
 }
 
 // ---------- spin the wheel ----------
-function spinWheel() {
-  const board = activeBoard();
+// Pure picker shared by the roster tab's spin button and the board screen's
+// Tonight panel — each renders the result to its own target.
+export function pickRandomRotationGame(board) {
   const rotation = (board.games ?? []).filter((g) => g.status === "rotation");
-  if (!rotation.length) {
+  if (!rotation.length) return null;
+  return rotation[Math.floor(Math.random() * rotation.length)];
+}
+
+function spinWheel() {
+  const pick = pickRandomRotationGame(activeBoard());
+  if (!pick) {
     showToast("Nothing in rotation to spin");
     return;
   }
-  const pick = rotation[Math.floor(Math.random() * rotation.length)];
   elements.wheelResult.classList.remove("hidden");
   elements.wheelResult.replaceChildren();
   const spark = icon("dices", { size: 22 });

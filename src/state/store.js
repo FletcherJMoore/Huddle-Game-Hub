@@ -29,6 +29,7 @@ export const store = {
   view: "dashboard", // "dashboard" | "board"
   boardTab: "roster", // "roster" | "schedule"
   chatCollapsed: false,
+  tonightCollapsed: false,
   modal: null, // null | "proposeGame" | "invite" | "proposeTime" | "createBoard"
   notifOpen: false,
   profileOpen: false,

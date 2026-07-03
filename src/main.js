@@ -18,6 +18,7 @@ import { renderCommonGames, bindSteamEvents } from "./features/steam/steam.js";
 import { updateTitleBadge, notifyIncoming, bindNotificationEvents } from "./features/notifications/notifications.js";
 import { enablePush } from "./services/push-service.js";
 import { hydrateIcons } from "./utils/icons.js";
+import { renderTonightPanel, bindTonightEvents } from "./features/tonight/tonight.js";
 
 let lastBoardId = null;
 
@@ -66,6 +67,7 @@ function renderBoard(board) {
   elements.boardSettingsButton.classList.toggle("hidden", !canManage());
 
   renderHeaderAvatars(board);
+  renderTonightPanel(board);
   renderTabs();
   if (store.boardTab === "roster") {
     renderRoster(board);
@@ -173,6 +175,7 @@ function startApp() {
   bindChatEvents();
   bindSteamEvents();
   bindNotificationEvents();
+  bindTonightEvents();
   setRenderHandler(renderApp);
 
   try {

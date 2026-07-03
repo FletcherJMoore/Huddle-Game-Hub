@@ -11,7 +11,7 @@ function votesOf(session) {
   return Object.values(session.votes ?? {});
 }
 
-function tally(session) {
+export function tally(session) {
   const v = votesOf(session);
   return {
     yes: v.filter((x) => x === "yes").length,
@@ -26,19 +26,30 @@ function score(session) {
   return t.yes * 2 + t.maybe - t.no;
 }
 
+function rankedSessions(board) {
+  return [...(board.schedule ?? [])].sort(
+    (a, b) => score(b) - score(a) || `${a.date}T${a.start}`.localeCompare(`${b.date}T${b.start}`)
+  );
+}
+
+// The session with the strongest consensus, or null if none has a positive
+// score yet (nothing worth spotlighting as "the" session). Shared by the
+// Schedule tab's "TOP CONSENSUS" badge and the board screen's Tonight panel.
+export function topSession(board) {
+  const [first] = rankedSessions(board);
+  return first && score(first) > 0 ? first : null;
+}
+
 export function renderSchedule(board) {
   renderHeatmap(board);
 
-  const sessions = [...(board.schedule ?? [])].sort(
-    (a, b) => score(b) - score(a) || `${a.date}T${a.start}`.localeCompare(`${b.date}T${b.start}`)
-  );
-
+  const sessions = rankedSessions(board);
   if (!sessions.length) {
     elements.sessionList.replaceChildren(emptyState("No times proposed yet"));
     return;
   }
 
-  const bestId = score(sessions[0]) > 0 ? sessions[0].id : null;
+  const bestId = topSession(board)?.id ?? null;
   elements.sessionList.replaceChildren(...sessions.map((s) => sessionCard(s, s.id === bestId)));
 }
 
@@ -165,7 +176,7 @@ function sessionCard(session, isBest) {
   return card;
 }
 
-function voteBtn(session, kind, label) {
+export function voteBtn(session, kind, label) {
   const btn = document.createElement("button");
   const mine = session.votes?.[store.currentUser?.uid] === kind;
   btn.className = `sv-btn ${kind}${mine ? " on" : ""}`;
@@ -176,7 +187,7 @@ function voteBtn(session, kind, label) {
   return btn;
 }
 
-function setSessionVote(sessionId, kind) {
+export function setSessionVote(sessionId, kind) {
   updateActiveBoard((board) => {
     const session = board.schedule.find((s) => s.id === sessionId);
     if (!session) return;
@@ -187,7 +198,7 @@ function setSessionVote(sessionId, kind) {
   });
 }
 
-function addToCalendar(session) {
+export function addToCalendar(session) {
   const fmt = (date, time) => `${date.replace(/-/g, "")}T${(time || "20:00").replace(":", "")}00`;
   const start = fmt(session.date, session.start);
   const end = fmt(session.date, session.end || session.start);
