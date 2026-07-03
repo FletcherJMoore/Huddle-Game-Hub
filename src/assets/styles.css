@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
   color-scheme: dark;
@@ -1988,22 +1988,20 @@ option {
   padding: 5px 5px 5px 13px;
 }
 
-.composer-row input {
-  flex: 1;
-  min-height: auto;
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 13.5px;
+body {
+  margin: 0;
+  background: #0b0c12;
+  color: #edeef5;
+  font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-.composer-row input:focus {
-  box-shadow: none;
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
-
-.composer-send {
-  background: var(--accent);
-  border: none;
+::-webkit-scrollbar-thumb {
+  background: #2a2c3d;
   border-radius: 8px;
   width: 32px;
   height: 32px;
@@ -2364,39 +2362,30 @@ option {
   border-color: #fff;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
+input,
+textarea,
+button {
+  font-family: inherit;
+}
+input:focus,
+textarea:focus {
+  outline: none;
+}
+button {
+  cursor: pointer;
 }
 
-.modal-actions .btn {
-  flex: 1;
+.hidden {
+  display: none !important;
 }
 
-/* pending invites (inside modal) */
-.pending-invites {
-  display: grid;
-  gap: 6px;
-  margin: 6px 0 16px;
+@keyframes hb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -40px) scale(1.08); }
 }
-
-.pending-invites:empty {
-  display: none;
-}
-
-.pending-invite {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.pending-invite .email {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+@keyframes hb-float2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, 30px) scale(1.12); }
 }
 
 /* ============ TOAST ============ */
@@ -2419,21 +2408,23 @@ option {
   opacity: 0;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
-
-.app-toast .spark {
-  color: var(--accent);
+@keyframes hb-up {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes hb-toast {
+  0% { transform: translate(-50%, 20px); opacity: 0; }
+  12% { transform: translate(-50%, 0); opacity: 1; }
+  88% { transform: translate(-50%, 0); opacity: 1; }
+  100% { transform: translate(-50%, 20px); opacity: 0; }
 }
 
-.app-toast.visible {
-  transform: translate(-50%, 0);
-  opacity: 1;
-}
-
-/* ============ EMPTY STATE ============ */
+/* empty-state used by list renderers */
 .empty-state {
-  color: var(--dim);
+  padding: 22px 16px;
+  text-align: center;
+  color: #6b6d85;
   font-size: 13px;
-  padding: 14px 0;
 }
 
 .empty-state p {
@@ -2444,7 +2435,7 @@ option {
 .btn-danger {
   background: rgba(255, 92, 124, 0.12);
   border-color: rgba(255, 92, 124, 0.4);
-  color: var(--rose);
+  color: #ff5c7c;
   margin-top: 10px;
 }
 
@@ -2456,9 +2447,9 @@ option {
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  color: var(--muted);
+  background: #15161f;
+  border: 1px solid #2a2c3d;
+  color: #8b8da3;
   font-size: 12px;
   display: inline-flex;
   align-items: center;
@@ -2467,12 +2458,12 @@ option {
 }
 
 .mini-btn:hover {
-  color: var(--ink);
+  color: #edeef5;
   border-color: #3a3c52;
 }
 
 .mini-btn.del:hover {
-  color: var(--rose);
+  color: #ff5c7c;
   border-color: rgba(255, 92, 124, 0.4);
 }
 
@@ -2500,8 +2491,8 @@ option {
 
 .steam-card {
   display: block;
-  background: var(--card);
-  border: 1px solid var(--line);
+  background: #13141d;
+  border: 1px solid #23253560;
   border-radius: 12px;
   overflow: hidden;
   text-decoration: none;
@@ -2519,7 +2510,7 @@ option {
   aspect-ratio: 460 / 215;
   object-fit: cover;
   display: block;
-  background: var(--page);
+  background: #0b0c12;
 }
 
 .steam-name {
@@ -2537,7 +2528,7 @@ option {
   gap: 8px;
   margin-top: 6px;
   padding-top: 14px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid #ffffff0d;
 }
 
 .cb-members-list {
@@ -2553,9 +2544,9 @@ option {
   align-items: center;
   gap: 10px;
   padding: 6px 8px;
-  border: 1px solid var(--line);
+  border: 1px solid #2a2c3d;
   border-radius: 10px;
-  background: var(--surface-2);
+  background: #15161f;
 }
 
 .member-meta {
@@ -2574,7 +2565,7 @@ option {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--muted);
+  color: #8b8da3;
   font-size: 11px;
 }
 
@@ -2587,37 +2578,100 @@ option {
 .member-owner-badge {
   padding: 3px 10px;
   border-radius: 999px;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-border);
-  color: var(--accent);
+  background: #7c5cff1a;
+  border: 1px solid #7c5cff40;
+  color: var(--accent, #7c5cff);
   font-size: 11px;
   font-weight: 700;
 }
 
 .role-select {
   padding: 5px 8px;
-  border: 1px solid var(--line);
+  border: 1px solid #2a2c3d;
   border-radius: 8px;
-  background: var(--input);
-  color: var(--ink);
+  background: #0c0d15;
+  color: #edeef5;
   font-size: 12px;
   font-weight: 600;
 }
 
 .member-controls .link-btn.danger:hover {
-  color: var(--rose);
+  color: #ff5c7c;
 }
 
-/* ============ RESPONSIVE ============ */
-@media (max-width: 900px) {
-  .auth-card {
-    grid-template-columns: 1fr;
-    max-width: 460px;
+/* ---------- responsive (matches design's isMobile < 760px variants) ---------- */
+@media (max-width: 759px) {
+  #rail {
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    width: auto !important;
+    height: 64px !important;
+    flex-direction: row !important;
+    border-right: none !important;
+    border-top: 1px solid #ffffff16 !important;
+    padding: 0 12px !important;
+    gap: 9px !important;
+    overflow-x: auto;
   }
-  .auth-pitch {
-    display: none;
+  #railBoards {
+    flex-direction: row !important;
   }
-  .chat-panel {
-    display: none;
+  #dashboardScreen {
+    padding-left: 0 !important;
+    padding-bottom: 84px !important;
+  }
+  #boardScreen {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100vh;
+    margin-left: 0 !important;
+    padding-bottom: 64px !important;
+    overflow: visible !important;
+  }
+  #chatPanel {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid #ffffff0a !important;
+  }
+  #chatLog {
+    max-height: 340px;
+  }
+  #authCard {
+    grid-template-columns: 1fr !important;
+    max-width: 440px !important;
+    border-radius: 20px !important;
+  }
+  #authPitch {
+    border-right: none !important;
+    border-bottom: 1px solid #ffffff0f !important;
+    padding: 32px 26px !important;
+  }
+  #notifMenu,
+  #profileMenu {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 74px !important;
+    width: auto !important;
+  }
+  #settingsModal {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+  #settingsPanel {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    flex-direction: column !important;
+  }
+  #settingsNav {
+    width: 100% !important;
+    flex-direction: row !important;
+    overflow-x: auto;
+    border-right: none !important;
+    border-bottom: 1px solid #ffffff0d !important;
+    padding: 12px !important;
   }
 }

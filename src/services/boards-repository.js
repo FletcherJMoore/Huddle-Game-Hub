@@ -36,12 +36,26 @@ export function subscribeToUserBoards(db, uid, onBoardsChange) {
     // Attach a live listener for each newly added board.
     currentIds.forEach((id) => {
       if (boardUnsubs.has(id)) return;
-      const off = onValue(ref(db, `boards/${id}`), (snap) => {
-        resolved.add(id);
-        if (snap.exists()) boardCache.set(id, { id: snap.key, ...snap.val() });
-        else boardCache.delete(id);
-        if (allResolved()) emit();
-      });
+      const off = onValue(
+        ref(db, `boards/${id}`),
+        (snap) => {
+          resolved.add(id);
+          if (snap.exists()) boardCache.set(id, { id: snap.key, ...snap.val() });
+          else boardCache.delete(id);
+          if (allResolved()) emit();
+        },
+        () => {
+          // Read cancelled — almost always a dangling userBoards pointer to a
+          // board that was deleted or that we're no longer a member of (the
+          // security rule denies the read). Resolve it as absent so one bad
+          // pointer can't stall the whole list, and self-heal by dropping our
+          // own pointer (we're only allowed to write our own userBoards).
+          resolved.add(id);
+          boardCache.delete(id);
+          remove(ref(db, `userBoards/${uid}/${id}`)).catch(() => {});
+          if (allResolved()) emit();
+        }
+      );
       boardUnsubs.set(id, off);
     });
 

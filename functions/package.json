@@ -1,6 +1,6 @@
 {
   "name": "functions",
-  "description": "Cloud Functions for Huddle (email invites)",
+  "description": "Cloud Functions for Huddle Game Hub (email invites)",
   "private": true,
   "main": "index.js",
   "engines": {
