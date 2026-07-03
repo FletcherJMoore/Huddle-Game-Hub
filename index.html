@@ -175,7 +175,6 @@
                     <button id="proposeGameButton" type="button" style="background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:10px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 0 22px -8px var(--accent,#7c5cff);">+ Propose a game</button>
                   </div>
                 </div>
-
                 <div id="wheelResult" class="hidden" style="background:linear-gradient(135deg,#1a1430,#121119);border:1px solid var(--accent,#7c5cff);border-radius:14px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;animation:hb-pop .3s;"></div>
 
                 <div style="display:flex;align-items:center;gap:9px;margin:0 0 13px;">
@@ -318,6 +317,10 @@
             <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;margin-bottom:7px;display:block;">Name</label>
             <input id="cbName" type="text" placeholder="e.g. Local Legends" maxlength="42" required style="width:100%;background:#0c0d15;border:1px solid #2a2c3d;border-radius:10px;padding:12px 13px;color:#edeef5;font-size:14px;margin-bottom:24px;">
             <div style="display:flex;gap:10px;"><button type="button" class="modal-cancel" style="flex:1;background:#15161f;border:1px solid #2a2c3d;color:#c9cbe0;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button><button type="submit" id="cbSubmitButton" style="flex:2;background:var(--accent,#7c5cff);border:none;color:#fff;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Create board</button></div>
+            <div id="cbMembersSection" class="hidden" style="display:grid;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid #ffffff0d;">
+              <label style="font-size:12.5px;font-weight:600;color:#a3a5bb;display:block;">Members &amp; roles</label>
+              <div id="cbMembers" style="display:grid;gap:6px;max-height:240px;overflow-y:auto;"></div>
+            </div>
             <button type="button" id="cbDeleteButton" class="hidden" style="width:100%;margin-top:10px;background:transparent;border:1px solid #ff5c7c55;color:#ff5c7c;border-radius:10px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;">Delete board</button>
           </form>
         </div>
@@ -395,6 +398,7 @@
             <div id="paneNotif" class="hidden">
               <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8b8da3;margin:0 0 4px;">Activity</div>
               <div id="notifPrefs"></div>
+              <button id="enablePushButton" type="button" style="margin-top:18px;background:#15161f;border:1px solid #2a2c3d;color:#edeef5;border-radius:10px;padding:10px 16px;font-size:13.5px;font-weight:700;cursor:pointer;">Enable notifications</button>
               <div style="font-size:12px;color:#6b6d85;margin-top:16px;display:flex;align-items:center;gap:7px;"><span style="color:var(--accent,#7c5cff);">✦</span>Changes are saved automatically.</div>
             </div>
 

@@ -46,6 +46,9 @@ export const elements = {
   authError: $("authError"),
 
   // dashboard
+  profileAvatar: $("profileAvatar"),
+  linkSteamButton: $("linkSteamButton"),
+  enablePushButton: $("enablePushButton"),
   dashWelcome: $("dashWelcome"),
   needsStrip: $("needsStrip"),
   needsCount: $("needsCount"),
@@ -143,6 +146,8 @@ export const elements = {
   cbEmoji: $("cbEmoji"),
   cbAccent: $("cbAccent"),
   cbName: $("cbName"),
+  cbMembersSection: $("cbMembersSection"),
+  cbMembers: $("cbMembers"),
 
   // settings modal
   settingsModal: $("settingsModal"),

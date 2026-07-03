@@ -6,17 +6,18 @@ import { getFirebaseServices } from "./services/firebase-service.js";
 import { watchAuthState, signOutUser } from "./services/auth-service.js";
 import { subscribeToUserBoards, ensureMemberProfile } from "./services/boards-repository.js";
 import { getPendingInvites, acceptInvite } from "./services/invites-repository.js";
-import { normalizeBoard, currentProfile, memberIdsOf, isAdmin } from "./features/boards/board-model.js";
+import { normalizeBoard, currentProfile, memberIdsOf, canManage, canonicalRole } from "./features/boards/board-model.js";
 import { renderAccount, setAuthError, setAuthNotice, bindAuthEvents } from "./features/auth/auth.js";
 import { bindShellEvents, renderTabs, showToast } from "./features/shell/shell.js";
 import { renderRail, renderDashboard, bindBoardEvents } from "./features/boards/board-list.js";
 import { renderRoster, bindGameEvents } from "./features/games/games.js";
 import { renderSchedule, bindScheduleEvents } from "./features/schedule/schedule.js";
-import { renderHeaderAvatars, bindCrewEvents, renderMembers } from "./features/crew/crew.js";
+import { renderHeaderAvatars, bindCrewEvents } from "./features/crew/crew.js";
 import { renderChat, bindChatEvents } from "./features/chat/chat.js";
-import { renderNotifications } from "./features/notifications/notifications.js";
+import { renderNotifications, updateTitleBadge, notifyIncoming, bindNotificationEvents } from "./features/notifications/notifications.js";
 import { renderCommonGames, bindSteamEvents } from "./features/steam/steam.js";
 import { renderProfile, bindProfileEvents } from "./features/profile/profile.js";
+import { enablePush } from "./services/push-service.js";
 
 let lastBoardId = null;
 
@@ -103,9 +104,7 @@ function renderApp() {
 
   // settings modal overlays the active screen
   renderProfile();
-
-  // Keep the invite modal's member list live while it's open.
-  if (store.modal === "invite") renderMembers();
+  updateTitleBadge();
 }
 
 function setAccent(hex) {
@@ -126,7 +125,7 @@ function renderBoard(board) {
   elements.boardSubtitle.textContent = board.subtitle || `${board.games.length} games in the roster`;
   elements.boardOnline.textContent = `● ${count} online`;
   elements.boardMemberLabel.textContent = `${count} ${count === 1 ? "member" : "members"}`;
-  elements.boardSettingsButton.classList.toggle("hidden", !isAdmin());
+  elements.boardSettingsButton.classList.toggle("hidden", !canManage());
 
   renderHeaderAvatars(board);
   renderTabs();
@@ -160,6 +159,9 @@ async function handleAuthenticatedUser(user) {
   store.currentUser = user;
   startSessionTimer();
   renderApp();
+
+  // Refresh this device's push token if the user already granted permission.
+  enablePush(store.services, user.uid, { silent: true }).catch(() => {});
 
   getPendingInvites(store.services.functions)
     .then((pending) => {
@@ -196,14 +198,15 @@ async function handleAuthenticatedUser(user) {
     saveLocal();
     store.isApplyingCloudState = false;
     renderApp();
+    notifyIncoming();
     syncOwnProfiles();
 
     // After the first settled load, announce boards that newly appear — a live
     // invite grants membership server-side, which streams the board in here.
-    // Skip boards where the user is admin (those are self-created, not invites).
+    // Skip boards where the user is owner (those are self-created, not invites).
     if (boardsBaselineSet) {
       boards
-        .filter((b) => !knownBoardIds.has(b.id) && b.members?.[user.uid] !== "admin")
+        .filter((b) => !knownBoardIds.has(b.id) && canonicalRole(b.members?.[user.uid]) !== "owner")
         .forEach((b) => showToast(`You were added to ${b.name}!`));
     }
     knownBoardIds = new Set(boards.map((b) => b.id));
@@ -234,6 +237,7 @@ function startApp() {
   bindChatEvents();
   bindSteamEvents();
   bindProfileEvents();
+  bindNotificationEvents();
   setRenderHandler(renderApp);
 
   try {

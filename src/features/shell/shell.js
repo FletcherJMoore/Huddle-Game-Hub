@@ -4,6 +4,7 @@
 
 import { store, render } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
+import { enablePush, pushSupported, currentPermission } from "../../services/push-service.js";
 
 const MODALS = {
   proposeGame: elements.modalProposeGame,
@@ -161,6 +162,50 @@ export function updateNotifBadge() {
   elements.notifBadge.classList.toggle("hidden", count === 0);
 }
 
+// ---------- push notification toggle ----------
+
+export function updatePushButton() {
+  const btn = elements.enablePushButton;
+  if (!btn) return;
+  if (!pushSupported()) {
+    btn.textContent = "🔔 Notifications unsupported";
+    btn.disabled = true;
+    return;
+  }
+  const perm = currentPermission();
+  if (perm === "granted") {
+    btn.textContent = "🔔 Notifications on";
+    btn.disabled = true;
+  } else if (perm === "denied") {
+    btn.textContent = "🔕 Notifications blocked";
+    btn.disabled = true;
+  } else {
+    btn.textContent = "🔔 Enable notifications";
+    btn.disabled = false;
+  }
+}
+
+const PUSH_ERRORS = {
+  denied: "Notifications blocked — enable them in your browser settings.",
+  "missing-vapid": "Push isn't configured yet (missing VAPID key).",
+  unsupported: "This browser doesn't support push notifications.",
+  "no-token": "Couldn't register this device for notifications."
+};
+
+async function handleEnablePush() {
+  elements.enablePushButton.disabled = true;
+  elements.enablePushButton.textContent = "🔔 Enabling…";
+  try {
+    await enablePush(store.services, store.currentUser.uid);
+    showToast("🔔 Notifications enabled");
+  } catch (error) {
+    showToast(PUSH_ERRORS[error.message] || "Couldn't enable notifications.");
+    console.error("enablePush failed", error);
+  } finally {
+    updatePushButton();
+  }
+}
+
 let toastTimer = null;
 export function showToast(message) {
   document.querySelectorAll(".app-toast").forEach((t) => t.remove());
@@ -189,6 +234,8 @@ export function bindShellEvents() {
   elements.notifButton.addEventListener("click", toggleNotif);
   elements.profileButton.addEventListener("click", toggleProfile);
   elements.dropdownBackdrop.addEventListener("click", closeMenus);
+  elements.enablePushButton.addEventListener("click", handleEnablePush);
+  updatePushButton();
   elements.clearNotifsButton.addEventListener("click", () => {
     elements.notifList.replaceChildren();
     elements.notifBadge.classList.add("hidden");

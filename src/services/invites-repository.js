@@ -62,11 +62,22 @@ export async function acceptInvite(functions, boardId) {
   return result.data;
 }
 
-// Removes a member from a board (admin only). Server-side so the removed user's
-// own userBoards pointer can be cleared, dropping the board from their app.
-export async function removeMember(functions, boardId, uid) {
+// ---------- owner-only member management (server-authoritative) ----------
+
+export async function updateMemberRole(functions, boardId, targetUid, role) {
   if (!functions) throw new Error("Firebase functions not initialised.");
-  const callable = httpsCallable(functions, "removeMember");
-  const result = await callable({ boardId, uid });
+  const result = await httpsCallable(functions, "setMemberRole")({ boardId, targetUid, role });
+  return result.data;
+}
+
+export async function transferBoardOwnership(functions, boardId, targetUid) {
+  if (!functions) throw new Error("Firebase functions not initialised.");
+  const result = await httpsCallable(functions, "transferOwnership")({ boardId, targetUid });
+  return result.data;
+}
+
+export async function removeBoardMember(functions, boardId, targetUid) {
+  if (!functions) throw new Error("Firebase functions not initialised.");
+  const result = await httpsCallable(functions, "removeMember")({ boardId, targetUid });
   return result.data;
 }

@@ -76,6 +76,178 @@ button {
   font-size: 13px;
 }
 
+.empty-state p {
+  margin: 0;
+}
+
+/* ============ CRUD CONTROLS ============ */
+.btn-danger {
+  background: rgba(255, 92, 124, 0.12);
+  border-color: rgba(255, 92, 124, 0.4);
+  color: #ff5c7c;
+  margin-top: 10px;
+}
+
+.btn-danger:hover {
+  background: rgba(255, 92, 124, 0.18);
+}
+
+.mini-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #15161f;
+  border: 1px solid #2a2c3d;
+  color: #8b8da3;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mini-btn:hover {
+  color: #edeef5;
+  border-color: #3a3c52;
+}
+
+.mini-btn.del:hover {
+  color: #ff5c7c;
+  border-color: rgba(255, 92, 124, 0.4);
+}
+
+/* ============ STEAM ============ */
+.steam-head {
+  margin-top: 32px;
+}
+
+.dot-steam {
+  background: #66c0f4;
+  box-shadow: 0 0 10px #66c0f4;
+}
+
+.status-label.steam {
+  color: #66c0f4;
+}
+
+#steamLink {
+  margin-bottom: 14px;
+}
+
+#steamLink:empty {
+  display: none;
+}
+
+.steam-card {
+  display: block;
+  background: #13141d;
+  border: 1px solid #23253560;
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+
+.steam-card:hover {
+  transform: translateY(-3px);
+  border-color: #66c0f4;
+}
+
+.steam-card img {
+  width: 100%;
+  aspect-ratio: 460 / 215;
+  object-fit: cover;
+  display: block;
+  background: #0b0c12;
+}
+
+.steam-name {
+  padding: 8px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============ MEMBER MANAGER (board settings) ============ */
+.cb-members {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid #ffffff0d;
+}
+
+.cb-members-list {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.member-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid #2a2c3d;
+  border-radius: 10px;
+  background: #15161f;
+}
+
+.member-meta {
+  display: grid;
+  min-width: 0;
+}
+
+.member-meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.member-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #8b8da3;
+  font-size: 11px;
+}
+
+.member-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-owner-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #7c5cff1a;
+  border: 1px solid #7c5cff40;
+  color: var(--accent, #7c5cff);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.role-select {
+  padding: 5px 8px;
+  border: 1px solid #2a2c3d;
+  border-radius: 8px;
+  background: #0c0d15;
+  color: #edeef5;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.member-controls .link-btn.danger:hover {
+  color: #ff5c7c;
+}
+
 /* ---------- responsive (matches design's isMobile < 760px variants) ---------- */
 @media (max-width: 759px) {
   #rail {
