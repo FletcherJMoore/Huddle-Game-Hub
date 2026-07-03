@@ -12,6 +12,7 @@ import {
 import { initialsFor } from "../../utils/format.js";
 import { emptyState } from "../../components/empty-state.js";
 import { openModal, closeModal, showToast } from "../shell/shell.js";
+import { icon } from "../../utils/icons.js";
 
 export function countVotes(item, kind) {
   return Object.values(item.approvals ?? {}).filter((v) => v === kind).length;
@@ -301,9 +302,7 @@ function spinWheel() {
   const pick = rotation[Math.floor(Math.random() * rotation.length)];
   elements.wheelResult.classList.remove("hidden");
   elements.wheelResult.replaceChildren();
-  const spark = document.createElement("span");
-  spark.textContent = "🎡";
-  spark.style.fontSize = "22px";
+  const spark = icon("dices", { size: 22 });
   const text = document.createElement("span");
   text.append(document.createTextNode("The wheel says... "));
   const b = document.createElement("b");

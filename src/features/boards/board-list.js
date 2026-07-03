@@ -20,6 +20,7 @@ import {
   removeBoardMember
 } from "../../services/invites-repository.js";
 import { openModal, closeModal, openBoard, goDashboard, showToast } from "../shell/shell.js";
+import { icon } from "../../utils/icons.js";
 
 // ---- shared avatar helper ----
 function avatarEl(seed, name, className) {
@@ -147,9 +148,7 @@ function boardCard(board) {
 
   const next = document.createElement("div");
   next.className = "board-card-next";
-  const cal = document.createElement("span");
-  cal.className = "ico";
-  cal.textContent = "📅";
+  const cal = icon("calendar", { size: 14, className: "ico" });
   next.append(cal, document.createTextNode(nextSessionLabel(board)));
 
   body.append(name, sub, members, tags, next);
@@ -176,10 +175,10 @@ function renderNeeds() {
   store.state.boards.forEach((board) => {
     (board.games ?? [])
       .filter((g) => g.status === "maybe" && !g.approvals?.[uid])
-      .forEach((g) => actions.push({ icon: "🎮", title: `Vote: ${g.title}`, sub: board.name, boardId: board.id, tab: "roster" }));
+      .forEach((g) => actions.push({ icon: "gamepad-2", title: `Vote: ${g.title}`, sub: board.name, boardId: board.id, tab: "roster" }));
     (board.schedule ?? [])
       .filter((s) => s.votes?.[uid] === undefined)
-      .forEach((s) => actions.push({ icon: "📅", title: `Vote on a time`, sub: board.name, boardId: board.id, tab: "schedule" }));
+      .forEach((s) => actions.push({ icon: "calendar", title: `Vote on a time`, sub: board.name, boardId: board.id, tab: "schedule" }));
   });
 
   const top = actions.slice(0, 4);
@@ -191,9 +190,7 @@ function renderNeeds() {
       const btn = document.createElement("button");
       btn.className = "need-action";
       btn.type = "button";
-      const ico = document.createElement("span");
-      ico.className = "ico";
-      ico.textContent = a.icon;
+      const ico = icon(a.icon, { size: 19 });
       const meta = document.createElement("span");
       const title = document.createElement("strong");
       title.textContent = a.title;

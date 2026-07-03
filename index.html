@@ -69,7 +69,7 @@
             <button class="btn btn-accent" id="newBoardButtonTop" type="button">+ New board</button>
             <div class="menu-anchor">
               <button class="icon-btn" id="notifButton" type="button" aria-label="Notifications">
-                🔔<span class="dot-badge hidden" id="notifBadge">0</span>
+                <span class="ico" data-icon="bell"></span><span class="dot-badge hidden" id="notifBadge">0</span>
               </button>
               <div class="popover hidden" id="notifMenu">
                 <div class="popover-head">
@@ -92,11 +92,11 @@
                   </div>
                 </div>
                 <div class="popover-section">
-                  <button class="menu-item" id="linkSteamButton" type="button">🎮 Link Steam</button>
-                  <button class="menu-item" id="enablePushButton" type="button">🔔 Enable notifications</button>
+                  <button class="menu-item" id="linkSteamButton" type="button"><span class="ico" data-icon="gamepad-2"></span>Link Steam</button>
+                  <button class="menu-item" id="enablePushButton" type="button"></button>
                 </div>
                 <div class="popover-section">
-                  <button class="menu-item danger" id="signOutButton" type="button">↩ Log out</button>
+                  <button class="menu-item danger" id="signOutButton" type="button"><span class="ico" data-icon="log-out"></span>Log out</button>
                 </div>
               </div>
             </div>
@@ -147,13 +147,13 @@
             <div class="board-head-actions">
               <div class="avatar-cluster" id="headerAvatars"></div>
               <button class="btn btn-surface" id="inviteButton" type="button">+ Invite</button>
-              <button class="icon-btn sm hidden" id="boardSettingsButton" type="button" aria-label="Board settings" title="Board settings">⚙</button>
+              <button class="icon-btn sm hidden" id="boardSettingsButton" type="button" aria-label="Board settings" title="Board settings"><span class="ico" data-icon="settings"></span></button>
             </div>
           </header>
 
           <nav class="board-tabs">
-            <button class="tab active" id="tabRoster" type="button">🎮 Game Roster</button>
-            <button class="tab" id="tabSchedule" type="button">📅 Schedule</button>
+            <button class="tab active" id="tabRoster" type="button"><span class="ico" data-icon="gamepad-2"></span>Game Roster</button>
+            <button class="tab" id="tabSchedule" type="button"><span class="ico" data-icon="calendar"></span>Schedule</button>
           </nav>
 
           <div class="board-content">
@@ -165,7 +165,7 @@
                   <p class="muted" id="rosterSubtitle">Majority moves a game into rotation.</p>
                 </div>
                 <div class="content-head-actions">
-                  <button class="btn btn-surface" id="spinButton" type="button">🎡 Spin the wheel</button>
+                  <button class="btn btn-surface" id="spinButton" type="button"><span class="ico" data-icon="dices"></span>Spin the wheel</button>
                   <button class="btn btn-accent" id="proposeGameButton" type="button">+ Propose a game</button>
                 </div>
               </div>
@@ -230,17 +230,17 @@
               <strong># general</strong>
               <span class="muted" id="chatOnline">0 online now</span>
             </div>
-            <button class="icon-btn sm" id="chatToggle" type="button" aria-label="Collapse chat">‹</button>
+            <button class="icon-btn sm" id="chatToggle" type="button" aria-label="Collapse chat"></button>
           </div>
           <div class="chat-log" id="chatLog"></div>
           <form class="chat-composer" id="chatForm">
             <div class="composer-row">
               <input id="chatMessage" type="text" placeholder="Message # general…" maxlength="400" autocomplete="off" />
-              <button class="composer-send" type="submit" aria-label="Send">➤</button>
+              <button class="composer-send" type="submit" aria-label="Send"><span class="ico" data-icon="send"></span></button>
             </div>
             <div class="composer-quick">
-              <button class="chip-btn" id="quickPollButton" type="button">📊 Quick poll</button>
-              <button class="chip-btn" id="shareSessionButton" type="button">📅 Share next session</button>
+              <button class="chip-btn" id="quickPollButton" type="button"><span class="ico" data-icon="bar-chart"></span>Quick poll</button>
+              <button class="chip-btn" id="shareSessionButton" type="button"><span class="ico" data-icon="calendar"></span>Share next session</button>
             </div>
           </form>
         </aside>

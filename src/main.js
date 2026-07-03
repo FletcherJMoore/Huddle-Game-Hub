@@ -17,6 +17,7 @@ import { renderChat, bindChatEvents } from "./features/chat/chat.js";
 import { renderCommonGames, bindSteamEvents } from "./features/steam/steam.js";
 import { updateTitleBadge, notifyIncoming, bindNotificationEvents } from "./features/notifications/notifications.js";
 import { enablePush } from "./services/push-service.js";
+import { hydrateIcons } from "./utils/icons.js";
 
 let lastBoardId = null;
 
@@ -162,6 +163,7 @@ function handleSignedOutUser() {
 }
 
 function startApp() {
+  hydrateIcons();
   bindAuthEvents();
   bindShellEvents();
   bindBoardEvents();
