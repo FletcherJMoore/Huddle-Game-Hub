@@ -1,6 +1,6 @@
 import { store, activeBoard, updateActiveBoard } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
-import { PLATFORMS } from "../../utils/constants.js";
+import { PLATFORMS, GAME_TAGS } from "../../utils/constants.js";
 import {
   canEdit,
   memberIdsOf,
@@ -13,6 +13,8 @@ import { initialsFor } from "../../utils/format.js";
 import { emptyState } from "../../components/empty-state.js";
 import { openModal, closeModal, showToast } from "../shell/shell.js";
 import { icon } from "../../utils/icons.js";
+import { avatarEl } from "../boards/board-list.js";
+import { myOwnedGames, ownersOf } from "../steam/steam.js";
 
 export function countVotes(item, kind) {
   return Object.values(item.approvals ?? {}).filter((v) => v === kind).length;
@@ -44,10 +46,67 @@ function gameMeta(item) {
 function cover(item, size) {
   const el = document.createElement("div");
   el.className = "game-cover";
+  if (item.steamAppId) {
+    el.classList.add("has-art");
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.alt = item.title;
+    img.src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${item.steamAppId}/header.jpg`;
+    img.addEventListener("error", () => {
+      el.classList.remove("has-art");
+      el.replaceChildren();
+      el.style.background = avatarColor(item.title);
+      el.textContent = initialsFor(item.title);
+      if (size) el.style.fontSize = size;
+    });
+    el.append(img);
+    return el;
+  }
   el.style.background = avatarColor(item.title);
   el.textContent = initialsFor(item.title);
   if (size) el.style.fontSize = size;
   return el;
+}
+
+function platformBadges(item) {
+  if (!item.platforms?.length) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "game-badges";
+  item.platforms.forEach((p) => {
+    const chip = document.createElement("span");
+    chip.className = "tag-platform";
+    chip.textContent = p;
+    wrap.append(chip);
+  });
+  return wrap;
+}
+
+function tagChips(item) {
+  if (!item.tags?.length) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "game-badges";
+  item.tags.forEach((t) => {
+    const chip = document.createElement("span");
+    chip.className = "tag-game";
+    chip.textContent = t;
+    wrap.append(chip);
+  });
+  return wrap;
+}
+
+// Avatars of board members whose linked Steam library owns this game.
+function ownedByAvatars(board, item) {
+  if (!item.steamAppId) return null;
+  const owners = ownersOf(item.steamAppId).filter((uid) => memberIdsOf(board).includes(uid));
+  if (!owners.length) return null;
+
+  const row = document.createElement("div");
+  row.className = "owned-by";
+  const avs = document.createElement("div");
+  avs.className = "avs";
+  owners.slice(0, 5).forEach((uid) => avs.append(avatarEl(uid, plainName(board, uid), "av")));
+  row.append(avs, document.createTextNode(owners.length === 1 ? "owns this" : `${owners.length} own this`));
+  return row;
 }
 
 function nameRow(item) {
@@ -144,6 +203,12 @@ function rotationCard(board, item) {
   meta.className = "game-meta";
   meta.textContent = gameMeta(item);
   info.append(nameRow(item), meta);
+  const badges = platformBadges(item);
+  if (badges) info.append(badges);
+  const tags = tagChips(item);
+  if (tags) info.append(tags);
+  const owned = ownedByAvatars(board, item);
+  if (owned) info.append(owned);
   top.append(cover(item), info);
 
   const foot = document.createElement("div");
@@ -174,13 +239,16 @@ function pendingCard(board, item) {
   meta.className = "game-meta";
   meta.textContent = gameMeta(item);
   info.append(nameRow(item), meta);
+  const badges = platformBadges(item);
+  if (badges) info.append(badges);
+  const tags = tagChips(item);
+  if (tags) info.append(tags);
+  const owned = ownedByAvatars(board, item);
+  if (owned) info.append(owned);
   if (item.addedBy) {
     const prop = document.createElement("div");
     prop.className = "game-proposer";
-    const av = document.createElement("span");
-    av.className = "av";
-    av.style.background = avatarColor(item.addedBy);
-    av.textContent = initialsFor(plainName(board, item.addedBy));
+    const av = avatarEl(item.addedBy, plainName(board, item.addedBy), "av");
     prop.append(av, document.createTextNode(`Proposed by ${plainName(board, item.addedBy)}`));
     info.append(prop);
   }
@@ -203,7 +271,7 @@ function pendingCard(board, item) {
   head.className = "progress-head";
   const lbl = document.createElement("span");
   lbl.className = "lbl";
-  lbl.textContent = up >= need ? "Ready for rotation" : "Gathering votes";
+  lbl.textContent = up >= need ? "Ready for rotation" : `Needs ${need - up} more yes vote${need - up === 1 ? "" : "s"}`;
   const req = document.createElement("span");
   req.className = "req";
   req.textContent = `${up} / ${need} needed`;
@@ -226,12 +294,7 @@ function pendingCard(board, item) {
     const avs = document.createElement("div");
     avs.className = "avs";
     waiting.slice(0, 4).forEach((uid) => {
-      const av = document.createElement("div");
-      av.className = "av";
-      av.style.background = avatarColor(uid);
-      av.textContent = initialsFor(plainName(board, uid));
-      av.title = plainName(board, uid);
-      avs.append(av);
+      avs.append(avatarEl(uid, plainName(board, uid), "av"));
     });
     row.append(avs);
     if (canEdit()) {
@@ -320,6 +383,84 @@ function clearPlatformPicker() {
   elements.pgPlatforms.querySelectorAll(".selected").forEach((c) => c.classList.remove("selected"));
 }
 
+function selectedTags() {
+  return [...elements.pgTags.querySelectorAll(".platform-opt.selected")].map((c) => c.dataset.tag);
+}
+
+function clearTagPicker() {
+  elements.pgTags.querySelectorAll(".selected").forEach((c) => c.classList.remove("selected"));
+}
+
+// Steam link picked during the current propose/edit session. undefined = no
+// change (edit keeps the game's existing link); null = explicitly unlinked;
+// { appid, name } = newly picked from the search.
+let pgSteamPick;
+
+function resolveSteamAppId(existingAppId) {
+  if (pgSteamPick === undefined) return existingAppId ?? null;
+  return pgSteamPick?.appid ?? null;
+}
+
+function showSteamSearch() {
+  elements.pgSteamLinked.classList.add("hidden");
+  elements.pgSteamLinked.replaceChildren();
+  elements.pgSteamSearch.value = "";
+  elements.pgSteamSearch.classList.remove("hidden");
+  elements.pgSteamSuggest.classList.add("hidden");
+  elements.pgSteamSuggest.replaceChildren();
+}
+
+function showSteamPicked(name) {
+  elements.pgSteamSearch.classList.add("hidden");
+  elements.pgSteamSuggest.classList.add("hidden");
+  elements.pgSteamSuggest.replaceChildren();
+
+  elements.pgSteamLinked.classList.remove("hidden");
+  const label = document.createElement("span");
+  label.textContent = `Linked: ${name}`;
+  const unlink = document.createElement("button");
+  unlink.type = "button";
+  unlink.className = "mini-btn";
+  unlink.title = "Unlink";
+  unlink.textContent = "✕";
+  unlink.addEventListener("click", () => {
+    pgSteamPick = null;
+    showSteamSearch();
+  });
+  elements.pgSteamLinked.replaceChildren(label, unlink);
+}
+
+function renderSteamSuggestions(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    elements.pgSteamSuggest.classList.add("hidden");
+    elements.pgSteamSuggest.replaceChildren();
+    return;
+  }
+  const matches = Object.entries(myOwnedGames())
+    .filter(([, name]) => name.toLowerCase().includes(q))
+    .slice(0, 8);
+
+  elements.pgSteamSuggest.classList.remove("hidden");
+  if (!matches.length) {
+    elements.pgSteamSuggest.replaceChildren(emptyState("No matches in your Steam library"));
+    return;
+  }
+  elements.pgSteamSuggest.replaceChildren(
+    ...matches.map(([appid, name]) => {
+      const opt = document.createElement("button");
+      opt.type = "button";
+      opt.className = "steam-suggest-item";
+      opt.textContent = name;
+      opt.addEventListener("click", () => {
+        pgSteamPick = { appid, name };
+        showSteamPicked(name);
+      });
+      return opt;
+    })
+  );
+}
+
 export function openProposeGame() {
   if (!canEdit()) {
     showToast("You don't have edit access on this board");
@@ -328,6 +469,9 @@ export function openProposeGame() {
   store.editingGameId = null;
   elements.proposeGameForm.reset();
   clearPlatformPicker();
+  clearTagPicker();
+  pgSteamPick = undefined;
+  showSteamSearch();
   elements.pgModalTitle.textContent = "Propose a game";
   elements.pgSubmitButton.textContent = "Add to roster";
   openModal("proposeGame");
@@ -344,6 +488,12 @@ export function openEditGame(game) {
   elements.pgPlatforms.querySelectorAll(".platform-opt").forEach((c) => {
     c.classList.toggle("selected", (game.platforms || []).includes(c.dataset.platform));
   });
+  elements.pgTags.querySelectorAll(".platform-opt").forEach((c) => {
+    c.classList.toggle("selected", (game.tags || []).includes(c.dataset.tag));
+  });
+  pgSteamPick = undefined;
+  if (game.steamAppId) showSteamPicked(game.title);
+  else showSteamSearch();
   elements.pgModalTitle.textContent = "Edit game";
   elements.pgSubmitButton.textContent = "Save changes";
   openModal("proposeGame");
@@ -369,6 +519,16 @@ export function bindGameEvents() {
     if (chip) chip.classList.toggle("selected");
   });
 
+  elements.pgTags.addEventListener("click", (event) => {
+    const chip = event.target.closest(".platform-opt");
+    if (chip) chip.classList.toggle("selected");
+  });
+
+  elements.pgSteamSearch.addEventListener("input", () => renderSteamSuggestions(elements.pgSteamSearch.value));
+  elements.pgSteamSearch.addEventListener("blur", () => {
+    setTimeout(() => elements.pgSteamSuggest.classList.add("hidden"), 150);
+  });
+
   elements.proposeGameForm.addEventListener("submit", (event) => {
     event.preventDefault();
     if (!canEdit()) return;
@@ -377,6 +537,7 @@ export function bindGameEvents() {
     const variant = elements.pgVariant.value.trim();
     const players = elements.pgPlayers.value.trim();
     const platforms = selectedPlatforms().filter((p) => PLATFORMS.includes(p));
+    const tags = selectedTags().filter((t) => GAME_TAGS.includes(t));
 
     if (store.editingGameId) {
       const id = store.editingGameId;
@@ -387,6 +548,8 @@ export function bindGameEvents() {
         g.variant = variant;
         g.players = players;
         g.platforms = platforms;
+        g.tags = tags;
+        g.steamAppId = resolveSteamAppId(g.steamAppId);
       });
       closeModal();
       showToast("Game updated");
@@ -401,6 +564,8 @@ export function bindGameEvents() {
         variant,
         players,
         platforms,
+        tags,
+        steamAppId: resolveSteamAppId(null),
         status: "maybe",
         approvals: { [store.currentUser.uid]: "up" },
         addedBy: store.currentUser.uid,

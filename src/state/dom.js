@@ -114,6 +114,10 @@ export const elements = {
   pgVariant: $("pgVariant"),
   pgPlayers: $("pgPlayers"),
   pgPlatforms: $("pgPlatforms"),
+  pgTags: $("pgTags"),
+  pgSteamSearch: $("pgSteamSearch"),
+  pgSteamSuggest: $("pgSteamSuggest"),
+  pgSteamLinked: $("pgSteamLinked"),
 
   // invite
   inviteBoardName: $("inviteBoardName"),

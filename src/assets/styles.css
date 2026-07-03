@@ -1276,6 +1276,76 @@ option {
   margin-top: 3px;
 }
 
+.game-cover.has-art {
+  overflow: hidden;
+  padding: 0;
+}
+
+.game-cover.has-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.game-badges {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.tag-platform,
+.tag-game {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+}
+
+.tag-platform {
+  color: #3da5ff;
+  background: rgba(61, 165, 255, 0.1);
+  border: 1px solid rgba(61, 165, 255, 0.25);
+}
+
+.tag-game {
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.owned-by {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.owned-by .avs {
+  display: flex;
+}
+
+.owned-by .av {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-card);
+  margin-left: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  color: #0b0c12;
+}
+
+.owned-by .av:first-child {
+  margin-left: 0;
+}
+
 .game-proposer {
   font-size: 11.5px;
   color: var(--dim);
@@ -2144,6 +2214,53 @@ option {
   background: var(--accent-soft);
   border-color: var(--accent-border);
   color: var(--accent);
+}
+
+.steam-search {
+  position: relative;
+  margin-bottom: 18px;
+}
+
+.steam-suggest {
+  position: absolute;
+  top: calc(100% - 8px);
+  left: 0;
+  right: 0;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 5;
+}
+
+.steam-suggest-item {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  color: var(--ink-2);
+  font-size: 13px;
+  text-align: left;
+}
+
+.steam-suggest-item:hover {
+  background: var(--surface-2);
+}
+
+.steam-linked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--ink-2);
 }
 
 .emoji-opt {

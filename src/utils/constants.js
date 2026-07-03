@@ -2,6 +2,9 @@
 
 export const PLATFORMS = ["PC", "Xbox", "PS5", "Switch", "Mobile"];
 
+// Gameplay tags offered when proposing a game.
+export const GAME_TAGS = ["Co-op", "PvP", "Quick", "Campaign", "Free", "Game Pass"];
+
 // status -> roster section. rotation = agreed/in-rotation, maybe = pending vote,
 // never = rejected.
 export const BUCKET_KEYS = ["rotation", "maybe", "never"];

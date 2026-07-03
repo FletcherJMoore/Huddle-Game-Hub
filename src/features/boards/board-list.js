@@ -24,7 +24,7 @@ import { icon } from "../../utils/icons.js";
 import { emptyState } from "../../components/empty-state.js";
 
 // ---- shared avatar helper ----
-function avatarEl(seed, name, className) {
+export function avatarEl(seed, name, className) {
   const el = document.createElement("div");
   el.className = className;
   el.style.background = avatarColor(seed);

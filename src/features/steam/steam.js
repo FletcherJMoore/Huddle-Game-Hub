@@ -1,7 +1,7 @@
 // "Games You All Own" — links each member's Steam library (via Sign in through
 // Steam) and shows the intersection across the board as a cover-art grid.
 
-import { store, activeBoard } from "../../state/store.js";
+import { store, activeBoard, render } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
 import { getSteamLoginUrl, subscribeBoardSteam } from "../../services/steam-service.js";
 import { emptyState } from "../../components/empty-state.js";
@@ -23,10 +23,28 @@ export function renderCommonGames(board) {
       unsubscribe = subscribeBoardSteam(store.services.db, board.id, (data) => {
         steamData = data || {};
         paint();
+        // Also refresh the roster tab's "owned by" avatars, which key off this
+        // same data via myOwnedGames()/ownersOf() but don't subscribe directly.
+        render();
       });
     }
   }
   paint();
+}
+
+// The current user's own owned-games map ({ appid: name }), for the propose-
+// game form's "link to Steam" search. Reuses this module's existing
+// boardSteam subscription rather than a second one.
+export function myOwnedGames() {
+  return steamData[store.currentUser?.uid]?.games ?? {};
+}
+
+// uids of board members whose linked Steam library contains this appid.
+export function ownersOf(appid) {
+  if (!appid) return [];
+  return Object.entries(steamData)
+    .filter(([, data]) => data.games?.[appid])
+    .map(([uid]) => uid);
 }
 
 function paint() {

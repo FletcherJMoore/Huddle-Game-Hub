@@ -285,6 +285,21 @@
             <button type="button" class="platform-opt" data-platform="Switch">Switch</button>
             <button type="button" class="platform-opt" data-platform="Mobile">Mobile</button>
           </div>
+          <label>Tags <span class="optional">(optional)</span></label>
+          <div class="platform-picker" id="pgTags">
+            <button type="button" class="platform-opt" data-tag="Co-op">Co-op</button>
+            <button type="button" class="platform-opt" data-tag="PvP">PvP</button>
+            <button type="button" class="platform-opt" data-tag="Quick">Quick</button>
+            <button type="button" class="platform-opt" data-tag="Campaign">Campaign</button>
+            <button type="button" class="platform-opt" data-tag="Free">Free</button>
+            <button type="button" class="platform-opt" data-tag="Game Pass">Game Pass</button>
+          </div>
+          <label for="pgSteamSearch">Link to Steam <span class="optional">(optional)</span></label>
+          <div class="steam-search">
+            <input id="pgSteamSearch" type="text" placeholder="Search your Steam library…" autocomplete="off" />
+            <div class="steam-suggest hidden" id="pgSteamSuggest"></div>
+            <div class="steam-linked hidden" id="pgSteamLinked"></div>
+          </div>
           <div class="modal-actions">
             <button type="button" class="btn btn-surface modal-cancel">Cancel</button>
             <button type="submit" class="btn btn-accent btn-grow" id="pgSubmitButton">Add to roster</button>
