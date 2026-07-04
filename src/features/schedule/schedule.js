@@ -4,8 +4,15 @@ import { canEdit } from "../boards/board-model.js";
 import { emptyState } from "../../components/empty-state.js";
 import { dowShort, dayNum, sessionTimeLabel, formatShortDate } from "../../utils/format.js";
 import { openModal, closeModal, showToast } from "../shell/shell.js";
+import { icon } from "../../utils/icons.js";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const PRESETS = [
+  { key: "friday", label: "I'm free Friday night", sub: "Proposes next Friday at 8 PM" },
+  { key: "weekends", label: "Weekends only", sub: "Yes Sat/Sun, no weekdays" },
+  { key: "after8", label: "After 8 PM", sub: "Yes for later sessions" },
+  { key: "cant", label: "Can't this week", sub: "No for the next 7 days" }
+];
 
 function votesOf(session) {
   return Object.values(session.votes ?? {});
@@ -26,6 +33,7 @@ function score(session) {
 }
 
 export function renderSchedule(board) {
+  renderAvailabilityPresets();
   renderHeatmap(board);
 
   const sessions = [...(board.schedule ?? [])].sort(
@@ -33,12 +41,34 @@ export function renderSchedule(board) {
   );
 
   if (!sessions.length) {
-    elements.sessionList.replaceChildren(emptyState("No times proposed yet"));
+    elements.sessionList.replaceChildren(
+      emptyState("No times proposed yet", [
+        { label: "Propose a time", variant: "primary", onClick: openProposeTime },
+        { label: "Friday night", onClick: () => applyAvailabilityPreset("friday") }
+      ])
+    );
     return;
   }
 
   const bestId = score(sessions[0]) > 0 ? sessions[0].id : null;
   elements.sessionList.replaceChildren(...sessions.map((s) => sessionCard(s, s.id === bestId)));
+}
+
+function renderAvailabilityPresets() {
+  elements.availabilityPresets.replaceChildren(
+    ...PRESETS.map((preset) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "preset-btn";
+      const title = document.createElement("strong");
+      title.textContent = preset.label;
+      const sub = document.createElement("span");
+      sub.textContent = preset.sub;
+      btn.append(title, sub);
+      btn.addEventListener("click", () => applyAvailabilityPreset(preset.key));
+      return btn;
+    })
+  );
 }
 
 function renderHeatmap(board) {
@@ -60,17 +90,17 @@ function renderHeatmap(board) {
       const isBest = i === bestDay && intensity[i];
 
       const col = document.createElement("div");
-      col.style.cssText = "flex:1;text-align:center;";
+      col.className = "heat-day";
       const cell = document.createElement("div");
-      cell.style.cssText = `height:64px;border-radius:8px;background:${
-        intensity[i] ? `rgba(124,92,255,${0.15 + ratio * 0.6})` : "rgba(255,255,255,0.03)"
-      };border:1px solid ${isBest ? "rgba(124,92,255,0.6)" : "transparent"};display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;`;
+      cell.className = "heat-cell";
+      cell.style.background = intensity[i] ? `rgba(124,92,255,${0.15 + ratio * 0.6})` : "rgba(255,255,255,0.03)";
+      cell.style.borderColor = isBest ? "rgba(124,92,255,0.6)" : "transparent";
       const num = document.createElement("span");
-      num.style.cssText = `font-size:11px;font-weight:700;color:${ratio > 0.5 ? "#fff" : "#8b8da3"};`;
+      num.style.color = ratio > 0.5 ? "#fff" : "#8b8da3";
       num.textContent = intensity[i] ? String(intensity[i]) : "";
       cell.append(num);
       const lbl = document.createElement("div");
-      lbl.style.cssText = "font-size:11px;color:#8b8da3;margin-top:6px;font-weight:600;";
+      lbl.className = "heat-label";
       lbl.textContent = label;
       col.append(cell, lbl);
       return col;
@@ -83,65 +113,61 @@ function renderHeatmap(board) {
 
 function sessionCard(session, isBest) {
   const card = document.createElement("div");
-  card.style.cssText = `background:#13141d;border:1px solid ${isBest ? "#56d36450" : "#23253560"};border-radius:14px;padding:16px 18px;position:relative;`;
+  card.className = `session-card ${isBest ? "best" : ""}`;
 
   if (isBest) {
     const badge = document.createElement("span");
-    badge.style.cssText =
-      "position:absolute;top:-9px;left:16px;background:#56d364;color:#0b0c12;font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:3px 9px;border-radius:999px;";
-    badge.textContent = "★ TOP CONSENSUS";
+    badge.className = "session-badge";
+    badge.textContent = "Top consensus";
     card.append(badge);
   }
 
   const row = document.createElement("div");
-  row.style.cssText = "display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;";
+  row.className = "session-row";
 
   const left = document.createElement("div");
-  left.style.cssText = "display:flex;align-items:center;gap:14px;";
+  left.className = "session-when";
   const dateBox = document.createElement("div");
-  dateBox.style.cssText = "text-align:center;background:#0b0c12;border-radius:11px;padding:8px 13px;min-width:58px;";
+  dateBox.className = "session-date";
   const dow = document.createElement("div");
-  dow.style.cssText = "font-size:11px;font-weight:700;color:var(--accent,#7c5cff);text-transform:uppercase;letter-spacing:.05em;";
+  dow.className = "dow";
   dow.textContent = dowShort(session.date);
   const day = document.createElement("div");
-  day.style.cssText = "font-family:'Space Grotesk';font-weight:700;font-size:19px;line-height:1;margin-top:2px;";
+  day.className = "day";
   day.textContent = dayNum(session.date);
   dateBox.append(dow, day);
   const detail = document.createElement("div");
   const time = document.createElement("div");
-  time.style.cssText = "font-weight:700;font-size:15.5px;";
+  time.className = "session-time";
   time.textContent = sessionTimeLabel(session.start, session.end);
   const label = document.createElement("div");
-  label.style.cssText = "font-size:12px;color:#8b8da3;margin-top:3px;";
+  label.className = "session-label";
   label.textContent = session.activity || "Game night";
   detail.append(time, label);
   left.append(dateBox, detail);
 
   const right = document.createElement("div");
-  right.style.cssText = "display:flex;align-items:center;gap:16px;";
+  right.className = "session-vote";
   const t = tally(session);
   const total = Math.max(1, t.yes + t.maybe + t.no);
   const tallyBox = document.createElement("div");
-  tallyBox.style.cssText = "text-align:right;";
+  tallyBox.className = "session-tally";
   const txt = document.createElement("div");
-  txt.style.cssText = "font-size:12.5px;color:#c9cbe0;font-weight:600;";
+  txt.className = "txt";
   txt.textContent = `${t.yes} yes · ${t.maybe} maybe · ${t.no} no`;
   const bar = document.createElement("div");
-  bar.style.cssText = "display:flex;height:6px;width:130px;border-radius:4px;overflow:hidden;margin-top:6px;background:#0b0c12;";
-  [["yes", "#56d364"], ["maybe", "#ffb13d"], ["no", "#ff5c7c"]].forEach(([k, color]) => {
+  bar.className = "tally-bar";
+  ["yes", "maybe", "no"].forEach((k) => {
     const seg = document.createElement("div");
-    seg.style.cssText = `width:${(t[k] / total) * 100}%;background:${color};`;
+    seg.className = k;
+    seg.style.width = `${(t[k] / total) * 100}%`;
     bar.append(seg);
   });
   tallyBox.append(txt, bar);
 
   const buttons = document.createElement("div");
-  buttons.style.cssText = "display:flex;gap:5px;";
-  buttons.append(
-    voteBtn(session, "yes", "Yes", "#56d364"),
-    voteBtn(session, "maybe", "Maybe", "#ffb13d"),
-    voteBtn(session, "no", "No", "#ff5c7c")
-  );
+  buttons.className = "session-buttons";
+  buttons.append(voteBtn(session, "yes", "Yes"), voteBtn(session, "maybe", "Maybe"), voteBtn(session, "no", "No"));
   right.append(tallyBox, buttons);
 
   row.append(left, right);
@@ -149,16 +175,13 @@ function sessionCard(session, isBest) {
 
   if (isBest) {
     const confirm = document.createElement("div");
-    confirm.style.cssText =
-      "margin-top:13px;padding-top:13px;border-top:1px solid #ffffff0a;display:flex;align-items:center;justify-content:space-between;";
+    confirm.className = "session-confirm";
     const note = document.createElement("span");
-    note.style.cssText = "font-size:12px;color:#a3a5bb;";
     note.textContent = `${t.yes} of the crew are in for ${formatShortDate(session.date)}.`;
     const cal = document.createElement("button");
     cal.type = "button";
-    cal.style.cssText =
-      "font-size:12px;font-weight:600;color:var(--accent,#7c5cff);background:#7c5cff14;border:1px solid #7c5cff33;border-radius:8px;padding:6px 12px;cursor:pointer;";
-    cal.textContent = "＋ Add to calendar";
+    cal.className = "cal";
+    cal.append(icon("calendar", { size: 13 }), document.createTextNode("Add to calendar"));
     cal.addEventListener("click", () => addToCalendar(session));
     confirm.append(note, cal);
     card.append(confirm);
@@ -167,14 +190,11 @@ function sessionCard(session, isBest) {
   return card;
 }
 
-function voteBtn(session, kind, label, color) {
+function voteBtn(session, kind, label) {
   const btn = document.createElement("button");
   btn.type = "button";
   const mine = session.votes?.[store.currentUser?.uid] === kind;
-  const tone = mine
-    ? `background:${color}22;border:1px solid ${color}55;color:${color};`
-    : "background:#15161f;border:1px solid #2a2c3d;color:#8b8da3;";
-  btn.style.cssText = `border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;${tone}`;
+  btn.className = `sv-btn ${kind} ${mine ? "on" : ""}`;
   btn.textContent = label;
   if (canEdit()) btn.addEventListener("click", () => setSessionVote(session.id, kind));
   else btn.disabled = true;
@@ -192,7 +212,7 @@ function setSessionVote(sessionId, kind) {
   });
 }
 
-function addToCalendar(session) {
+export function addToCalendar(session) {
   const fmt = (date, time) => `${date.replace(/-/g, "")}T${(time || "20:00").replace(":", "")}00`;
   const start = fmt(session.date, session.start);
   const end = fmt(session.date, session.end || session.start);
@@ -201,6 +221,76 @@ function addToCalendar(session) {
     `&text=${encodeURIComponent(`Huddle Game Hub: ${session.activity || "Game night"}`)}` +
     `&dates=${start}/${end}`;
   window.open(url, "_blank", "noopener");
+}
+
+function applyAvailabilityPreset(key) {
+  if (!canEdit()) {
+    showToast("You don't have edit access on this board");
+    return;
+  }
+  const uid = store.currentUser?.uid;
+  if (!uid) return;
+
+  if (key === "friday") {
+    const nextFriday = nextWeekdayDate(5);
+    updateActiveBoard((board) => {
+      const existing = board.schedule.find((session) => session.date === nextFriday && session.start === "20:00");
+      if (existing) {
+        existing.votes = { ...(existing.votes ?? {}), [uid]: "yes" };
+        return;
+      }
+      board.schedule.push({
+        id: crypto.randomUUID(),
+        date: nextFriday,
+        start: "20:00",
+        end: "23:00",
+        activity: "Game night",
+        votes: { [uid]: "yes" }
+      });
+    });
+    showToast("Friday night added");
+    return;
+  }
+
+  let changed = 0;
+  updateActiveBoard((board) => {
+    (board.schedule ?? []).forEach((session) => {
+      const vote = presetVote(key, session);
+      if (!vote) return;
+      session.votes = session.votes ?? {};
+      if (session.votes[uid] !== vote) {
+        session.votes[uid] = vote;
+        changed += 1;
+      }
+    });
+  });
+  showToast(changed ? "Availability updated" : "No matching sessions yet");
+}
+
+function presetVote(key, session) {
+  if (key === "weekends") {
+    const day = new Date(`${session.date}T00:00`).getDay();
+    return day === 0 || day === 6 ? "yes" : "no";
+  }
+  if (key === "after8") return (session.start || "") >= "20:00" ? "yes" : "no";
+  if (key === "cant") return isWithinNextDays(session.date, 7) ? "no" : null;
+  return null;
+}
+
+function nextWeekdayDate(dayIndex) {
+  const date = new Date();
+  const diff = (dayIndex - date.getDay() + 7) % 7 || 7;
+  date.setDate(date.getDate() + diff);
+  return date.toISOString().slice(0, 10);
+}
+
+function isWithinNextDays(dateString, days) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${dateString}T00:00`);
+  const end = new Date(today);
+  end.setDate(today.getDate() + days);
+  return target >= today && target <= end;
 }
 
 export function openProposeTime() {
@@ -230,6 +320,6 @@ export function bindScheduleEvents() {
       });
     });
     closeModal();
-    showToast("Time proposed — vote's open");
+    showToast("Time proposed - vote's open");
   });
 }

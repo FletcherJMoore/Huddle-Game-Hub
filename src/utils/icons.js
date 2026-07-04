@@ -4,11 +4,19 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Check,
   Dices,
   Gamepad2,
   LogOut,
+  Pencil,
+  Plus,
+  RotateCcw,
   Send,
   Settings,
+  ThumbsDown,
+  ThumbsUp,
+  Users,
+  X,
   ChartColumn
 } from "lucide";
 
@@ -19,11 +27,19 @@ const ICONS = {
   calendar: Calendar,
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
+  check: Check,
   dices: Dices,
   "gamepad-2": Gamepad2,
   "log-out": LogOut,
+  pencil: Pencil,
+  plus: Plus,
+  "rotate-ccw": RotateCcw,
   send: Send,
   settings: Settings,
+  "thumbs-down": ThumbsDown,
+  "thumbs-up": ThumbsUp,
+  users: Users,
+  x: X,
   "bar-chart": ChartColumn
 };
 

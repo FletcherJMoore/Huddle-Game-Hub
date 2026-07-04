@@ -282,7 +282,9 @@ function paintSteam() {
     elements.libraryViewLabel.textContent = "";
     elements.libraryPager.replaceChildren();
     elements.libraryGrid.replaceChildren(
-      emptyState("No games loaded yet. Hit Relink Steam above — and make sure your Steam profile's Game details are set to Public.")
+      emptyState("No games loaded yet. Relink Steam and make sure your Steam profile's Game details are Public.", [
+        { label: "Relink Steam", variant: "primary", onClick: startSteamLink }
+      ])
     );
     return;
   }

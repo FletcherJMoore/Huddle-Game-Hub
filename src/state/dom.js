@@ -46,8 +46,6 @@ export const elements = {
   authError: $("authError"),
 
   // dashboard
-  profileAvatar: $("profileAvatar"),
-  linkSteamButton: $("linkSteamButton"),
   enablePushButton: $("enablePushButton"),
   dashWelcome: $("dashWelcome"),
   needsSection: $("needsSection"),
@@ -64,6 +62,9 @@ export const elements = {
   boardName: $("boardName"),
   boardOnline: $("boardOnline"),
   boardSubtitle: $("boardSubtitle"),
+  boardNextNight: $("boardNextNight"),
+  boardTopGame: $("boardTopGame"),
+  boardPendingVotes: $("boardPendingVotes"),
   headerAvatars: $("headerAvatars"),
   boardMemberLabel: $("boardMemberLabel"),
   inviteButton: $("inviteButton"),
@@ -77,6 +78,7 @@ export const elements = {
 
   // roster
   rosterSubtitle: $("rosterSubtitle"),
+  decisionPanel: $("decisionPanel"),
   spinButton: $("spinButton"),
   proposeGameButton: $("proposeGameButton"),
   wheelResult: $("wheelResult"),
@@ -91,6 +93,7 @@ export const elements = {
   commonCount: $("commonCount"),
 
   // schedule
+  availabilityPresets: $("availabilityPresets"),
   proposeTimeButton: $("proposeTimeButton"),
   heatmap: $("heatmap"),
   bestDayLabel: $("bestDayLabel"),

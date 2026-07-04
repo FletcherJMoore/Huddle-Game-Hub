@@ -1,4 +1,4 @@
-// "Games You All Own" — links each member's Steam library (via Sign in through
+﻿// "Games You All Own" — links each member's Steam library (via Sign in through
 // Steam) and shows the intersection across the board as a cover-art grid.
 
 import { store, activeBoard, render } from "../../state/store.js";
@@ -89,9 +89,11 @@ function paint() {
 
   let message;
   if (linkedUids.length === 0) message = "No one's linked Steam yet";
-  else if (linkedUids.length === 1) message = "Just you so far — shared games appear once another member links Steam";
+  else if (linkedUids.length === 1) message = "Just you so far - shared games appear once another member links Steam";
   else message = "No games in common yet (or a profile is private)";
-  elements.commonGames.replaceChildren(emptyState(message));
+  elements.commonGames.replaceChildren(
+    emptyState(message, [{ label: "Link Steam", variant: "primary", onClick: () => openSettings("account") }])
+  );
 }
 
 function steamCard(game) {
@@ -139,3 +141,4 @@ export function bindSteamEvents() {
     showToast(steam === "linked" ? "Steam linked! 🎮" : "Steam sign-in didn't complete");
   }
 }
+

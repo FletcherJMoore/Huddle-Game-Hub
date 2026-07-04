@@ -92,71 +92,55 @@ function boardCard(board) {
   const unread = unreadCount(board);
 
   const card = document.createElement("div");
-  card.style.cssText =
-    "background:#14151e;border:1px solid #23253560;border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .14s,border-color .14s;";
+  card.className = "board-card";
   card.addEventListener("click", () => openBoard(board.id));
-  card.addEventListener("mouseenter", () => {
-    card.style.transform = "translateY(-3px)";
-    card.style.borderColor = "#3a3c52";
-  });
-  card.addEventListener("mouseleave", () => {
-    card.style.transform = "";
-    card.style.borderColor = "#23253560";
-  });
 
   const header = document.createElement("div");
-  header.style.cssText = `height:88px;background:linear-gradient(135deg,${board.accent}aa,${board.accent}22);position:relative;display:flex;align-items:center;padding:0 20px;`;
+  header.className = "board-card-header";
+  header.style.background = `linear-gradient(135deg,${board.accent}aa,${board.accent}22)`;
   const emoji = document.createElement("div");
-  emoji.style.cssText =
-    "width:50px;height:50px;border-radius:14px;background:#0b0c12cc;display:flex;align-items:center;justify-content:center;font-size:25px;backdrop-filter:blur(4px);";
+  emoji.className = "board-card-emoji";
   emoji.textContent = board.emoji;
   header.append(emoji);
   if (unread) {
     const badge = document.createElement("span");
-    badge.style.cssText =
-      "position:absolute;top:12px;right:14px;background:#ff5c7c;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:3px 8px;";
+    badge.className = "board-card-new";
     badge.textContent = `${unread} new`;
     header.append(badge);
   }
 
   const body = document.createElement("div");
-  body.style.cssText = "padding:16px 18px 18px;";
+  body.className = "board-card-body";
 
   const name = document.createElement("div");
-  name.style.cssText = "font-family:'Space Grotesk';font-weight:600;font-size:17px;margin-bottom:3px;";
+  name.className = "board-card-name";
   name.textContent = board.name;
 
   const sub = document.createElement("div");
-  sub.style.cssText = "font-size:12.5px;color:#6b6d85;margin-bottom:14px;";
+  sub.className = "board-card-sub";
   sub.textContent = board.subtitle || `${ids.length} ${ids.length === 1 ? "member" : "members"}`;
 
   const memberRow = document.createElement("div");
-  memberRow.style.cssText = "display:flex;align-items:center;justify-content:space-between;";
+  memberRow.className = "board-card-members";
   const avatars = document.createElement("div");
-  avatars.style.cssText = "display:flex;align-items:center;";
   ids.slice(0, 4).forEach((uid) => {
-    const av = document.createElement("div");
-    av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${avatarColor(uid)};border:2px solid #14151e;margin-left:-7px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#0b0c12;`;
-    av.textContent = initialsFor(plainName(board, uid));
-    avatars.append(av);
+    avatars.append(avatarEl(uid, plainName(board, uid), "av"));
   });
   const memberLabel = document.createElement("span");
-  memberLabel.style.cssText = "margin-left:8px;font-size:12px;color:#8b8da3;";
+  memberLabel.className = "more";
   memberLabel.textContent = `${ids.length} ${ids.length === 1 ? "member" : "members"}`;
   avatars.append(memberLabel);
   memberRow.append(avatars);
 
   const tags = document.createElement("div");
-  tags.style.cssText = "display:flex;gap:7px;margin-top:15px;flex-wrap:wrap;";
+  tags.className = "board-card-tags";
   const rot = document.createElement("span");
-  rot.style.cssText =
-    "font-size:11.5px;font-weight:600;color:#56d364;background:#56d36412;border:1px solid #56d36430;padding:4px 9px;border-radius:8px;";
+  rot.className = "tag tag-green";
   rot.textContent = `${c.rotation} in rotation`;
   tags.append(rot);
   if (c.pending) {
     const pend = document.createElement("span");
-    pend.style.cssText =
-      "font-size:11.5px;font-weight:600;color:#ffb13d;background:#ffb13d12;border:1px solid #ffb13d30;padding:4px 9px;border-radius:8px;";
+    pend.className = "tag tag-amber";
     pend.textContent = `${c.pending} to vote`;
     tags.append(pend);
   }
@@ -173,14 +157,12 @@ function boardCard(board) {
 
 function createCard() {
   const card = document.createElement("div");
-  card.style.cssText =
-    "border:1.5px dashed #2f3145;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240px;cursor:pointer;color:#6b6d85;transition:border-color .15s,color .15s;";
+  card.className = "board-card create";
   card.addEventListener("click", openCreateBoard);
   const plus = document.createElement("div");
-  plus.style.cssText = "font-size:32px;font-weight:300;margin-bottom:6px;";
+  plus.className = "plus";
   plus.textContent = "+";
   const label = document.createElement("div");
-  label.style.cssText = "font-size:14px;font-weight:600;";
   label.textContent = "New board";
   card.append(plus, label);
   return card;
@@ -206,6 +188,7 @@ function renderNeeds() {
     ...top.map((a) => {
       const btn = document.createElement("button");
       btn.type = "button";
+      btn.className = "need-action";
       const ico = icon(a.icon, { size: 19 });
       const meta = document.createElement("span");
       const title = document.createElement("span");
@@ -239,7 +222,17 @@ function renderUpcoming() {
   const top = rows.slice(0, 5);
 
   if (!top.length) {
-    elements.upcomingList.replaceChildren(emptyState("No game nights on the calendar yet"));
+    const actions = store.state.boards.length
+      ? [{
+          label: "Propose a time",
+          variant: "primary",
+          onClick: () => {
+            store.boardTab = "schedule";
+            openBoard(store.state.boards[0].id);
+          }
+        }]
+      : [{ label: "Create a board", variant: "primary", onClick: openCreateBoard }];
+    elements.upcomingList.replaceChildren(emptyState("No game nights on the calendar yet", actions));
     return;
   }
 
