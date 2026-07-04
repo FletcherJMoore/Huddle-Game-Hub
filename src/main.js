@@ -10,7 +10,7 @@ import { normalizeBoard, currentProfile, memberIdsOf, canManage, canonicalRole }
 import { formatShortDate, sessionTimeLabel, sortSchedule } from "./utils/format.js";
 import { renderAccount, setAuthError, setAuthNotice, bindAuthEvents } from "./features/auth/auth.js";
 import { bindShellEvents, renderTabs, showToast } from "./features/shell/shell.js";
-import { renderRail, renderDashboard, bindBoardEvents } from "./features/boards/board-list.js";
+import { renderRail, renderDashboard, bindBoardEvents, paintBoardIcon } from "./features/boards/board-list.js";
 import { renderRoster, bindGameEvents } from "./features/games/games.js";
 import { renderSchedule, bindScheduleEvents } from "./features/schedule/schedule.js";
 import { renderHeaderAvatars, bindCrewEvents } from "./features/crew/crew.js";
@@ -129,7 +129,7 @@ function renderBoard(board) {
   const topGame = [...rotationGames, ...pendingGames]
     .sort((a, b) => voteScore(b) - voteScore(a) || (a.title || "").localeCompare(b.title || ""))[0];
   const nextSession = nextSessionFor(board);
-  elements.boardEmoji.textContent = board.emoji;
+  paintBoardIcon(elements.boardEmoji, board);
   elements.boardName.textContent = board.name;
   elements.boardSubtitle.textContent = board.subtitle || `${board.games.length} games in the roster`;
   elements.boardOnline.textContent = `● ${count} online`;

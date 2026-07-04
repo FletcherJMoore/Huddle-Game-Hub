@@ -329,8 +329,12 @@
           <form id="createBoardForm">
             <label>Icon</label>
             <div class="emoji-picker" id="cbEmoji"></div>
-            <label>Accent</label>
-            <div class="accent-picker" id="cbAccent"></div>
+            <div class="board-icon-photo-row">
+              <div class="board-icon-preview hidden" id="cbIconPreview"></div>
+              <button class="link-btn" id="cbChangePhotoButton" type="button">Add a photo instead</button>
+              <input class="hidden" id="cbIconFileInput" type="file" accept="image/*" />
+            </div>
+            <p class="field-feedback hidden" id="cbIconFeedback" role="status"></p>
             <label for="cbName">Name</label>
             <input id="cbName" type="text" placeholder="e.g. Local Legends" maxlength="42" required />
             <div class="modal-actions">

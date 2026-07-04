@@ -26,14 +26,22 @@ async function resizeImage(file) {
   });
 }
 
-// Resizes, uploads to avatars/{uid}/photo.jpg (fixed name so re-uploads
-// overwrite), and returns a fresh download URL.
-export async function uploadAvatar(storage, uid, file) {
+// Resizes and uploads to a fixed path (so re-uploads overwrite, no orphaned
+// files), returning a fresh download URL.
+async function uploadImage(storage, path, file) {
   if (!file.type.startsWith("image/")) throw new Error("Please choose an image file");
   if (file.size > MAX_SOURCE_BYTES) throw new Error("Image is too large (max 8MB)");
 
   const blob = await resizeImage(file);
-  const avatarRef = ref(storage, `avatars/${uid}/photo.jpg`);
-  await uploadBytes(avatarRef, blob, { contentType: "image/jpeg" });
-  return getDownloadURL(avatarRef);
+  const imageRef = ref(storage, path);
+  await uploadBytes(imageRef, blob, { contentType: "image/jpeg" });
+  return getDownloadURL(imageRef);
+}
+
+export function uploadAvatar(storage, uid, file) {
+  return uploadImage(storage, `avatars/${uid}/photo.jpg`, file);
+}
+
+export function uploadBoardIcon(storage, boardId, file) {
+  return uploadImage(storage, `boards/${boardId}/icon.jpg`, file);
 }

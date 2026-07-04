@@ -13,8 +13,9 @@ import {
   canonicalRole
 } from "./board-model.js";
 import { initialsFor, formatShortDate, sortSchedule, dowShort, dayNum, sessionTimeLabel } from "../../utils/format.js";
-import { EMOJI_OPTIONS, ACCENT_OPTIONS, ROLE_LABELS, ASSIGNABLE_ROLES } from "../../utils/constants.js";
+import { EMOJI_OPTIONS, ROLE_LABELS, ASSIGNABLE_ROLES } from "../../utils/constants.js";
 import { deleteBoard } from "../../services/boards-repository.js";
+import { uploadBoardIcon } from "../../services/storage-service.js";
 import {
   updateMemberRole,
   transferBoardOwnership,
@@ -23,6 +24,23 @@ import {
 import { openModal, closeModal, openBoard, goDashboard, showToast } from "../shell/shell.js";
 import { icon } from "../../utils/icons.js";
 import { emptyState } from "../../components/empty-state.js";
+
+// Shared board icon renderer: an uploaded photo if the board has one,
+// otherwise its emoji glyph — same fallback pattern as avatarEl().
+export function paintBoardIcon(el, board) {
+  el.replaceChildren();
+  el.style.overflow = "hidden";
+  if (board.iconURL) {
+    const img = document.createElement("img");
+    img.src = board.iconURL;
+    img.alt = "";
+    img.loading = "lazy";
+    img.style.cssText = "width:100%;height:100%;object-fit:cover;";
+    el.append(img);
+  } else {
+    el.textContent = board.emoji;
+  }
+}
 
 // ---- shared avatar helper ----
 export function avatarEl(seed, name, className, photoURL) {
@@ -72,7 +90,7 @@ export function renderRail() {
     const ic = document.createElement("div");
     ic.title = board.name;
     ic.style.cssText = `width:46px;height:46px;border-radius:${active ? "14px" : "50%"};background:${board.accent};display:flex;align-items:center;justify-content:center;font-size:21px;cursor:pointer;border:${active ? "2px solid rgba(255,255,255,0.28)" : "2px solid transparent"};transition:border-radius .15s;`;
-    ic.textContent = board.emoji;
+    paintBoardIcon(ic, board);
 
     wrap.append(bar, ic);
     wrap.addEventListener("click", () => openBoard(board.id));
@@ -109,7 +127,7 @@ function boardCard(board) {
   header.style.background = `linear-gradient(135deg,${board.accent}aa,${board.accent}22)`;
   const emoji = document.createElement("div");
   emoji.className = "board-card-emoji";
-  emoji.textContent = board.emoji;
+  paintBoardIcon(emoji, board);
   header.append(emoji);
   if (unread) {
     const badge = document.createElement("span");
@@ -282,7 +300,8 @@ function renderUpcoming() {
 // ---------- CREATE BOARD ----------
 export function openCreateBoard() {
   store.editingBoardId = null;
-  store.createDraft = { emoji: EMOJI_OPTIONS[0], accent: ACCENT_OPTIONS[0] };
+  // Pre-generate the id so a photo can be uploaded before the board is saved.
+  store.createDraft = { id: crypto.randomUUID(), emoji: EMOJI_OPTIONS[0], iconURL: null };
   elements.cbName.value = "";
   elements.cbModalTitle.textContent = "New board";
   elements.cbSubmitButton.textContent = "Create board";
@@ -297,7 +316,7 @@ export function openEditBoard() {
   const board = activeBoard();
   if (!board) return;
   store.editingBoardId = board.id;
-  store.createDraft = { emoji: board.emoji, accent: board.accent };
+  store.createDraft = { id: board.id, emoji: board.emoji, iconURL: board.iconURL };
   elements.cbName.value = board.name;
   elements.cbModalTitle.textContent = "Board settings";
   elements.cbSubmitButton.textContent = "Save changes";
@@ -439,27 +458,29 @@ function renderCreatePickers() {
       return b;
     })
   );
-  elements.cbAccent.replaceChildren(
-    ...ACCENT_OPTIONS.map((hex) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      const sel = hex === store.createDraft.accent;
-      b.style.cssText = `width:32px;height:32px;border-radius:50%;cursor:pointer;background:${hex};border:${sel ? "2px solid #fff" : "2px solid transparent"};box-shadow:${sel ? `0 0 14px -2px ${hex}` : "none"};`;
-      b.addEventListener("click", () => {
-        store.createDraft.accent = hex;
-        renderCreatePickers();
-      });
-      return b;
-    })
-  );
+  renderIconPreview();
+}
+
+function renderIconPreview() {
+  const hasPhoto = Boolean(store.createDraft.iconURL);
+  elements.cbIconPreview.classList.toggle("hidden", !hasPhoto);
+  elements.cbChangePhotoButton.textContent = hasPhoto ? "Remove photo" : "Add a photo instead";
+  if (hasPhoto) {
+    const img = document.createElement("img");
+    img.src = store.createDraft.iconURL;
+    img.alt = "";
+    elements.cbIconPreview.replaceChildren(img);
+  } else {
+    elements.cbIconPreview.replaceChildren();
+  }
 }
 
 function createBoard(name) {
   const board = normalizeBoard({
-    id: crypto.randomUUID(),
+    id: store.createDraft.id,
     name: name || "New board",
     emoji: store.createDraft.emoji,
-    accent: store.createDraft.accent,
+    iconURL: store.createDraft.iconURL,
     createdAt: new Date().toISOString(),
     members: { [store.currentUser.uid]: "owner" },
     memberProfiles: { [store.currentUser.uid]: currentProfile() },
@@ -481,11 +502,32 @@ function saveBoardEdits(name) {
   if (!board) return;
   board.name = name || board.name;
   board.emoji = store.createDraft.emoji;
-  board.accent = store.createDraft.accent;
+  board.iconURL = store.createDraft.iconURL;
   saveState();
   closeModal();
   render();
   showToast("Board updated");
+}
+
+// ---------- board icon photo ----------
+function feedback(el, message, kind) {
+  el.textContent = message;
+  el.classList.remove("hidden");
+  el.style.color = kind === "err" ? "#ff9aac" : "#8be59a";
+}
+
+async function uploadBoardIconPhoto(file) {
+  if (!store.services) return;
+  feedback(elements.cbIconFeedback, "Uploading…", "ok");
+  try {
+    const iconURL = await uploadBoardIcon(store.services.storage, store.createDraft.id, file);
+    store.createDraft.iconURL = iconURL;
+    renderIconPreview();
+    feedback(elements.cbIconFeedback, "Photo added", "ok");
+  } catch (error) {
+    console.error("Board icon upload failed", error);
+    feedback(elements.cbIconFeedback, error.message || "Couldn't upload that photo — try again", "err");
+  }
 }
 
 async function deleteCurrentBoard() {
@@ -520,5 +562,19 @@ export function bindBoardEvents() {
     const name = elements.cbName.value.trim();
     if (store.editingBoardId) saveBoardEdits(name);
     else createBoard(name);
+  });
+
+  elements.cbChangePhotoButton.addEventListener("click", () => {
+    if (store.createDraft.iconURL) {
+      store.createDraft.iconURL = null;
+      renderIconPreview();
+    } else {
+      elements.cbIconFileInput.click();
+    }
+  });
+  elements.cbIconFileInput.addEventListener("change", () => {
+    const file = elements.cbIconFileInput.files?.[0];
+    elements.cbIconFileInput.value = "";
+    if (file) uploadBoardIconPhoto(file);
   });
 }

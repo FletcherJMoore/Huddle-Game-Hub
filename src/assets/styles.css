@@ -1062,6 +1062,13 @@ option {
 
 .board-emoji {
   font-size: 23px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .board-title-row h1 {
@@ -2374,12 +2381,32 @@ body {
 }
 
 .platform-picker,
-.emoji-picker,
-.accent-picker {
+.emoji-picker {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 18px;
+}
+
+.board-icon-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.board-icon-preview {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.board-icon-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .platform-opt {

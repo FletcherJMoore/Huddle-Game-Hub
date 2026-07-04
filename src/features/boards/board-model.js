@@ -2,7 +2,7 @@
 // small derived helpers the redesigned views need (avatar colors, majority).
 
 import { store, activeBoard } from "../../state/store.js";
-import { PLATFORMS, GAME_TAGS, BUCKET_KEYS, AVATAR_COLORS, ACCENT_OPTIONS, EMOJI_OPTIONS } from "../../utils/constants.js";
+import { PLATFORMS, GAME_TAGS, BUCKET_KEYS, AVATAR_COLORS, EMOJI_OPTIONS } from "../../utils/constants.js";
 
 export function displayName() {
   const user = store.currentUser;
@@ -162,7 +162,9 @@ export function normalizeBoard(board) {
     ...board,
     name: board.name ?? "Untitled board",
     emoji: EMOJI_OPTIONS.includes(board.emoji) ? board.emoji : board.emoji || "🎮",
-    accent: ACCENT_OPTIONS.includes(board.accent) ? board.accent : board.accent || "#7c5cff",
+    // No longer user-picked — auto-assigned per board so boards still look distinct.
+    accent: board.accent || avatarColor(board.id),
+    iconURL: board.iconURL ?? null,
     members,
     memberProfiles,
     memberIds: Object.keys(members),
