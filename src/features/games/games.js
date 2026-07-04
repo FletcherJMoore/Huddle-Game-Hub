@@ -506,6 +506,32 @@ function sendReminder(game, session) {
 }
 
 // ---------- propose / edit game ----------
+function renderPlatformPicker() {
+  elements.pgPlatforms.replaceChildren(
+    ...PLATFORMS.map((p) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "platform-opt";
+      chip.dataset.platform = p;
+      chip.textContent = p;
+      return chip;
+    })
+  );
+}
+
+function renderTagPicker() {
+  elements.pgTags.replaceChildren(
+    ...GAME_TAGS.map((t) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "platform-opt";
+      chip.dataset.tag = t;
+      chip.textContent = t;
+      return chip;
+    })
+  );
+}
+
 function selectedPlatforms() {
   return [...elements.pgPlatforms.querySelectorAll(".platform-opt.selected")].map((c) => c.dataset.platform);
 }
@@ -630,7 +656,7 @@ export function openEditGame(game) {
     c.classList.toggle("selected", (game.tags || []).includes(c.dataset.tag));
   });
   pgSteamPick = undefined;
-  if (game.steamAppId) showSteamPicked(game.title);
+  if (game.steamAppId) showSteamPicked(myOwnedGames()[game.steamAppId] ?? game.title);
   else showSteamSearch();
   elements.pgModalTitle.textContent = "Edit game";
   elements.pgSubmitButton.textContent = "Save changes";
@@ -649,6 +675,9 @@ function deleteGame(id) {
 }
 
 export function bindGameEvents() {
+  renderPlatformPicker();
+  renderTagPicker();
+
   elements.spinButton.addEventListener("click", spinWheel);
   elements.proposeGameButton.addEventListener("click", openProposeGame);
 
