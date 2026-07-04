@@ -124,6 +124,7 @@ export const elements = {
   pgPlayers: $("pgPlayers"),
   pgPlatforms: $("pgPlatforms"),
   pgTags: $("pgTags"),
+  pgCatalogLoading: $("pgCatalogLoading"),
   pgCatalogSuggest: $("pgCatalogSuggest"),
   pgCatalogPicked: $("pgCatalogPicked"),
 

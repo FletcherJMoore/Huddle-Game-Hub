@@ -614,11 +614,15 @@ function resolveCatalogFields(existing) {
 }
 
 function clearCatalogMatch() {
+  catalogSearchToken += 1; // invalidate any in-flight search from before this reset
+  elements.pgCatalogLoading.classList.add("hidden");
   elements.pgCatalogPicked.classList.add("hidden");
   elements.pgCatalogPicked.replaceChildren();
 }
 
 function showCatalogPicked(pick) {
+  catalogSearchToken += 1; // invalidate any in-flight search now that a match is set
+  elements.pgCatalogLoading.classList.add("hidden");
   elements.pgCatalogSuggest.classList.add("hidden");
   elements.pgCatalogSuggest.replaceChildren();
 
@@ -657,20 +661,24 @@ function applySuggestedPlatforms(platforms) {
 async function renderCatalogSuggestions(query) {
   const q = query.trim();
   if (q.length < 2) {
+    elements.pgCatalogLoading.classList.add("hidden");
     elements.pgCatalogSuggest.classList.add("hidden");
     elements.pgCatalogSuggest.replaceChildren();
     return;
   }
 
   const token = ++catalogSearchToken;
+  elements.pgCatalogLoading.classList.remove("hidden");
   let results;
   try {
     results = await searchCatalog(store.services?.functions, q);
   } catch (error) {
     console.error("Catalog search failed", error);
+    if (token === catalogSearchToken) elements.pgCatalogLoading.classList.add("hidden");
     return;
   }
   if (token !== catalogSearchToken) return; // a newer search superseded this one
+  elements.pgCatalogLoading.classList.add("hidden");
 
   elements.pgCatalogSuggest.classList.remove("hidden");
   if (!results.length) {

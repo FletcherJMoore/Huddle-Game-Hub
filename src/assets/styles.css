@@ -2430,6 +2430,32 @@ body {
   margin-bottom: 18px;
 }
 
+.catalog-search-loading {
+  height: 3px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.catalog-search-loading span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent, #7c5cff);
+  animation: catalog-search-sweep 1.1s ease-in-out infinite;
+}
+
+@keyframes catalog-search-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
 .catalog-suggest {
   position: absolute;
   top: calc(100% - 8px);
