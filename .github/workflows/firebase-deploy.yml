@@ -64,4 +64,4 @@ jobs:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HUDDLE_B73F3 }}
 
       - name: Deploy to Firebase
-        run: npx --yes firebase-tools@latest deploy --only hosting,functions,database,storage --project huddle-b73f3 --non-interactive
+        run: npx --yes firebase-tools@latest deploy --only hosting,functions,database,storage --project huddle-b73f3 --non-interactive --force
