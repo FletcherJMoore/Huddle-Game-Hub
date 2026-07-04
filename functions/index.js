@@ -9,12 +9,14 @@
 // sendInviteEmail: DB trigger — fires when an admin writes a new invite record.
 //   Only sends the email; it never grants membership itself, so every invite
 //   — new account or existing — is only ever joined via acceptInvite.
+//
+// searchCatalogGames: proxies a title search to the RAWG games database for
+//   the propose-game modal. Keeps the RAWG_API_KEY server-side.
 
-const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onValueCreated } = require("firebase-functions/v2/database");
 const admin = require("firebase-admin");
 const { Resend } = require("resend");
-const crypto = require("crypto");
 
 admin.initializeApp();
 
@@ -170,8 +172,7 @@ exports.removeMember = onCall(async (request) => {
     [`boards/${boardId}/members/${targetUid}`]: null,
     [`boards/${boardId}/memberProfiles/${targetUid}`]: null,
     [`boards/${boardId}/reads/${targetUid}`]: null,
-    [`userBoards/${targetUid}/${boardId}`]: null,
-    [`boardSteam/${boardId}/${targetUid}`]: null
+    [`userBoards/${targetUid}/${boardId}`]: null
   });
   return { ok: true };
 });
@@ -281,167 +282,52 @@ exports.notifyNewMessage = onValueCreated(
   }
 );
 
-// ---------- Steam (Sign in through Steam + owned-games comparison) ----------
+// ---------- Games catalog search (RAWG) ----------
+// Lets proposing a game search a general games database instead of requiring
+// any platform account to be linked. Keeps the API key and RAWG's raw
+// response shape server-side — the client only ever sees fields it already
+// understands (its own PLATFORMS list, not RAWG's finer-grained platform ids).
 
-const STEAM_OPENID = "https://steamcommunity.com/openid/login";
+const RAWG_PLATFORM_MAP = [
+  { match: /playstation 5/i, value: "PS5" },
+  { match: /xbox/i, value: "Xbox" },
+  { match: /nintendo switch/i, value: "Switch" },
+  { match: /^pc$/i, value: "PC" },
+  { match: /ios|android/i, value: "Mobile" }
+];
 
-function steamReturnUrl() {
-  const project =
-    process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || "huddle-b73f3";
-  return `https://us-central1-${project}.cloudfunctions.net/steamReturn`;
+function mapRawgPlatforms(rawgPlatforms) {
+  const mapped = new Set();
+  (rawgPlatforms || []).forEach(({ platform }) => {
+    const hit = RAWG_PLATFORM_MAP.find((p) => p.match.test(platform?.name || ""));
+    if (hit) mapped.add(hit.value);
+  });
+  return [...mapped];
 }
 
-// Authenticated user asks for a Steam login URL. We mint a one-time nonce tied to
-// their uid so the (unauthenticated) return handler can identify them.
-exports.steamLoginUrl = onCall(async (request) => {
-  const auth = request.auth;
-  if (!auth) throw new HttpsError("unauthenticated", "Sign in first.");
+exports.searchCatalogGames = onCall({ secrets: ["RAWG_API_KEY"] }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
 
-  const nonce = crypto.randomUUID();
-  await admin.database().ref(`steamNonces/${nonce}`).set({ uid: auth.uid, createdAt: Date.now() });
+  const query = String(request.data?.query || "").trim();
+  if (!query) return { results: [] };
 
-  const ret = `${steamReturnUrl()}?nonce=${nonce}`;
   const params = new URLSearchParams({
-    "openid.ns": "http://specs.openid.net/auth/2.0",
-    "openid.mode": "checkid_setup",
-    "openid.return_to": ret,
-    "openid.realm": steamReturnUrl(),
-    "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
-    "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select"
-  });
-  return { url: `${STEAM_OPENID}?${params.toString()}` };
-});
-
-// Steam redirects here after the user approves. Verify the assertion, read the
-// SteamID, fetch their owned games, and store each member's library under
-// boardSteam/{boardId}/{uid} for every board they belong to.
-exports.steamReturn = onRequest({ region: "us-central1", secrets: ["STEAM_API_KEY"] }, async (req, res) => {
-  const appUrl = process.env.APP_URL || "https://huddle-b73f3.web.app/";
-  try {
-    const q = req.query;
-
-    // 1. Verify the OpenID assertion by echoing it back with mode=check_authentication.
-    const verifyParams = new URLSearchParams();
-    Object.keys(q).forEach((k) => {
-      if (k.startsWith("openid.")) verifyParams.append(k, q[k]);
-    });
-    verifyParams.set("openid.mode", "check_authentication");
-    const verifyResp = await fetch(STEAM_OPENID, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: verifyParams.toString()
-    });
-    const verifyText = await verifyResp.text();
-    if (!/is_valid\s*:\s*true/.test(verifyText)) {
-      res.redirect(`${appUrl}?steam=error`);
-      return;
-    }
-
-    // 2. Extract the SteamID from the claimed id.
-    const claimed = String(q["openid.claimed_id"] || "");
-    const steamId = (claimed.match(/\/id\/(\d+)\/?$/) || [])[1];
-    if (!steamId) {
-      res.redirect(`${appUrl}?steam=error`);
-      return;
-    }
-
-    // 3. Resolve the nonce -> uid (one-time use).
-    const nonce = q.nonce;
-    if (!nonce) {
-      res.redirect(`${appUrl}?steam=error`);
-      return;
-    }
-    const nonceSnap = await admin.database().ref(`steamNonces/${nonce}`).get();
-    const nonceData = nonceSnap.val();
-    await admin.database().ref(`steamNonces/${nonce}`).remove();
-    if (!nonceData) {
-      res.redirect(`${appUrl}?steam=error`);
-      return;
-    }
-    const uid = nonceData.uid;
-    const key = process.env.STEAM_API_KEY;
-
-    // 4. Fetch persona + owned games (owned games require a public profile).
-    let persona = "";
-    try {
-      const sum = await (
-        await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${key}&steamids=${steamId}`)
-      ).json();
-      persona = sum?.response?.players?.[0]?.personaname || "";
-    } catch (e) {
-      console.error("Steam summary failed", e.message);
-    }
-
-    const games = {};
-    try {
-      const owned = await (
-        await fetch(
-          `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${key}&steamid=${steamId}&include_appinfo=1&include_played_free_games=1&format=json`
-        )
-      ).json();
-      (owned?.response?.games || []).forEach((g) => {
-        games[g.appid] = g.name || String(g.appid);
-      });
-    } catch (e) {
-      console.error("Steam owned games failed", e.message);
-    }
-
-    // 5. Store the full library privately, then share everything EXCEPT the
-    //    games the user has hidden. Hidden games never reach the shared node.
-    const hiddenSnap = await admin.database().ref(`steamUsers/${uid}/hidden`).get();
-    const hidden = hiddenSnap.val() || {};
-    const shared = {};
-    Object.entries(games).forEach(([appid, name]) => {
-      if (!hidden[appid]) shared[appid] = name;
-    });
-
-    const boardsSnap = await admin.database().ref(`userBoards/${uid}`).get();
-    const updates = {
-      [`steamUsers/${uid}`]: { steamId, persona, games, hidden, updatedAt: Date.now() }
-    };
-    Object.keys(boardsSnap.val() || {}).forEach((bid) => {
-      updates[`boardSteam/${bid}/${uid}`] = { steamId, persona, games: shared, updatedAt: Date.now() };
-    });
-    await admin.database().ref().update(updates);
-
-    res.redirect(`${appUrl}?steam=linked`);
-  } catch (error) {
-    console.error("steamReturn error", error);
-    res.redirect(`${appUrl}?steam=error`);
-  }
-});
-
-// Update which of the caller's games are hidden, and re-derive the shared library
-// (full minus hidden) on every board they belong to. Hidden games are removed
-// from the shared node entirely, so co-members never see them.
-exports.updateHiddenGames = onCall(async (request) => {
-  const auth = request.auth;
-  if (!auth) throw new HttpsError("unauthenticated", "Sign in first.");
-  const uid = auth.uid;
-
-  const raw = request.data?.hidden || {};
-  const hidden = Array.isArray(raw) ? Object.fromEntries(raw.map((a) => [String(a), true])) : raw;
-
-  const userSnap = await admin.database().ref(`steamUsers/${uid}`).get();
-  const user = userSnap.val();
-  if (!user || !user.games) throw new HttpsError("failed-precondition", "Link Steam first.");
-
-  const shared = {};
-  Object.entries(user.games).forEach(([appid, name]) => {
-    if (!hidden[appid]) shared[appid] = name;
+    key: process.env.RAWG_API_KEY,
+    search: query,
+    page_size: "6"
   });
 
-  const boardsSnap = await admin.database().ref(`userBoards/${uid}`).get();
-  const updates = { [`steamUsers/${uid}/hidden`]: hidden };
-  Object.keys(boardsSnap.val() || {}).forEach((bid) => {
-    updates[`boardSteam/${bid}/${uid}`] = {
-      steamId: user.steamId,
-      persona: user.persona || "",
-      games: shared,
-      updatedAt: Date.now()
-    };
-  });
-  await admin.database().ref().update(updates);
+  const resp = await fetch(`https://api.rawg.io/api/games?${params.toString()}`);
+  if (!resp.ok) throw new HttpsError("unavailable", "Games catalog search is unavailable right now.");
+  const data = await resp.json();
 
-  return { hiddenCount: Object.keys(hidden).length, sharedCount: Object.keys(shared).length };
+  const results = (data.results || []).map((g) => ({
+    id: g.id,
+    name: g.name,
+    coverImageUrl: g.background_image || null,
+    genre: g.genres?.[0]?.name || "",
+    platforms: mapRawgPlatforms(g.platforms)
+  }));
+
+  return { results };
 });

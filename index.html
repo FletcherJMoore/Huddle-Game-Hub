@@ -188,12 +188,6 @@
                 <div class="roster-section-title amber"><span></span><h3>Pending Vote</h3><b id="pendingCount">0</b></div>
                 <div class="pending-list" id="pendingList"></div>
 
-                <div class="steam-head">
-                  <div class="roster-section-title steam"><span></span><h3>Games You All Own</h3><b id="commonCount">0</b></div>
-                  <div id="steamLink"></div>
-                  <div class="steam-grid" id="commonGames"></div>
-                </div>
-
                 <div class="roster-section-title rose"><span></span><h3>Hard Passes</h3><b id="rejectedCount">0</b></div>
                 <div class="rejected-list" id="rejectedList"></div>
               </section>
@@ -248,7 +242,11 @@
           <p class="modal-sub">Add details so the crew can make a quick call.</p>
           <form id="proposeGameForm">
             <label for="pgTitle">Game</label>
-            <input id="pgTitle" type="text" placeholder="e.g. Deep Rock Galactic" maxlength="80" required />
+            <div class="catalog-search">
+              <input id="pgTitle" type="text" placeholder="e.g. Deep Rock Galactic" maxlength="80" required autocomplete="off" />
+              <div class="catalog-suggest hidden" id="pgCatalogSuggest"></div>
+            </div>
+            <div class="catalog-linked hidden" id="pgCatalogPicked"></div>
 
             <div class="field-row">
               <div class="field-grow">
@@ -266,13 +264,6 @@
 
             <label>Tags</label>
             <div class="platform-picker" id="pgTags"></div>
-
-            <label for="pgSteamSearch">Steam game <span class="optional">(optional)</span></label>
-            <div class="steam-search">
-              <input id="pgSteamSearch" type="search" placeholder="Search your linked Steam library" autocomplete="off" />
-              <div class="steam-suggest hidden" id="pgSteamSuggest"></div>
-              <div class="steam-linked hidden" id="pgSteamLinked"></div>
-            </div>
 
             <div class="modal-actions">
               <button class="btn btn-surface modal-cancel" type="button">Cancel</button>
@@ -412,22 +403,6 @@
               <div class="connected-row">
                 <div><strong>Google</strong><span id="googleStatus">Not connected</span></div>
                 <button class="btn btn-accent" id="googleLinkButton" type="button">Link</button>
-              </div>
-              <div class="connected-row">
-                <div><strong>Steam</strong><span id="steamStatus">Not linked</span></div>
-                <button class="btn btn-accent" id="steamLinkButton" type="button">Link Steam</button>
-              </div>
-
-              <div class="steam-library hidden" id="steamLibraryCard">
-                <div class="settings-section-title">Your Steam library</div>
-                <p class="muted">Hidden games stay private and never appear on boards.</p>
-                <input id="librarySearch" type="search" placeholder="Search your games..." autocomplete="off" />
-                <div class="library-tools">
-                  <button class="btn btn-surface" id="toggleHidden" type="button">Hidden <span id="hiddenCount"></span></button>
-                  <span class="muted" id="libraryViewLabel"></span>
-                </div>
-                <div class="library-grid" id="libraryGrid"></div>
-                <div class="library-pager" id="libraryPager"></div>
               </div>
             </div>
 

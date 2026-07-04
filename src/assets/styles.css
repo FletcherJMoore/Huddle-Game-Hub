@@ -2425,12 +2425,12 @@ body {
   color: var(--accent);
 }
 
-.steam-search {
+.catalog-search {
   position: relative;
   margin-bottom: 18px;
 }
 
-.steam-suggest {
+.catalog-suggest {
   position: absolute;
   top: calc(100% - 8px);
   left: 0;
@@ -2439,13 +2439,15 @@ body {
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-raised);
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
   z-index: 5;
 }
 
-.steam-suggest-item {
-  display: block;
+.catalog-suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   padding: 9px 12px;
   background: none;
@@ -2455,11 +2457,19 @@ body {
   text-align: left;
 }
 
-.steam-suggest-item:hover {
+.catalog-suggest-item:hover {
   background: var(--surface-2);
 }
 
-.steam-linked {
+.catalog-suggest-item img {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.catalog-linked {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2470,6 +2480,21 @@ body {
   padding: 8px 12px;
   font-size: 13px;
   color: var(--ink-2);
+}
+
+.catalog-linked-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.catalog-linked-info img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .emoji-opt {
@@ -2643,61 +2668,6 @@ button {
 .mini-btn.del:hover {
   color: #ff5c7c;
   border-color: rgba(255, 92, 124, 0.4);
-}
-
-/* ============ STEAM ============ */
-.steam-head {
-  margin-top: 32px;
-}
-
-.dot-steam {
-  background: #66c0f4;
-  box-shadow: 0 0 10px #66c0f4;
-}
-
-.status-label.steam {
-  color: #66c0f4;
-}
-
-#steamLink {
-  margin-bottom: 14px;
-}
-
-#steamLink:empty {
-  display: none;
-}
-
-.steam-card {
-  display: block;
-  background: #13141d;
-  border: 1px solid #23253560;
-  border-radius: 12px;
-  overflow: hidden;
-  text-decoration: none;
-  color: var(--ink);
-  transition: transform 0.14s ease, border-color 0.14s ease;
-}
-
-.steam-card:hover {
-  transform: translateY(-3px);
-  border-color: #66c0f4;
-}
-
-.steam-card img {
-  width: 100%;
-  aspect-ratio: 460 / 215;
-  object-fit: cover;
-  display: block;
-  background: #0b0c12;
-}
-
-.steam-name {
-  padding: 8px 10px;
-  font-size: 12.5px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* ============ MEMBER MANAGER (board settings) ============ */
@@ -2878,22 +2848,6 @@ button {
   color: var(--rose);
 }
 
-.roster-section-title.steam span {
-  background: #66c0f4;
-  box-shadow: 0 0 10px #66c0f4;
-}
-
-.roster-section-title.steam h3 {
-  color: #66c0f4;
-}
-
-.steam-grid,
-.library-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 10px;
-}
-
 .modal-actions {
   display: flex;
   gap: 10px;
@@ -3026,23 +2980,6 @@ button {
   color: var(--dim);
   font-size: 12px;
   margin-top: 2px;
-}
-
-.steam-library {
-  margin-top: 24px;
-}
-
-.library-tools,
-.library-pager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin: 14px 0;
-}
-
-.library-tools {
-  justify-content: flex-start;
 }
 
 .settings-link {

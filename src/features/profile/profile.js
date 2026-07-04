@@ -1,6 +1,6 @@
 // Settings modal: Profile & status, Account (password + connected accounts),
-// Notifications preferences, and Help. The Steam library manager lives under the
-// Account tab. All visuals match the Huddle Game Hub design (inline styles).
+// Notifications preferences, and Help. All visuals match the Huddle Game Hub
+// design (inline styles).
 
 import { store } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
@@ -8,8 +8,6 @@ import { displayName } from "../boards/board-model.js";
 import { initialsFor, paintAvatar } from "../../utils/format.js";
 import { closeMenus, showToast } from "../shell/shell.js";
 import { render } from "../../state/store.js";
-import { startSteamLink } from "../steam/steam.js";
-import { subscribeMySteam, updateHiddenGames } from "../../services/steam-service.js";
 import {
   setDisplayName,
   setPhotoURL,
@@ -20,7 +18,6 @@ import {
 import { uploadAvatar } from "../../services/storage-service.js";
 import { getPrefs, savePrefs, NOTIF_PREFS } from "../../utils/prefs.js";
 import { PLATFORMS, ACCENT_OPTIONS } from "../../utils/constants.js";
-import { emptyState } from "../../components/empty-state.js";
 
 const NAV = [
   { tab: "profile", icon: "👤", label: "Profile & status", title: "Profile & status", sub: "How the rest of your crew sees you." },
@@ -29,13 +26,6 @@ const NAV = [
   { tab: "notif", icon: "🔔", label: "Notifications", title: "Notifications", sub: "Choose what Huddle Game Hub pings you about." },
   { tab: "help", icon: "❓", label: "Help & feedback", title: "Help & feedback", sub: "Guides, shortcuts, and a line to the team." }
 ];
-
-const PAGE_SIZE = 12;
-let unsubscribe = null;
-let watchedUid = null;
-let mySteam = null;
-let showHidden = false;
-let page = 0;
 
 // ---------- open / close ----------
 export function openSettings(tab) {
@@ -112,19 +102,6 @@ export function renderProfile() {
   renderPlatformPrefs();
   renderAccentPicker();
   applyTab();
-
-  if (watchedUid !== user.uid) {
-    watchedUid = user.uid;
-    if (unsubscribe) unsubscribe();
-    mySteam = null;
-    if (store.services) {
-      unsubscribe = subscribeMySteam(store.services.db, user.uid, (data) => {
-        mySteam = data;
-        if (store.settingsOpen) paintSteam();
-      });
-    }
-  }
-  paintSteam();
 }
 
 function renderProfileTab() {
@@ -318,139 +295,6 @@ async function connectGoogle() {
   }
 }
 
-// ---------- steam library ----------
-function paintSteam() {
-  const linked = Boolean(mySteam?.steamId);
-  elements.steamStatus.textContent = linked
-    ? `Linked${mySteam.persona ? ` as ${mySteam.persona}` : ""}`
-    : "Not linked";
-  elements.steamStatus.style.color = linked ? "#56d364" : "#6b6d85";
-  elements.steamLinkButton.textContent = linked ? "Relink Steam" : "Link Steam";
-
-  elements.steamLibraryCard.classList.toggle("hidden", !linked);
-  if (!linked) return;
-
-  const games = mySteam.games || {};
-  const hidden = mySteam.hidden || {};
-
-  const ownedHidden = Object.keys(hidden).filter((a) => games[a]).length;
-  elements.hiddenCount.textContent = `(${ownedHidden})`;
-
-  if (!Object.keys(games).length) {
-    elements.libraryViewLabel.textContent = "";
-    elements.libraryPager.replaceChildren();
-    elements.libraryGrid.replaceChildren(
-      emptyState("No games loaded yet. Relink Steam and make sure your Steam profile's Game details are Public.", [
-        { label: "Relink Steam", variant: "primary", onClick: startSteamLink }
-      ])
-    );
-    return;
-  }
-
-  const term = (elements.librarySearch.value || "").trim().toLowerCase();
-  const list = Object.entries(games)
-    .filter(([appid]) => (showHidden ? hidden[appid] : !hidden[appid]))
-    .filter(([, name]) => !term || name.toLowerCase().includes(term))
-    .map(([appid, name]) => ({ appid, name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
-  if (page >= pages) page = pages - 1;
-
-  elements.libraryViewLabel.textContent = list.length
-    ? `${list.length} ${showHidden ? "hidden" : "shared"} ${list.length === 1 ? "game" : "games"}`
-    : "";
-
-  if (!list.length) {
-    elements.libraryPager.replaceChildren();
-    elements.libraryGrid.replaceChildren(
-      emptyState(term ? "No games match your search" : showHidden ? "No hidden games yet" : "No shared games")
-    );
-    return;
-  }
-
-  const slice = list.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-  elements.libraryGrid.replaceChildren(...slice.map((g) => libCard(g, showHidden)));
-  renderPager(pages);
-}
-
-function renderPager(pages) {
-  elements.libraryPager.replaceChildren();
-  if (pages <= 1) return;
-
-  const mk = (label, disabled, onClick) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.disabled = disabled;
-    b.style.cssText = `background:#15161f;border:1px solid #2a2c3d;color:#c9cbe0;border-radius:9px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;opacity:${disabled ? ".5" : "1"};`;
-    b.textContent = label;
-    b.addEventListener("click", onClick);
-    return b;
-  };
-
-  const prev = mk("‹ Prev", page === 0, () => {
-    page -= 1;
-    paintSteam();
-  });
-  const label = document.createElement("span");
-  label.style.cssText = "font-size:12.5px;color:#6b6d85;";
-  label.textContent = `Page ${page + 1} of ${pages}`;
-  const next = mk("Next ›", page >= pages - 1, () => {
-    page += 1;
-    paintSteam();
-  });
-
-  elements.libraryPager.append(prev, label, next);
-}
-
-function libCard(game, isHidden) {
-  const card = document.createElement("div");
-  card.style.cssText = "background:#13141d;border:1px solid #23253560;border-radius:11px;overflow:hidden;";
-
-  const img = document.createElement("img");
-  img.loading = "lazy";
-  img.alt = "";
-  img.style.cssText = "width:100%;display:block;aspect-ratio:460/215;object-fit:cover;background:#0b0c12;";
-  img.src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`;
-  img.addEventListener("error", () => {
-    img.style.visibility = "hidden";
-  });
-
-  const body = document.createElement("div");
-  body.style.cssText = "padding:9px 11px 11px;";
-  const name = document.createElement("div");
-  name.style.cssText = "font-size:12.5px;font-weight:600;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
-  name.textContent = game.name;
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.style.cssText = isHidden
-    ? "width:100%;background:#15161f;border:1px solid #2a2c3d;color:#c9cbe0;border-radius:8px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;"
-    : "width:100%;background:transparent;border:1px solid #ff5c7c55;color:#ff5c7c;border-radius:8px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;";
-  btn.textContent = isHidden ? "Unhide" : "Hide game";
-  btn.addEventListener("click", () => setHidden(game.appid, !isHidden));
-
-  body.append(name, btn);
-  card.append(img, body);
-  return card;
-}
-
-function setHidden(appid, hide) {
-  const hidden = { ...(mySteam?.hidden || {}) };
-  if (hide) hidden[appid] = true;
-  else delete hidden[appid];
-
-  if (mySteam) mySteam.hidden = hidden;
-  paintSteam();
-
-  updateHiddenGames(store.services.functions, hidden)
-    .then(() => showToast(hide ? "Hidden from boards" : "Shared again"))
-    .catch((error) => {
-      console.error("Update hidden games failed", error);
-      showToast("Couldn't update — try again");
-    });
-}
-
 export function bindProfileEvents() {
   elements.menuProfile.addEventListener("click", () => openSettings("profile"));
   elements.menuAccount.addEventListener("click", () => openSettings("account"));
@@ -479,16 +323,5 @@ export function bindProfileEvents() {
     }
     elements.feedbackText.value = "";
     showToast("Thanks for the feedback ✦");
-  });
-
-  elements.steamLinkButton.addEventListener("click", startSteamLink);
-  elements.librarySearch.addEventListener("input", () => {
-    page = 0;
-    if (mySteam) paintSteam();
-  });
-  elements.toggleHidden.addEventListener("click", () => {
-    showHidden = !showHidden;
-    page = 0;
-    if (mySteam) paintSteam();
   });
 }

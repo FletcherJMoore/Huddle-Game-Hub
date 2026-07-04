@@ -15,7 +15,7 @@ import { emptyState } from "../../components/empty-state.js";
 import { openModal, closeModal, showToast } from "../shell/shell.js";
 import { icon } from "../../utils/icons.js";
 import { avatarEl } from "../boards/board-list.js";
-import { myOwnedGames, ownersOf } from "../steam/steam.js";
+import { searchCatalog } from "../../services/games-catalog-service.js";
 import { addToCalendar } from "../schedule/schedule.js";
 
 export function countVotes(item, kind) {
@@ -43,16 +43,19 @@ function gameMeta(item) {
   return parts.join(" · ") || "No details yet";
 }
 
-// Cover: gradient + initials mark (roster games have no art source).
+// Cover: catalog art if we have it, legacy Steam CDN art for older games that
+// linked a Steam app before catalog search existed, else initials mark.
 function coverInner(item, markSize) {
   const el = document.createElement("div");
   el.className = "game-cover";
-  if (item.steamAppId) {
+  const coverUrl =
+    item.coverImageUrl || (item.steamAppId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${item.steamAppId}/header.jpg` : null);
+  if (coverUrl) {
     el.classList.add("has-art");
     const img = document.createElement("img");
     img.loading = "lazy";
     img.alt = item.title;
-    img.src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${item.steamAppId}/header.jpg`;
+    img.src = coverUrl;
     img.addEventListener("error", () => {
       el.classList.remove("has-art");
       el.replaceChildren();
@@ -101,21 +104,6 @@ function tagChips(item) {
     wrap.append(chip);
   });
   return wrap;
-}
-
-// Avatars of board members whose linked Steam library owns this game.
-function ownedByAvatars(board, item) {
-  if (!item.steamAppId) return null;
-  const owners = ownersOf(item.steamAppId).filter((uid) => memberIdsOf(board).includes(uid));
-  if (!owners.length) return null;
-
-  const row = document.createElement("div");
-  row.className = "owned-by";
-  const avs = document.createElement("div");
-  avs.className = "avs";
-  owners.slice(0, 5).forEach((uid) => avs.append(avatarEl(uid, plainName(board, uid), "av", photoURLFor(board, uid))));
-  row.append(avs, document.createTextNode(owners.length === 1 ? "owns this" : `${owners.length} own this`));
-  return row;
 }
 
 function nameRow(item) {
@@ -342,8 +330,6 @@ function rotationCard(board, item) {
   if (badges) details.append(badges);
   const tags = tagChips(item);
   if (tags) details.append(tags);
-  const owned = ownedByAvatars(board, item);
-  if (owned) details.append(owned);
 
   const foot = document.createElement("div");
   foot.className = "game-foot";
@@ -385,8 +371,6 @@ function pendingCard(board, item) {
   if (badges) info.append(badges);
   const tags = tagChips(item);
   if (tags) info.append(tags);
-  const owned = ownedByAvatars(board, item);
-  if (owned) info.append(owned);
   if (item.addedBy) {
     const prop = document.createElement("div");
     prop.className = "game-proposer";
@@ -602,70 +586,115 @@ function clearTagPicker() {
   elements.pgTags.querySelectorAll(".selected").forEach((c) => c.classList.remove("selected"));
 }
 
-// Steam link picked during the current propose/edit session. undefined = no
-// change (edit keeps the game's existing link); null = explicitly unlinked;
-// { appid, name } = newly picked from the search.
-let pgSteamPick;
+// Catalog match picked during the current propose/edit session. undefined =
+// no change (edit keeps the game's existing match); null = explicitly
+// cleared; { id, name, coverImageUrl, genre, platforms } = newly picked from
+// search. Clearing or picking a new match always supersedes any legacy
+// steamAppId a game might have had before catalog search existed.
+let pgCatalogPick;
+let catalogSearchTimer = null;
+let catalogSearchToken = 0;
 
-function resolveSteamAppId(existingAppId) {
-  if (pgSteamPick === undefined) return existingAppId ?? null;
-  return pgSteamPick?.appid ?? null;
+function resolveCatalogFields(existing) {
+  if (pgCatalogPick === undefined) {
+    return {
+      catalogId: existing?.catalogId ?? null,
+      coverImageUrl: existing?.coverImageUrl ?? null,
+      genre: existing?.genre ?? "",
+      steamAppId: existing?.steamAppId ?? null
+    };
+  }
+  if (!pgCatalogPick) return { catalogId: null, coverImageUrl: null, genre: "", steamAppId: null };
+  return {
+    catalogId: pgCatalogPick.id,
+    coverImageUrl: pgCatalogPick.coverImageUrl,
+    genre: pgCatalogPick.genre || "",
+    steamAppId: null
+  };
 }
 
-function showSteamSearch() {
-  elements.pgSteamLinked.classList.add("hidden");
-  elements.pgSteamLinked.replaceChildren();
-  elements.pgSteamSearch.value = "";
-  elements.pgSteamSearch.classList.remove("hidden");
-  elements.pgSteamSuggest.classList.add("hidden");
-  elements.pgSteamSuggest.replaceChildren();
+function clearCatalogMatch() {
+  elements.pgCatalogPicked.classList.add("hidden");
+  elements.pgCatalogPicked.replaceChildren();
 }
 
-function showSteamPicked(name) {
-  elements.pgSteamSearch.classList.add("hidden");
-  elements.pgSteamSuggest.classList.add("hidden");
-  elements.pgSteamSuggest.replaceChildren();
+function showCatalogPicked(pick) {
+  elements.pgCatalogSuggest.classList.add("hidden");
+  elements.pgCatalogSuggest.replaceChildren();
 
-  elements.pgSteamLinked.classList.remove("hidden");
+  elements.pgCatalogPicked.classList.remove("hidden");
+  const info = document.createElement("div");
+  info.className = "catalog-linked-info";
+  if (pick.coverImageUrl) {
+    const img = document.createElement("img");
+    img.src = pick.coverImageUrl;
+    img.alt = "";
+    info.append(img);
+  }
   const label = document.createElement("span");
-  label.textContent = `Linked: ${name}`;
+  label.textContent = `Matched: ${pick.name}`;
+  info.append(label);
+
   const unlink = document.createElement("button");
   unlink.type = "button";
   unlink.className = "mini-btn";
-  unlink.title = "Unlink";
+  unlink.title = "Clear match";
   unlink.textContent = "✕";
   unlink.addEventListener("click", () => {
-    pgSteamPick = null;
-    showSteamSearch();
+    pgCatalogPick = null;
+    clearCatalogMatch();
   });
-  elements.pgSteamLinked.replaceChildren(label, unlink);
+  elements.pgCatalogPicked.replaceChildren(info, unlink);
 }
 
-function renderSteamSuggestions(query) {
-  const q = query.trim().toLowerCase();
-  if (!q) {
-    elements.pgSteamSuggest.classList.add("hidden");
-    elements.pgSteamSuggest.replaceChildren();
-    return;
-  }
-  const matches = Object.entries(myOwnedGames())
-    .filter(([, name]) => name.toLowerCase().includes(q))
-    .slice(0, 8);
+function applySuggestedPlatforms(platforms) {
+  if (!platforms?.length) return;
+  elements.pgPlatforms.querySelectorAll(".platform-opt").forEach((c) => {
+    if (platforms.includes(c.dataset.platform)) paintPlatform(c, true);
+  });
+}
 
-  elements.pgSteamSuggest.classList.remove("hidden");
-  if (!matches.length) {
-    elements.pgSteamSuggest.replaceChildren(emptyState("No matches in your Steam library"));
+async function renderCatalogSuggestions(query) {
+  const q = query.trim();
+  if (q.length < 2) {
+    elements.pgCatalogSuggest.classList.add("hidden");
+    elements.pgCatalogSuggest.replaceChildren();
     return;
   }
-  elements.pgSteamSuggest.replaceChildren(
-    ...matches.map(([appid, name]) => {
+
+  const token = ++catalogSearchToken;
+  let results;
+  try {
+    results = await searchCatalog(store.services?.functions, q);
+  } catch (error) {
+    console.error("Catalog search failed", error);
+    return;
+  }
+  if (token !== catalogSearchToken) return; // a newer search superseded this one
+
+  elements.pgCatalogSuggest.classList.remove("hidden");
+  if (!results.length) {
+    elements.pgCatalogSuggest.replaceChildren(emptyState("No matches — you can still add this as a custom title"));
+    return;
+  }
+  elements.pgCatalogSuggest.replaceChildren(
+    ...results.map((game) => {
       const opt = document.createElement("button");
       opt.type = "button";
-      opt.className = "steam-suggest-item";
-      opt.textContent = name;
+      opt.className = "catalog-suggest-item";
+      if (game.coverImageUrl) {
+        const img = document.createElement("img");
+        img.src = game.coverImageUrl;
+        img.alt = "";
+        img.loading = "lazy";
+        opt.append(img);
+      }
+      opt.append(document.createTextNode(game.name));
       opt.addEventListener("click", () => {
-        pgSteamPick = { appid, name };
-        showSteamPicked(name);
+        pgCatalogPick = game;
+        elements.pgTitle.value = game.name;
+        showCatalogPicked(game);
+        applySuggestedPlatforms(game.platforms);
       });
       return opt;
     })
@@ -681,8 +710,8 @@ export function openProposeGame() {
   elements.proposeGameForm.reset();
   clearPlatformPicker();
   clearTagPicker();
-  pgSteamPick = undefined;
-  showSteamSearch();
+  pgCatalogPick = undefined;
+  clearCatalogMatch();
   elements.pgModalTitle.textContent = "Propose a game";
   elements.pgSubmitButton.textContent = "Add to roster";
   openModal("proposeGame");
@@ -702,9 +731,11 @@ export function openEditGame(game) {
   elements.pgTags.querySelectorAll(".platform-opt").forEach((c) => {
     c.classList.toggle("selected", (game.tags || []).includes(c.dataset.tag));
   });
-  pgSteamPick = undefined;
-  if (game.steamAppId) showSteamPicked(myOwnedGames()[game.steamAppId] ?? game.title);
-  else showSteamSearch();
+  pgCatalogPick = undefined;
+  const existingCoverUrl =
+    game.coverImageUrl || (game.steamAppId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.steamAppId}/header.jpg` : null);
+  if (game.catalogId || game.steamAppId) showCatalogPicked({ name: game.title, coverImageUrl: existingCoverUrl });
+  else clearCatalogMatch();
   elements.pgModalTitle.textContent = "Edit game";
   elements.pgSubmitButton.textContent = "Save changes";
   openModal("proposeGame");
@@ -741,9 +772,17 @@ export function bindGameEvents() {
     if (chip) chip.classList.toggle("selected");
   });
 
-  elements.pgSteamSearch.addEventListener("input", () => renderSteamSuggestions(elements.pgSteamSearch.value));
-  elements.pgSteamSearch.addEventListener("blur", () => {
-    setTimeout(() => elements.pgSteamSuggest.classList.add("hidden"), 150);
+  elements.pgTitle.addEventListener("input", () => {
+    if (pgCatalogPick) {
+      pgCatalogPick = null;
+      clearCatalogMatch();
+    }
+    clearTimeout(catalogSearchTimer);
+    const query = elements.pgTitle.value;
+    catalogSearchTimer = setTimeout(() => renderCatalogSuggestions(query), 350);
+  });
+  elements.pgTitle.addEventListener("blur", () => {
+    setTimeout(() => elements.pgCatalogSuggest.classList.add("hidden"), 150);
   });
 
   elements.proposeGameForm.addEventListener("submit", (event) => {
@@ -766,7 +805,7 @@ export function bindGameEvents() {
         g.players = players;
         g.platforms = platforms;
         g.tags = tags;
-        g.steamAppId = resolveSteamAppId(g.steamAppId);
+        Object.assign(g, resolveCatalogFields(g));
       });
       closeModal();
       showToast("Game updated");
@@ -777,16 +816,15 @@ export function bindGameEvents() {
       board.games.push({
         id: crypto.randomUUID(),
         title,
-        genre: "",
         variant,
         players,
         platforms,
         tags,
-        steamAppId: resolveSteamAppId(null),
         status: "maybe",
         approvals: { [store.currentUser.uid]: "up" },
         addedBy: store.currentUser.uid,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        ...resolveCatalogFields(null)
       });
     });
     closeModal();

@@ -16,7 +16,6 @@ import { renderSchedule, bindScheduleEvents } from "./features/schedule/schedule
 import { renderHeaderAvatars, bindCrewEvents } from "./features/crew/crew.js";
 import { renderChat, bindChatEvents } from "./features/chat/chat.js";
 import { renderNotifications, updateTitleBadge, notifyIncoming, bindNotificationEvents } from "./features/notifications/notifications.js";
-import { renderCommonGames, bindSteamEvents } from "./features/steam/steam.js";
 import { renderProfile, bindProfileEvents } from "./features/profile/profile.js";
 import { enablePush } from "./services/push-service.js";
 import { hydrateIcons } from "./utils/icons.js";
@@ -145,7 +144,6 @@ function renderBoard(board) {
   renderTabs();
   if (store.boardTab === "roster") {
     renderRoster(board);
-    renderCommonGames(board);
   } else {
     renderSchedule(board);
   }
@@ -268,7 +266,6 @@ function startApp() {
   bindScheduleEvents();
   bindCrewEvents();
   bindChatEvents();
-  bindSteamEvents();
   bindProfileEvents();
   bindNotificationEvents();
   setRenderHandler(renderApp);

@@ -88,9 +88,6 @@ export const elements = {
   pendingCount: $("pendingCount"),
   rejectedList: $("rejectedList"),
   rejectedCount: $("rejectedCount"),
-  steamLink: $("steamLink"),
-  commonGames: $("commonGames"),
-  commonCount: $("commonCount"),
 
   // schedule
   availabilityPresets: $("availabilityPresets"),
@@ -127,9 +124,8 @@ export const elements = {
   pgPlayers: $("pgPlayers"),
   pgPlatforms: $("pgPlatforms"),
   pgTags: $("pgTags"),
-  pgSteamSearch: $("pgSteamSearch"),
-  pgSteamSuggest: $("pgSteamSuggest"),
-  pgSteamLinked: $("pgSteamLinked"),
+  pgCatalogSuggest: $("pgCatalogSuggest"),
+  pgCatalogPicked: $("pgCatalogPicked"),
 
   // invite
   inviteBoardName: $("inviteBoardName"),
@@ -193,15 +189,6 @@ export const elements = {
   googleLinkButton: $("googleLinkButton"),
   notifPrefs: $("notifPrefs"),
   prefPlatforms: $("prefPlatforms"),
-  steamStatus: $("steamStatus"),
-  steamLinkButton: $("steamLinkButton"),
-  steamLibraryCard: $("steamLibraryCard"),
-  librarySearch: $("librarySearch"),
-  toggleHidden: $("toggleHidden"),
-  libraryViewLabel: $("libraryViewLabel"),
-  libraryGrid: $("libraryGrid"),
-  libraryPager: $("libraryPager"),
-  hiddenCount: $("hiddenCount"),
   feedbackText: $("feedbackText"),
   sendFeedbackButton: $("sendFeedbackButton"),
 

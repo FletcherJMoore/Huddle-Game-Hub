@@ -131,6 +131,8 @@ export function normalizeGame(raw) {
     platforms,
     tags,
     steamAppId: raw.steamAppId ?? null,
+    catalogId: raw.catalogId ?? null,
+    coverImageUrl: raw.coverImageUrl ?? null,
     status,
     approvals: raw.approvals ?? {},
     addedBy: raw.addedBy ?? null,
