@@ -1303,6 +1303,22 @@ option {
   margin-bottom: 30px;
 }
 
+.rotation-grid.drop-active,
+.pending-list.drop-active {
+  outline: 2px dashed var(--accent, #7c5cff);
+  outline-offset: 8px;
+  border-radius: var(--radius-md);
+}
+
+.game-card.draggable {
+  cursor: grab;
+}
+
+.game-card.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
 .game-card {
   background: var(--surface-card);
   border: 1px solid var(--surface-border);

@@ -144,6 +144,50 @@ function voteButton(item, kind) {
   return btn;
 }
 
+// ---------- manual drag and drop between rotation / pending ----------
+// Lets a crew that already knows what it wants skip the vote flow entirely.
+function makeDraggable(card, item) {
+  if (!canEdit()) return;
+  card.draggable = true;
+  card.classList.add("draggable");
+  card.addEventListener("dragstart", (event) => {
+    event.dataTransfer.setData("text/plain", item.id);
+    event.dataTransfer.effectAllowed = "move";
+    card.classList.add("dragging");
+  });
+  card.addEventListener("dragend", () => card.classList.remove("dragging"));
+}
+
+function moveGame(gameId, targetStatus, targetLabel) {
+  const board = activeBoard();
+  const game = board?.games.find((g) => g.id === gameId);
+  if (!game || game.status === targetStatus) return;
+  updateActiveBoard((b) => {
+    const g = b.games.find((x) => x.id === gameId);
+    if (g) g.status = targetStatus;
+  });
+  showToast(`${game.title} moved to ${targetLabel}`);
+}
+
+function bindDropZone(el, targetStatus, targetLabel) {
+  el.addEventListener("dragover", (event) => {
+    if (!canEdit()) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    el.classList.add("drop-active");
+  });
+  el.addEventListener("dragleave", (event) => {
+    if (event.target === el) el.classList.remove("drop-active");
+  });
+  el.addEventListener("drop", (event) => {
+    event.preventDefault();
+    el.classList.remove("drop-active");
+    if (!canEdit()) return;
+    const gameId = event.dataTransfer.getData("text/plain");
+    if (gameId) moveGame(gameId, targetStatus, targetLabel);
+  });
+}
+
 function miniBtn(iconName, title, onClick) {
   const b = document.createElement("button");
   b.type = "button";
@@ -172,7 +216,7 @@ function setVote(gameId, kind) {
 // ---------- render ----------
 export function renderRoster(board) {
   const need = majority(board);
-  elements.rosterSubtitle.textContent = `Majority of ${memberIdsOf(board).length} (${need} votes) moves a game into rotation.`;
+  elements.rosterSubtitle.textContent = `Majority of ${memberIdsOf(board).length} (${need} votes) moves a game into rotation — or drag a card to place it directly.`;
 
   const rotation = board.games.filter((g) => g.status === "rotation");
   const pending = board.games.filter((g) => g.status === "maybe");
@@ -315,6 +359,7 @@ function rotationCard(board, item) {
 
   body.append(details, foot);
   card.append(coverWrap, body);
+  makeDraggable(card, item);
   return card;
 }
 function pendingCard(board, item) {
@@ -408,6 +453,7 @@ function pendingCard(board, item) {
   }
 
   card.append(prog);
+  makeDraggable(card, item);
   return card;
 }
 function rejectedCard(item) {
@@ -677,6 +723,9 @@ function deleteGame(id) {
 export function bindGameEvents() {
   renderPlatformPicker();
   renderTagPicker();
+
+  bindDropZone(elements.rotationList, "rotation", "In Rotation");
+  bindDropZone(elements.pendingList, "maybe", "Pending Vote");
 
   elements.spinButton.addEventListener("click", spinWheel);
   elements.proposeGameButton.addEventListener("click", openProposeGame);

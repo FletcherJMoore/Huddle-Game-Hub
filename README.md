@@ -28,6 +28,7 @@ The app expects:
 - `VITE_FIREBASE_STORAGE_BUCKET`
 - `VITE_FIREBASE_MESSAGING_SENDER_ID`
 - `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_VAPID_KEY` (Web Push certificate, from Project Settings → Cloud Messaging, used for push notifications)
 
 ## Firebase
 
