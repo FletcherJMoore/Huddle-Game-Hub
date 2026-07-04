@@ -1828,18 +1828,62 @@ option {
   border-radius: 999px;
 }
 
-.session-row {
+.session-when {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.session-options {
+  margin-top: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-option {
   display: flex;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
   align-items: center;
+  padding: 10px 12px;
+  background: var(--page);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
 }
 
-.session-when {
+.session-option.top {
+  border-color: rgba(86, 211, 100, 0.3);
+}
+
+.session-option-info {
+  min-width: 0;
+}
+
+.session-option-title {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.session-option-by {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.session-counter {
+  margin-top: 10px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.session-counter select {
+  flex: 1;
+  min-width: 160px;
 }
 
 .session-date {
@@ -3041,7 +3085,7 @@ button {
 @media (max-width: 759px) {
   .board-head,
   .content-head,
-  .session-row {
+  .session-option {
     align-items: flex-start;
   }
   .board-head,

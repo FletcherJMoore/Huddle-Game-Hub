@@ -6,6 +6,7 @@ import { elements } from "../../state/dom.js";
 import { canEditBoard, memberIdsOf, plainName, avatarColor, photoURLFor, displayName } from "../boards/board-model.js";
 import { initialsFor, timeLabel, sessionTimeLabel, formatShortDate, sortSchedule } from "../../utils/format.js";
 import { emptyState } from "../../components/empty-state.js";
+import { sessionLabel } from "../schedule/schedule.js";
 
 let lastThreadBoardId = null;
 
@@ -146,7 +147,7 @@ export function bindChatEvents() {
     const board = activeBoard();
     const next = sortSchedule(board?.schedule ?? [])[0];
     const text = next
-      ? `📅 Next session: ${formatShortDate(next.date)} · ${sessionTimeLabel(next.start, next.end)} — ${next.activity || "Game night"}`
+      ? `📅 Next session: ${formatShortDate(next.date)} · ${sessionTimeLabel(next.start, next.end)} — ${sessionLabel(board, next)}`
       : "📅 No session scheduled yet — propose a time!";
     postMessage(text, { system: true });
   });

@@ -17,7 +17,7 @@ import {
 } from "../../services/auth-service.js";
 import { uploadAvatar } from "../../services/storage-service.js";
 import { getPrefs, savePrefs, NOTIF_PREFS } from "../../utils/prefs.js";
-import { PLATFORMS, ACCENT_OPTIONS } from "../../utils/constants.js";
+import { PLATFORMS, ACCENT_OPTIONS, DAYS_OF_WEEK, TIME_OF_DAY } from "../../utils/constants.js";
 
 const NAV = [
   { tab: "profile", icon: "👤", label: "Profile & status", title: "Profile & status", sub: "How the rest of your crew sees you." },
@@ -100,6 +100,7 @@ export function renderProfile() {
   renderAccountTab();
   renderNotifPrefs();
   renderPlatformPrefs();
+  renderSchedulePrefs();
   renderAccentPicker();
   applyTab();
 }
@@ -160,28 +161,51 @@ function renderNotifPrefs() {
   );
 }
 
+// Shared multi-select chip row used for platforms, best days, and best times.
+function renderChipPicker(el, options, selected, onToggle) {
+  el.replaceChildren(
+    ...options.map((opt) => {
+      const sel = selected.includes(opt);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.style.cssText = `font-size:13px;font-weight:600;padding:8px 14px;border-radius:9px;cursor:pointer;background:${sel ? "#7c5cff1a" : "#15161f"};border:1px solid ${sel ? "var(--accent,#7c5cff)" : "#2a2c3d"};color:${sel ? "var(--accent,#7c5cff)" : "#8b8da3"};`;
+      btn.textContent = opt;
+      btn.addEventListener("click", () => onToggle(opt));
+      return btn;
+    })
+  );
+}
+
 function renderPlatformPrefs() {
   const uid = store.currentUser?.uid;
   if (!uid) return;
   const prefs = getPrefs(uid);
-  elements.prefPlatforms.replaceChildren(
-    ...PLATFORMS.map((p) => {
-      const sel = prefs.platforms.includes(p);
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.style.cssText = `font-size:13px;font-weight:600;padding:8px 14px;border-radius:9px;cursor:pointer;background:${sel ? "#7c5cff1a" : "#15161f"};border:1px solid ${sel ? "var(--accent,#7c5cff)" : "#2a2c3d"};color:${sel ? "var(--accent,#7c5cff)" : "#8b8da3"};`;
-      btn.textContent = p;
-      btn.addEventListener("click", () => {
-        const cur = getPrefs(uid);
-        const platforms = cur.platforms.includes(p)
-          ? cur.platforms.filter((x) => x !== p)
-          : [...cur.platforms, p];
-        savePrefs(uid, { platforms });
-        renderPlatformPrefs();
-      });
-      return btn;
-    })
-  );
+  renderChipPicker(elements.prefPlatforms, PLATFORMS, prefs.platforms, (p) => {
+    const cur = getPrefs(uid);
+    const platforms = cur.platforms.includes(p) ? cur.platforms.filter((x) => x !== p) : [...cur.platforms, p];
+    savePrefs(uid, { platforms });
+    renderPlatformPrefs();
+  });
+}
+
+// Personal "when I'm usually free" preference — self-facing only, same local
+// storage as platforms/status (not synced to other members).
+function renderSchedulePrefs() {
+  const uid = store.currentUser?.uid;
+  if (!uid) return;
+  const prefs = getPrefs(uid);
+  renderChipPicker(elements.prefBestDays, DAYS_OF_WEEK, prefs.bestDays, (day) => {
+    const cur = getPrefs(uid);
+    const bestDays = cur.bestDays.includes(day) ? cur.bestDays.filter((x) => x !== day) : [...cur.bestDays, day];
+    savePrefs(uid, { bestDays });
+    renderSchedulePrefs();
+  });
+  renderChipPicker(elements.prefBestTimes, TIME_OF_DAY, prefs.bestTimes, (time) => {
+    const cur = getPrefs(uid);
+    const bestTimes = cur.bestTimes.includes(time) ? cur.bestTimes.filter((x) => x !== time) : [...cur.bestTimes, time];
+    savePrefs(uid, { bestTimes });
+    renderSchedulePrefs();
+  });
 }
 
 // Personal accent color: overrides the current board's accent everywhere in

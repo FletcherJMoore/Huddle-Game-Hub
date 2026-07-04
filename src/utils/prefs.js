@@ -14,7 +14,9 @@ const DEFAULTS = {
   notif: { sessionProposed: true, voteNeeded: true, mentions: true, rotation: false },
   platforms: [],
   status: "",
-  accentOverride: null
+  accentOverride: null,
+  bestDays: [],
+  bestTimes: []
 };
 
 function readAll() {
@@ -32,7 +34,9 @@ export function getPrefs(uid) {
     notif: { ...DEFAULTS.notif, ...(mine.notif ?? {}) },
     platforms: Array.isArray(mine.platforms) ? mine.platforms : [],
     status: typeof mine.status === "string" ? mine.status : "",
-    accentOverride: typeof mine.accentOverride === "string" ? mine.accentOverride : null
+    accentOverride: typeof mine.accentOverride === "string" ? mine.accentOverride : null,
+    bestDays: Array.isArray(mine.bestDays) ? mine.bestDays : [],
+    bestTimes: Array.isArray(mine.bestTimes) ? mine.bestTimes : []
   };
 }
 

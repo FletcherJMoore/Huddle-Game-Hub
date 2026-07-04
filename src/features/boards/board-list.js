@@ -24,6 +24,7 @@ import {
 import { openModal, closeModal, openBoard, goDashboard, showToast } from "../shell/shell.js";
 import { icon } from "../../utils/icons.js";
 import { emptyState } from "../../components/empty-state.js";
+import { sessionLabel } from "../schedule/schedule.js";
 
 // Shared board icon renderer: an uploaded photo if the board has one,
 // otherwise its emoji glyph — same fallback pattern as avatarEl().
@@ -243,7 +244,7 @@ function renderUpcoming() {
   store.state.boards.forEach((board) => {
     sortSchedule(board.schedule ?? [])
       .filter((s) => s.date >= today)
-      .forEach((s) => rows.push({ session: s, boardId: board.id, boardName: board.name, boardEmoji: board.emoji }));
+      .forEach((s) => rows.push({ session: s, board, boardId: board.id, boardName: board.name, boardEmoji: board.emoji }));
   });
   rows.sort((a, b) => `${a.session.date}T${a.session.start}`.localeCompare(`${b.session.date}T${b.session.start}`));
   const top = rows.slice(0, 5);
@@ -264,7 +265,7 @@ function renderUpcoming() {
   }
 
   elements.upcomingList.replaceChildren(
-    ...top.map(({ session, boardId, boardName, boardEmoji }) => {
+    ...top.map(({ session, board, boardId, boardName, boardEmoji }) => {
       const row = document.createElement("button");
       row.type = "button";
       row.className = "upcoming-row";
@@ -282,7 +283,7 @@ function renderUpcoming() {
       const meta = document.createElement("div");
       meta.className = "upcoming-meta";
       const title = document.createElement("strong");
-      title.textContent = session.activity || "Game night";
+      title.textContent = sessionLabel(board, session);
       const sub = document.createElement("span");
       sub.textContent = `${boardEmoji} ${boardName} · ${sessionTimeLabel(session.start, session.end)}`;
       meta.append(title, sub);

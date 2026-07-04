@@ -34,3 +34,7 @@ export const ASSIGNABLE_ROLES = ["editor", "member"];
 
 export const STORAGE_KEY = "huddle-state-v2";
 
+// Personal "best days/times to play" preference options (Profile & status tab).
+export const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const TIME_OF_DAY = ["Morning", "Afternoon", "Evening", "Late Night"];
+

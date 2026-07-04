@@ -307,6 +307,8 @@
                 <input id="ptEnd" type="time" required />
               </div>
             </div>
+            <label for="ptGame">Game <span class="optional">(optional)</span></label>
+            <select id="ptGame"></select>
             <label for="ptLabel">Note <span class="optional">(optional)</span></label>
             <input id="ptLabel" type="text" placeholder="e.g. Helldivers raid night" maxlength="60" />
             <div class="modal-actions">
@@ -373,6 +375,10 @@
               <input id="profileStatusInput" type="text" maxlength="60" placeholder="What are you up to?" />
               <label>Favorite platforms</label>
               <div class="platform-picker" id="prefPlatforms"></div>
+              <label>Best days to play</label>
+              <div class="platform-picker" id="prefBestDays"></div>
+              <label>Best times to play</label>
+              <div class="platform-picker" id="prefBestTimes"></div>
               <button class="btn btn-accent" id="saveProfileButton" type="button">Save changes</button>
               <p class="field-feedback hidden" id="profileFeedback" role="status"></p>
             </div>

@@ -140,14 +140,31 @@ export function normalizeGame(raw) {
   };
 }
 
+// A session is a proposed time slot holding one or more game "options",
+// each independently votable — this is how counter-offering a different game
+// at the same time works. Older sessions only ever had a single flat `votes`
+// map with no game attached; wrap that into one default option so existing
+// votes survive untouched.
+function normalizeOption(raw) {
+  return {
+    id: raw.id ?? crypto.randomUUID(),
+    gameId: raw.gameId ?? null,
+    addedBy: raw.addedBy ?? null,
+    votes: raw.votes ?? {}
+  };
+}
+
 export function normalizeSession(raw) {
+  const options = Array.isArray(raw.options)
+    ? raw.options.map(normalizeOption)
+    : [normalizeOption({ gameId: raw.gameId, votes: raw.votes })];
   return {
     id: raw.id ?? crypto.randomUUID(),
     date: raw.date ?? "",
     start: raw.start ?? "",
     end: raw.end ?? "",
     activity: raw.activity ?? "",
-    votes: raw.votes ?? {}
+    options
   };
 }
 

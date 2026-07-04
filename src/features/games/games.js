@@ -16,7 +16,7 @@ import { openModal, closeModal, showToast } from "../shell/shell.js";
 import { icon } from "../../utils/icons.js";
 import { avatarEl } from "../boards/board-list.js";
 import { searchCatalog } from "../../services/games-catalog-service.js";
-import { addToCalendar } from "../schedule/schedule.js";
+import { addToCalendar, sessionLabel, topOption } from "../schedule/schedule.js";
 
 export function countVotes(item, kind) {
   return Object.values(item.approvals ?? {}).filter((v) => v === kind).length;
@@ -235,7 +235,8 @@ function renderDecisionPanel(board, rotation, pending) {
   const topGame = [...rotation, ...pending]
     .sort((a, b) => approvalScore(b) - approvalScore(a) || (a.title || "").localeCompare(b.title || ""))[0];
   const next = nextSession(board);
-  const available = next ? Object.values(next.votes ?? {}).filter((vote) => vote === "yes").length : 0;
+  const nextTopOption = next ? topOption(next) : null;
+  const available = nextTopOption ? Object.values(nextTopOption.votes ?? {}).filter((vote) => vote === "yes").length : 0;
 
   const intro = document.createElement("div");
   intro.className = "decision-copy";
@@ -246,7 +247,7 @@ function renderDecisionPanel(board, rotation, pending) {
   title.textContent = topGame ? topGame.title : "No front-runner yet";
   const meta = document.createElement("p");
   meta.textContent = next
-    ? `${next.activity || "Game night"} · ${next.date} · ${next.start || "time TBD"}`
+    ? `${sessionLabel(board, next)} · ${next.date} · ${next.start || "time TBD"}`
     : "Pick a game and propose a time to get the crew moving.";
   intro.append(eyebrow, title, meta);
 
@@ -270,7 +271,7 @@ function renderDecisionPanel(board, rotation, pending) {
   calendar.className = "btn btn-surface";
   calendar.disabled = !next;
   calendar.append(icon("calendar", { size: 16 }), document.createTextNode("Calendar"));
-  calendar.addEventListener("click", () => addToCalendar(next));
+  calendar.addEventListener("click", () => addToCalendar(board, next));
   const confirm = document.createElement("button");
   confirm.type = "button";
   confirm.className = "btn btn-accent";

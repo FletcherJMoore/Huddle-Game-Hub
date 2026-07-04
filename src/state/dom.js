@@ -142,6 +142,7 @@ export const elements = {
   ptDate: $("ptDate"),
   ptStart: $("ptStart"),
   ptEnd: $("ptEnd"),
+  ptGame: $("ptGame"),
   ptLabel: $("ptLabel"),
 
   // create board
@@ -190,6 +191,8 @@ export const elements = {
   googleLinkButton: $("googleLinkButton"),
   notifPrefs: $("notifPrefs"),
   prefPlatforms: $("prefPlatforms"),
+  prefBestDays: $("prefBestDays"),
+  prefBestTimes: $("prefBestTimes"),
   feedbackText: $("feedbackText"),
   sendFeedbackButton: $("sendFeedbackButton"),
 
