@@ -1,4 +1,4 @@
-// Pure formatting and sorting helpers.
+﻿// Pure formatting and sorting helpers.
 
 export function formatShortDate(dateString) {
   if (!dateString) return "";
@@ -25,7 +25,7 @@ export function formatTime12(hhmm) {
 
 export function sessionTimeLabel(start, end) {
   if (!start) return "";
-  return end ? `${formatTime12(start)} – ${formatTime12(end)}` : formatTime12(start);
+  return end ? `${formatTime12(start)} - ${formatTime12(end)}` : formatTime12(start);
 }
 
 // Day-of-week abbreviation ("FRI") for a yyyy-mm-dd string.
@@ -51,3 +51,4 @@ export function initialsFor(name) {
       .join("") || "?"
   );
 }
+

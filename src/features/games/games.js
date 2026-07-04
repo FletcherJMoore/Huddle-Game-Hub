@@ -1,4 +1,4 @@
-import { store, activeBoard, updateActiveBoard } from "../../state/store.js";
+﻿import { store, activeBoard, updateActiveBoard } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
 import { PLATFORMS, GAME_TAGS } from "../../utils/constants.js";
 import {
@@ -15,6 +15,7 @@ import { openModal, closeModal, showToast } from "../shell/shell.js";
 import { icon } from "../../utils/icons.js";
 import { avatarEl } from "../boards/board-list.js";
 import { myOwnedGames, ownersOf } from "../steam/steam.js";
+import { addToCalendar } from "../schedule/schedule.js";
 
 export function countVotes(item, kind) {
   return Object.values(item.approvals ?? {}).filter((v) => v === kind).length;
@@ -56,7 +57,7 @@ function coverInner(item, markSize) {
       el.replaceChildren();
       el.style.background = avatarColor(item.title);
       el.textContent = initialsFor(item.title);
-      if (size) el.style.fontSize = size;
+      if (markSize) el.style.fontSize = markSize;
     });
     el.append(img);
     return el;
@@ -64,6 +65,15 @@ function coverInner(item, markSize) {
   el.style.background = avatarColor(item.title);
   el.textContent = initialsFor(item.title);
   return el;
+}
+
+function variantChip(item, size) {
+  if (!item.variant) return null;
+  const chip = document.createElement("span");
+  chip.className = "variant-chip";
+  chip.style.fontSize = size;
+  chip.textContent = item.variant;
+  return chip;
 }
 
 function platformBadges(item) {
@@ -123,30 +133,23 @@ function nameRow(item) {
   return row;
 }
 
-function voteButton(item, kind, glyph, big) {
+function voteButton(item, kind) {
   const btn = document.createElement("button");
   btn.type = "button";
   const mine = item.approvals?.[store.currentUser?.uid] === kind;
-  const tone = kind === "up" ? "#56d364" : "#ff5c7c";
-  const on = mine
-    ? `background:${tone}22;border:1px solid ${tone}55;color:${tone};`
-    : "background:#15161f;border:1px solid #2a2c3d;color:#8b8da3;";
-  const pad = big ? "7px 13px" : "5px 9px";
-  const fs = big ? "13px" : "12px";
-  btn.style.cssText = `display:flex;align-items:center;gap:5px;border-radius:${big ? "9px" : "8px"};padding:${pad};font-size:${fs};font-weight:700;cursor:pointer;${on}`;
-  btn.textContent = `${glyph} ${countVotes(item, kind)}`;
+  btn.className = `vote-btn ${kind} ${mine ? "on" : ""}`;
+  btn.append(icon(kind === "up" ? "thumbs-up" : "thumbs-down", { size: 14 }), document.createTextNode(String(countVotes(item, kind))));
   if (canEdit()) btn.addEventListener("click", () => setVote(item.id, kind));
   else btn.disabled = true;
   return btn;
 }
 
-function miniBtn(glyph, title, onClick) {
+function miniBtn(iconName, title, onClick) {
   const b = document.createElement("button");
   b.type = "button";
   b.title = title;
-  b.style.cssText =
-    "background:none;border:none;color:#5a5c72;font-size:13px;cursor:pointer;padding:2px 4px;";
-  b.textContent = glyph;
+  b.className = "mini-btn";
+  b.append(icon(iconName, { size: 13 }));
   b.addEventListener("click", (e) => {
     e.stopPropagation();
     onClick();
@@ -178,95 +181,158 @@ export function renderRoster(board) {
   elements.rotationCount.textContent = String(rotation.length);
   elements.pendingCount.textContent = String(pending.length);
   elements.rejectedCount.textContent = String(rejected.length);
+  renderDecisionPanel(board, rotation, pending);
 
   elements.rotationList.replaceChildren(
-    ...(rotation.length ? rotation.map((g) => rotationCard(g)) : [emptyState("Nothing agreed yet")])
+    ...(rotation.length
+      ? rotation.map((g) => rotationCard(board, g))
+      : [emptyState("Nothing agreed yet", [{ label: "Propose a game", variant: "primary", onClick: openProposeGame }])])
   );
   elements.pendingList.replaceChildren(
-    ...(pending.length ? pending.map((g) => pendingCard(board, g)) : [emptyState("No games up for a vote")])
+    ...(pending.length
+      ? pending.map((g) => pendingCard(board, g))
+      : [emptyState("No games up for a vote", [{ label: "Add the first game", variant: "primary", onClick: openProposeGame }])])
   );
   elements.rejectedList.replaceChildren(
     ...(rejected.length ? rejected.map((g) => rejectedCard(g)) : [emptyState("No hard passes")])
   );
 }
 
-function rotationCard(item) {
+function renderDecisionPanel(board, rotation, pending) {
+  const topGame = [...rotation, ...pending]
+    .sort((a, b) => approvalScore(b) - approvalScore(a) || (a.title || "").localeCompare(b.title || ""))[0];
+  const next = nextSession(board);
+  const available = next ? Object.values(next.votes ?? {}).filter((vote) => vote === "yes").length : 0;
+
+  const intro = document.createElement("div");
+  intro.className = "decision-copy";
+  const eyebrow = document.createElement("span");
+  eyebrow.className = "eyebrow accent";
+  eyebrow.textContent = "Tonight";
+  const title = document.createElement("strong");
+  title.textContent = topGame ? topGame.title : "No front-runner yet";
+  const meta = document.createElement("p");
+  meta.textContent = next
+    ? `${next.activity || "Game night"} · ${next.date} · ${next.start || "time TBD"}`
+    : "Pick a game and propose a time to get the crew moving.";
+  intro.append(eyebrow, title, meta);
+
+  const stats = document.createElement("div");
+  stats.className = "decision-stats";
+  stats.append(
+    decisionStat("Top votes", topGame ? String(countVotes(topGame, "up")) : "0"),
+    decisionStat("Available", next ? String(available) : "0"),
+    decisionStat("Needs votes", String(pending.length))
+  );
+
+  const actions = document.createElement("div");
+  actions.className = "decision-actions";
+  const spin = document.createElement("button");
+  spin.type = "button";
+  spin.className = "btn btn-surface";
+  spin.append(icon("dices", { size: 16 }), document.createTextNode("Random pick"));
+  spin.addEventListener("click", spinWheel);
+  const calendar = document.createElement("button");
+  calendar.type = "button";
+  calendar.className = "btn btn-surface";
+  calendar.disabled = !next;
+  calendar.append(icon("calendar", { size: 16 }), document.createTextNode("Calendar"));
+  calendar.addEventListener("click", () => addToCalendar(next));
+  const confirm = document.createElement("button");
+  confirm.type = "button";
+  confirm.className = "btn btn-accent";
+  confirm.disabled = !topGame;
+  confirm.append(icon("check", { size: 16 }), document.createTextNode("Playing tonight"));
+  confirm.addEventListener("click", () => confirmTonight(topGame));
+  const reminder = document.createElement("button");
+  reminder.type = "button";
+  reminder.className = "btn btn-ghost";
+  reminder.disabled = !topGame && !next;
+  reminder.append(icon("bell", { size: 16 }), document.createTextNode("Reminder"));
+  reminder.addEventListener("click", () => sendReminder(topGame, next));
+  actions.append(spin, calendar, reminder, confirm);
+
+  elements.decisionPanel.replaceChildren(intro, stats, actions);
+}
+
+function decisionStat(label, value) {
+  const stat = document.createElement("span");
+  stat.className = "decision-stat";
+  const num = document.createElement("b");
+  num.textContent = value;
+  const txt = document.createElement("small");
+  txt.textContent = label;
+  stat.append(num, txt);
+  return stat;
+}
+
+function nextSession(board) {
+  const today = new Date().toISOString().slice(0, 10);
+  return [...(board.schedule ?? [])]
+    .filter((session) => `${session.date}` >= today)
+    .sort((a, b) => `${a.date}T${a.start || ""}`.localeCompare(`${b.date}T${b.start || ""}`))[0];
+}
+
+function rotationCard(board, item) {
   const card = document.createElement("div");
-  card.style.cssText = "background:#13141d;border:1px solid #56d36426;border-radius:14px;overflow:hidden;";
+  card.className = "game-card rotation";
 
   const coverWrap = document.createElement("div");
-  coverWrap.style.cssText = "position:relative;height:106px;background:#0b0c12;";
+  coverWrap.className = "game-hero";
   coverWrap.append(coverInner(item, "36px"));
   const overlay = document.createElement("div");
-  overlay.style.cssText = "position:absolute;inset:0;background:linear-gradient(180deg,rgba(19,20,29,0) 45%,#13141d 100%);";
+  overlay.className = "game-hero-fade";
   coverWrap.append(overlay);
 
   const body = document.createElement("div");
-  body.style.cssText = "padding:12px 14px 13px;";
-
-  const titleRow = document.createElement("div");
-  titleRow.style.cssText = "display:flex;align-items:center;gap:6px;flex-wrap:wrap;";
-  const name = document.createElement("span");
-  name.style.cssText = "font-weight:700;font-size:14.5px;";
-  name.textContent = item.title;
-  titleRow.append(name);
-  const chip = variantChip(item, "10px");
-  if (chip) titleRow.append(chip);
+  body.className = "game-body";
 
   const meta = document.createElement("div");
-  meta.style.cssText = "font-size:11.5px;color:#6b6d85;margin-top:3px;margin-bottom:12px;";
+  meta.className = "game-meta";
   meta.textContent = gameMeta(item);
-  info.append(nameRow(item), meta);
+
+  const details = document.createElement("div");
+  details.append(nameRow(item), meta);
   const badges = platformBadges(item);
-  if (badges) info.append(badges);
+  if (badges) details.append(badges);
   const tags = tagChips(item);
-  if (tags) info.append(tags);
+  if (tags) details.append(tags);
   const owned = ownedByAvatars(board, item);
-  if (owned) info.append(owned);
-  top.append(cover(item), info);
+  if (owned) details.append(owned);
 
   const foot = document.createElement("div");
-  foot.style.cssText = "display:flex;align-items:center;justify-content:space-between;";
+  foot.className = "game-foot";
   const agreed = document.createElement("span");
-  agreed.style.cssText = "font-size:11.5px;color:#56d364;font-weight:600;";
-  agreed.textContent = "✓ Agreed by the crew";
+  agreed.className = "agreed";
+  agreed.append(icon("check", { size: 13 }), document.createTextNode("Agreed by the crew"));
   const votes = document.createElement("div");
-  votes.style.cssText = "display:flex;gap:6px;align-items:center;";
-  votes.append(voteButton(item, "up", "▲", false), voteButton(item, "down", "▼", false));
+  votes.className = "vote-row";
+  votes.append(voteButton(item, "up"), voteButton(item, "down"));
   if (canEdit()) {
-    votes.append(miniBtn("✎", "Edit game", () => openEditGame(item)), miniBtn("✕", "Delete game", () => deleteGame(item.id)));
+    votes.append(miniBtn("pencil", "Edit game", () => openEditGame(item)), miniBtn("x", "Delete game", () => deleteGame(item.id)));
   }
   foot.append(agreed, votes);
 
-  body.append(titleRow, meta, foot);
+  body.append(details, foot);
   card.append(coverWrap, body);
   return card;
 }
-
 function pendingCard(board, item) {
   const card = document.createElement("div");
-  card.style.cssText = "background:#13141d;border:1px solid #ffb13d2e;border-radius:14px;padding:16px;";
+  card.className = "game-card pending";
 
   const top = document.createElement("div");
-  top.style.cssText = "display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;";
+  top.className = "pending-top";
 
   const left = document.createElement("div");
-  left.style.cssText = "display:flex;gap:13px;flex:1;min-width:230px;";
+  left.className = "pending-id";
   const cover = document.createElement("div");
-  cover.style.cssText = "width:92px;height:54px;border-radius:9px;overflow:hidden;flex-shrink:0;background:#0b0c12;";
+  cover.className = "pending-cover";
   cover.append(coverInner(item, "22px"));
   const info = document.createElement("div");
-  info.style.cssText = "min-width:0;";
-  const titleRow = document.createElement("div");
-  titleRow.style.cssText = "display:flex;align-items:center;gap:7px;flex-wrap:wrap;";
-  const name = document.createElement("span");
-  name.style.cssText = "font-weight:700;font-size:15.5px;";
-  name.textContent = item.title;
-  titleRow.append(name);
-  const chip = variantChip(item, "10.5px");
-  if (chip) titleRow.append(chip);
+  info.className = "game-info";
   const meta = document.createElement("div");
-  meta.style.cssText = "font-size:12px;color:#8b8da3;margin-top:4px;";
+  meta.className = "game-meta";
   meta.textContent = gameMeta(item);
   info.append(nameRow(item), meta);
   const badges = platformBadges(item);
@@ -285,48 +351,47 @@ function pendingCard(board, item) {
   left.append(cover, info);
 
   const right = document.createElement("div");
-  right.style.cssText = "display:flex;flex-direction:column;align-items:flex-end;gap:9px;min-width:150px;";
+  right.className = "pending-actions";
   const voteRow = document.createElement("div");
-  voteRow.style.cssText = "display:flex;gap:8px;align-items:center;";
-  voteRow.append(voteButton(item, "up", "👍", true), voteButton(item, "down", "👎", true));
+  voteRow.className = "vote-row";
+  voteRow.append(voteButton(item, "up"), voteButton(item, "down"));
   if (canEdit()) {
-    voteRow.append(miniBtn("✎", "Edit game", () => openEditGame(item)), miniBtn("✕", "Delete game", () => deleteGame(item.id)));
+    voteRow.append(miniBtn("pencil", "Edit game", () => openEditGame(item)), miniBtn("x", "Delete game", () => deleteGame(item.id)));
   }
   right.append(voteRow);
 
   top.append(left, right);
   card.append(top);
 
-  // progress
   const need = majority(board);
   const up = countVotes(item, "up");
   const prog = document.createElement("div");
-  prog.style.cssText = "margin-top:14px;";
+  prog.className = "progress-wrap";
   const head = document.createElement("div");
-  head.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;";
+  head.className = "progress-head";
   const lbl = document.createElement("span");
   lbl.className = "lbl";
   lbl.textContent = up >= need ? "Ready for rotation" : `Needs ${need - up} more yes vote${need - up === 1 ? "" : "s"}`;
   const req = document.createElement("span");
-  req.style.cssText = "font-size:11px;color:#6b6d85;";
+  req.className = "req";
   req.textContent = `${up} / ${need} needed`;
   head.append(lbl, req);
   const track = document.createElement("div");
-  track.style.cssText = "height:7px;border-radius:4px;background:#0b0c12;overflow:hidden;";
+  track.className = "progress-track";
   const fill = document.createElement("div");
-  fill.style.cssText = `height:100%;width:${Math.min(100, (up / need) * 100)}%;background:linear-gradient(90deg,#ffb13d,#56d364);border-radius:4px;transition:width .3s;`;
+  fill.className = "progress-fill";
+  fill.style.width = `${Math.min(100, (up / need) * 100)}%`;
   track.append(fill);
   prog.append(head, track);
 
   const waiting = memberIdsOf(board).filter((uid) => item.approvals?.[uid] === undefined);
   if (waiting.length) {
     const row = document.createElement("div");
-    row.style.cssText = "display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap;";
+    row.className = "waiting-row";
     const txt = document.createElement("span");
-    txt.style.cssText = "font-size:11.5px;color:#6b6d85;";
     txt.textContent = "Still waiting on";
     const avs = document.createElement("div");
-    avs.style.cssText = "display:flex;";
+    avs.className = "avs";
     waiting.slice(0, 4).forEach((uid) => {
       avs.append(avatarEl(uid, plainName(board, uid), "av"));
     });
@@ -334,9 +399,8 @@ function pendingCard(board, item) {
     if (canEdit()) {
       const nudge = document.createElement("button");
       nudge.type = "button";
-      nudge.style.cssText =
-        "font-size:11px;font-weight:600;color:var(--accent,#7c5cff);background:#7c5cff14;border:1px solid #7c5cff33;border-radius:7px;padding:4px 9px;cursor:pointer;margin-left:2px;";
-      nudge.textContent = "🔔 Nudge";
+      nudge.className = "nudge-btn";
+      nudge.append(icon("bell", { size: 12 }), document.createTextNode("Nudge"));
       nudge.addEventListener("click", () => nudgeCrew(item));
       row.append(nudge);
     }
@@ -346,13 +410,11 @@ function pendingCard(board, item) {
   card.append(prog);
   return card;
 }
-
 function rejectedCard(item) {
   const card = document.createElement("div");
-  card.style.cssText =
-    "background:#101019;border:1px solid #ffffff08;border-radius:11px;padding:9px 13px;display:flex;align-items:center;gap:10px;opacity:.6;";
+  card.className = "rejected-card";
   const name = document.createElement("span");
-  name.style.cssText = "font-weight:600;font-size:13px;text-decoration:line-through;color:#a3a5bb;";
+  name.className = "name";
   name.textContent = item.title;
   card.append(name);
   const chip = variantChip(item, "10px");
@@ -362,22 +424,21 @@ function rejectedCard(item) {
     card.append(chip);
   }
   const down = document.createElement("span");
-  down.style.cssText = "font-size:11px;color:#ff5c7c;";
-  down.textContent = `👎 ${countVotes(item, "down")}`;
+  down.className = "down";
+  down.append(icon("thumbs-down", { size: 12 }), document.createTextNode(String(countVotes(item, "down"))));
   card.append(down);
   if (canEdit()) {
     const revive = document.createElement("button");
     revive.type = "button";
-    revive.title = "Revive — vote yes";
-    revive.style.cssText = "font-size:11px;color:#8b8da3;background:none;border:none;cursor:pointer;";
-    revive.textContent = "↺ revive";
+    revive.title = "Revive - vote yes";
+    revive.className = "revive-btn";
+    revive.append(icon("rotate-ccw", { size: 12 }), document.createTextNode("revive"));
     revive.addEventListener("click", () => setVote(item.id, "up"));
     card.append(revive);
-    card.append(miniBtn("✕", "Delete game", () => deleteGame(item.id)));
+    card.append(miniBtn("x", "Delete game", () => deleteGame(item.id)));
   }
   return card;
 }
-
 function nudgeCrew(item) {
   updateActiveBoard((board) => {
     board.messages = board.messages ?? [];
@@ -385,7 +446,7 @@ function nudgeCrew(item) {
       id: crypto.randomUUID(),
       author: "Huddle Game Hub",
       authorUid: null,
-      text: `🔔 ${displayName()} nudged the crew to vote on ${item.title}.`,
+      text: `${displayName()} nudged the crew to vote on ${item.title}.`,
       createdAt: new Date().toISOString()
     });
   });
@@ -405,13 +466,43 @@ function spinWheel() {
   elements.wheelResult.replaceChildren();
   const spark = icon("dices", { size: 22 });
   const text = document.createElement("span");
-  text.style.fontSize = "14px";
   text.append(document.createTextNode("The wheel says... "));
   const b = document.createElement("b");
-  b.style.cssText = "color:var(--accent,#7c5cff);font-weight:700;";
   b.textContent = pick.title;
   text.append(b, document.createTextNode(" tonight!"));
   elements.wheelResult.append(spark, text);
+}
+
+function confirmTonight(game) {
+  if (!game) return;
+  updateActiveBoard((board) => {
+    board.messages = board.messages ?? [];
+    board.messages.push({
+      id: crypto.randomUUID(),
+      author: "Huddle Game Hub",
+      authorUid: null,
+      text: `${displayName()} confirmed ${game.title} for tonight.`,
+      createdAt: new Date().toISOString()
+    });
+  });
+  showToast(`${game.title} confirmed for tonight`);
+}
+
+function sendReminder(game, session) {
+  updateActiveBoard((board) => {
+    board.messages = board.messages ?? [];
+    const parts = ["Reminder:"];
+    if (game) parts.push(`${game.title}`);
+    if (session) parts.push(`${session.date} at ${session.start || "time TBD"}`);
+    board.messages.push({
+      id: crypto.randomUUID(),
+      author: "Huddle Game Hub",
+      authorUid: null,
+      text: `${displayName()} sent a ${parts.join(" ")}.`,
+      createdAt: new Date().toISOString()
+    });
+  });
+  showToast("Reminder posted to chat");
 }
 
 // ---------- propose / edit game ----------
@@ -623,3 +714,4 @@ export function bindGameEvents() {
     showToast(`${title} added to Pending`);
   });
 }
+

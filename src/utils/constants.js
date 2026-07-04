@@ -1,4 +1,4 @@
-// Shared, framework-agnostic constants used across features.
+﻿// Shared, framework-agnostic constants used across features.
 
 export const PLATFORMS = ["PC", "Xbox", "PS5", "Switch", "Mobile"];
 
@@ -33,3 +33,4 @@ export const ROLE_LABELS = { owner: "Owner", editor: "Editor", member: "Member" 
 export const ASSIGNABLE_ROLES = ["editor", "member"];
 
 export const STORAGE_KEY = "huddle-state-v2";
+

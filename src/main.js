@@ -7,6 +7,7 @@ import { watchAuthState, signOutUser } from "./services/auth-service.js";
 import { subscribeToUserBoards, ensureMemberProfile } from "./services/boards-repository.js";
 import { getPendingInvites, acceptInvite } from "./services/invites-repository.js";
 import { normalizeBoard, currentProfile, memberIdsOf, canManage, canonicalRole } from "./features/boards/board-model.js";
+import { formatShortDate, sessionTimeLabel, sortSchedule } from "./utils/format.js";
 import { renderAccount, setAuthError, setAuthNotice, bindAuthEvents } from "./features/auth/auth.js";
 import { bindShellEvents, renderTabs, showToast } from "./features/shell/shell.js";
 import { renderRail, renderDashboard, bindBoardEvents } from "./features/boards/board-list.js";
@@ -121,11 +122,21 @@ function renderBoard(board) {
   renderRail();
 
   const count = memberIdsOf(board).length;
+  const pendingGames = (board.games ?? []).filter((game) => game.status === "maybe");
+  const rotationGames = (board.games ?? []).filter((game) => game.status === "rotation");
+  const topGame = [...rotationGames, ...pendingGames]
+    .sort((a, b) => voteScore(b) - voteScore(a) || (a.title || "").localeCompare(b.title || ""))[0];
+  const nextSession = nextSessionFor(board);
   elements.boardEmoji.textContent = board.emoji;
   elements.boardName.textContent = board.name;
   elements.boardSubtitle.textContent = board.subtitle || `${board.games.length} games in the roster`;
   elements.boardOnline.textContent = `● ${count} online`;
   elements.boardMemberLabel.textContent = `${count} ${count === 1 ? "member" : "members"}`;
+  elements.boardTopGame.textContent = `Top game: ${topGame?.title || "none yet"}`;
+  elements.boardNextNight.textContent = nextSession
+    ? `Next night: ${formatShortDate(nextSession.date)} at ${sessionTimeLabel(nextSession.start, nextSession.end)}`
+    : "Next night: not planned";
+  elements.boardPendingVotes.textContent = `${pendingGames.length} pending ${pendingGames.length === 1 ? "vote" : "votes"}`;
   elements.boardSettingsButton.classList.toggle("hidden", !canManage());
 
   renderHeaderAvatars(board);
@@ -137,6 +148,19 @@ function renderBoard(board) {
     renderSchedule(board);
   }
   renderChat(board);
+}
+
+function voteScore(game) {
+  return Object.values(game.approvals ?? {}).reduce((score, vote) => {
+    if (vote === "up") return score + 1;
+    if (vote === "down") return score - 1;
+    return score;
+  }, 0);
+}
+
+function nextSessionFor(board) {
+  const today = new Date().toISOString().slice(0, 10);
+  return sortSchedule(board.schedule ?? []).find((session) => `${session.date}` >= today);
 }
 
 function syncOwnProfiles() {
