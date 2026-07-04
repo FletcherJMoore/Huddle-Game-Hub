@@ -10,7 +10,7 @@ import {
 } from "../../services/auth-service.js";
 import { getFriendlyAuthError } from "../../utils/firebase-errors.js";
 import { displayName } from "../boards/board-model.js";
-import { initialsFor } from "../../utils/format.js";
+import { initialsFor, paintAvatar } from "../../utils/format.js";
 
 export function setAuthError(message = "") {
   elements.authError.textContent = message;
@@ -32,9 +32,10 @@ export function renderAccount() {
   const name = displayName();
   const initials = initialsFor(name);
   const email = store.currentUser?.email || "";
+  const photoURL = store.currentUser?.photoURL || null;
 
-  elements.profileButton.textContent = initials;
-  elements.profileMenuAvatar.textContent = initials;
+  paintAvatar(elements.profileButton, photoURL, initials);
+  paintAvatar(elements.profileMenuAvatar, photoURL, initials);
   elements.profileMenuName.textContent = name;
   elements.profileMenuEmail.textContent = email;
   elements.dashWelcome.textContent = `Welcome back, ${name} 👋`;

@@ -364,8 +364,13 @@
                 <div>
                   <strong id="settingsName">User</strong>
                   <span class="muted" id="settingsEmail"></span>
+                  <div class="change-photo-row">
+                    <button class="link-btn" id="changePhotoButton" type="button">Change photo</button>
+                    <input class="hidden" id="avatarFileInput" type="file" accept="image/*" />
+                  </div>
                 </div>
               </div>
+              <p class="field-feedback hidden" id="avatarFeedback" role="status"></p>
               <label for="profileNameInput">Display name</label>
               <input id="profileNameInput" type="text" maxlength="42" autocomplete="name" placeholder="Your name" />
               <label for="profileStatusInput">Status message</label>
@@ -374,6 +379,12 @@
               <div class="platform-picker" id="prefPlatforms"></div>
               <button class="btn btn-accent" id="saveProfileButton" type="button">Save changes</button>
               <p class="field-feedback hidden" id="profileFeedback" role="status"></p>
+            </div>
+
+            <div class="hidden" id="paneAppearance">
+              <label>Accent color</label>
+              <p class="muted">Pick your own accent color, or leave it on Auto to match each board's color.</p>
+              <div class="platform-picker" id="accentPicker"></div>
             </div>
 
             <div class="hidden" id="paneAccount">

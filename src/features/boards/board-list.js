@@ -7,6 +7,7 @@ import {
   memberIdsOf,
   plainName,
   profileFor,
+  photoURLFor,
   unreadCount,
   isOwnerOf,
   canonicalRole
@@ -24,12 +25,20 @@ import { icon } from "../../utils/icons.js";
 import { emptyState } from "../../components/empty-state.js";
 
 // ---- shared avatar helper ----
-export function avatarEl(seed, name, className) {
+export function avatarEl(seed, name, className, photoURL) {
   const el = document.createElement("div");
   el.className = className;
+  el.title = name;
+  if (photoURL) {
+    const img = document.createElement("img");
+    img.src = photoURL;
+    img.alt = "";
+    img.loading = "lazy";
+    el.append(img);
+    return el;
+  }
   el.style.background = avatarColor(seed);
   el.textContent = initialsFor(name);
-  el.title = name;
   return el;
 }
 
@@ -124,7 +133,7 @@ function boardCard(board) {
   memberRow.className = "board-card-members";
   const avatars = document.createElement("div");
   ids.slice(0, 4).forEach((uid) => {
-    avatars.append(avatarEl(uid, plainName(board, uid), "av"));
+    avatars.append(avatarEl(uid, plainName(board, uid), "av", photoURLFor(board, uid)));
   });
   const memberLabel = document.createElement("span");
   memberLabel.className = "more";
@@ -324,7 +333,7 @@ function memberRow(board, uid) {
   const email = document.createElement("span");
   email.textContent = profileFor(board, uid)?.email || "";
   meta.append(strong, email);
-  row.append(avatarEl(uid, name, "av"), meta);
+  row.append(avatarEl(uid, name, "av", photoURLFor(board, uid)), meta);
 
   const controls = document.createElement("div");
   controls.className = "member-controls";

@@ -40,6 +40,21 @@ export function dayNum(dateString) {
   return new Date(`${dateString}T00:00`).getDate();
 }
 
+// Paints an existing avatar-shaped element: a photo if one is set, otherwise
+// initials text (the element's own CSS supplies the background/size).
+export function paintAvatar(el, photoURL, fallbackText) {
+  el.replaceChildren();
+  if (photoURL) {
+    const img = document.createElement("img");
+    img.src = photoURL;
+    img.alt = "";
+    img.loading = "lazy";
+    el.append(img);
+  } else {
+    el.textContent = fallbackText;
+  }
+}
+
 export function initialsFor(name) {
   return (
     String(name)

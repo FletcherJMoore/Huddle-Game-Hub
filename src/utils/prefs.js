@@ -13,7 +13,8 @@ export const NOTIF_PREFS = [
 const DEFAULTS = {
   notif: { sessionProposed: true, voteNeeded: true, mentions: true, rotation: false },
   platforms: [],
-  status: ""
+  status: "",
+  accentOverride: null
 };
 
 function readAll() {
@@ -30,7 +31,8 @@ export function getPrefs(uid) {
   return {
     notif: { ...DEFAULTS.notif, ...(mine.notif ?? {}) },
     platforms: Array.isArray(mine.platforms) ? mine.platforms : [],
-    status: typeof mine.status === "string" ? mine.status : ""
+    status: typeof mine.status === "string" ? mine.status : "",
+    accentOverride: typeof mine.accentOverride === "string" ? mine.accentOverride : null
   };
 }
 

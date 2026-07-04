@@ -32,7 +32,7 @@ The app expects:
 
 ## Firebase
 
-This app is prepared for Firebase Hosting, Authentication, and Realtime Database.
+This app is prepared for Firebase Hosting, Authentication, Realtime Database, and Storage.
 
 1. Re-authenticate Firebase CLI if needed:
 
@@ -53,7 +53,10 @@ firebase use --add
 - Email/password
 - Google
 
-5. Build and deploy hosting plus database rules:
+5. Enable Storage for the project in the Firebase console (used for profile
+   photo uploads — no Blaze plan needed, unlike Cloud Functions).
+
+6. Build and deploy hosting, database rules, and storage rules:
 
 ```sh
 npm run build
@@ -62,11 +65,11 @@ firebase deploy
 
 ## Invites (Cloud Functions)
 
-Boards are invite-only by email — no actual email is sent. An admin enters a
-teammate's email in the Crew panel, and that person is added to the board
-automatically the next time they sign in to Huddle Game Hub with that address. A small
-`claimMyInvites` Cloud Function does the join server-side so the database rules
-can stay strict (no client-side self-join).
+Boards are invite-only by email. An admin enters a teammate's email in the Crew
+panel; Huddle Game Hub sends them an invite email (via Resend) with an accept
+link, and they're added to the board the next time they sign in with that
+address. The `acceptInvite`/`getPendingInvites` Cloud Functions do the join
+server-side so the database rules can stay strict (no client-side self-join).
 
 One-time setup:
 

@@ -5,23 +5,26 @@
 import { store } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
 import { displayName } from "../boards/board-model.js";
-import { initialsFor } from "../../utils/format.js";
+import { initialsFor, paintAvatar } from "../../utils/format.js";
 import { closeMenus, showToast } from "../shell/shell.js";
 import { render } from "../../state/store.js";
 import { startSteamLink } from "../steam/steam.js";
 import { subscribeMySteam, updateHiddenGames } from "../../services/steam-service.js";
 import {
   setDisplayName,
+  setPhotoURL,
   updateUserPassword,
   linkGoogle,
   linkedProviders
 } from "../../services/auth-service.js";
+import { uploadAvatar } from "../../services/storage-service.js";
 import { getPrefs, savePrefs, NOTIF_PREFS } from "../../utils/prefs.js";
-import { PLATFORMS } from "../../utils/constants.js";
+import { PLATFORMS, ACCENT_OPTIONS } from "../../utils/constants.js";
 import { emptyState } from "../../components/empty-state.js";
 
 const NAV = [
   { tab: "profile", icon: "👤", label: "Profile & status", title: "Profile & status", sub: "How the rest of your crew sees you." },
+  { tab: "appearance", icon: "🎨", label: "Appearance", title: "Appearance", sub: "Make Huddle Game Hub feel like yours." },
   { tab: "account", icon: "⚙️", label: "Account settings", title: "Account settings", sub: "Sign-in, security, and connected accounts." },
   { tab: "notif", icon: "🔔", label: "Notifications", title: "Notifications", sub: "Choose what Huddle Game Hub pings you about." },
   { tab: "help", icon: "❓", label: "Help & feedback", title: "Help & feedback", sub: "Guides, shortcuts, and a line to the team." }
@@ -58,6 +61,7 @@ function applyTab() {
   elements.settingsTitle.textContent = def.title;
   elements.settingsSub.textContent = def.sub;
   elements.paneProfile.classList.toggle("hidden", tab !== "profile");
+  elements.paneAppearance.classList.toggle("hidden", tab !== "appearance");
   elements.paneAccount.classList.toggle("hidden", tab !== "account");
   elements.paneNotif.classList.toggle("hidden", tab !== "notif");
   elements.paneHelp.classList.toggle("hidden", tab !== "help");
@@ -98,7 +102,7 @@ export function renderProfile() {
 
   elements.settingsModal.classList.remove("hidden");
 
-  elements.settingsAvatar.textContent = initialsFor(displayName());
+  paintAvatar(elements.settingsAvatar, user.photoURL, initialsFor(displayName()));
   elements.settingsName.textContent = displayName();
   elements.settingsEmail.textContent = user.email || "";
 
@@ -106,6 +110,7 @@ export function renderProfile() {
   renderAccountTab();
   renderNotifPrefs();
   renderPlatformPrefs();
+  renderAccentPicker();
   applyTab();
 
   if (watchedUid !== user.uid) {
@@ -202,7 +207,60 @@ function renderPlatformPrefs() {
   );
 }
 
+// Personal accent color: overrides the current board's accent everywhere in
+// this user's own view. "Auto" clears the override and follows the board.
+function renderAccentPicker() {
+  const uid = store.currentUser?.uid;
+  if (!uid) return;
+  const current = getPrefs(uid).accentOverride;
+
+  const pick = (hex) => {
+    savePrefs(uid, { accentOverride: hex });
+    renderAccentPicker();
+    render();
+  };
+
+  const autoBtn = document.createElement("button");
+  autoBtn.type = "button";
+  autoBtn.title = "Auto — match each board's color";
+  const autoSelected = !current;
+  autoBtn.style.cssText = `width:32px;height:32px;border-radius:50%;cursor:pointer;background:#15161f;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#8b8da3;border:${autoSelected ? "2px solid #fff" : "2px solid #2a2c3d"};box-shadow:${autoSelected ? "0 0 14px -2px var(--accent,#7c5cff)" : "none"};`;
+  autoBtn.textContent = "A";
+  autoBtn.addEventListener("click", () => pick(null));
+
+  const swatches = ACCENT_OPTIONS.map((hex) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.title = hex;
+    const sel = hex === current;
+    b.style.cssText = `width:32px;height:32px;border-radius:50%;cursor:pointer;background:${hex};border:${sel ? "2px solid #fff" : "2px solid transparent"};box-shadow:${sel ? `0 0 14px -2px ${hex}` : "none"};`;
+    b.addEventListener("click", () => pick(hex));
+    return b;
+  });
+
+  elements.accentPicker.replaceChildren(autoBtn, ...swatches);
+}
+
 // ---------- actions ----------
+async function uploadAvatarPhoto(file) {
+  const user = store.currentUser;
+  if (!user || !store.services) return;
+  if (!store.services.storage) {
+    feedback(elements.avatarFeedback, "Photo uploads aren't available right now — try again later", "err");
+    return;
+  }
+  feedback(elements.avatarFeedback, "Uploading…", "ok");
+  try {
+    const photoURL = await uploadAvatar(store.services.storage, user.uid, file);
+    await setPhotoURL(user, photoURL);
+    feedback(elements.avatarFeedback, "Photo updated", "ok");
+    render();
+  } catch (error) {
+    console.error("Avatar upload failed", error);
+    feedback(elements.avatarFeedback, error.message || "Couldn't upload that photo — try again", "err");
+  }
+}
+
 async function saveProfile() {
   const uid = store.currentUser?.uid;
   const name = elements.profileNameInput.value.trim();
@@ -405,6 +463,12 @@ export function bindProfileEvents() {
   });
 
   elements.saveProfileButton.addEventListener("click", saveProfile);
+  elements.changePhotoButton.addEventListener("click", () => elements.avatarFileInput.click());
+  elements.avatarFileInput.addEventListener("change", () => {
+    const file = elements.avatarFileInput.files?.[0];
+    elements.avatarFileInput.value = "";
+    if (file) uploadAvatarPhoto(file);
+  });
   elements.updatePassButton.addEventListener("click", changePassword);
   elements.googleLinkButton.addEventListener("click", connectGoogle);
   elements.sendFeedbackButton.addEventListener("click", () => {

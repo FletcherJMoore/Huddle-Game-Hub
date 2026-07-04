@@ -3,7 +3,7 @@
 
 import { store, activeBoard, saveLocal, pushBoard, updateActiveBoard } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
-import { canEditBoard, memberIdsOf, plainName, avatarColor, displayName } from "../boards/board-model.js";
+import { canEditBoard, memberIdsOf, plainName, avatarColor, photoURLFor, displayName } from "../boards/board-model.js";
 import { initialsFor, timeLabel, sessionTimeLabel, formatShortDate, sortSchedule } from "../../utils/format.js";
 import { emptyState } from "../../components/empty-state.js";
 
@@ -71,9 +71,18 @@ function messageEl(board, message) {
   wrap.style.cssText = `display:flex;gap:10px;${mine ? "flex-direction:row-reverse;" : ""}`;
 
   if (!mine) {
+    const photoURL = photoURLFor(board, message.authorUid);
     const av = document.createElement("div");
-    av.style.cssText = `width:30px;height:30px;border-radius:50%;background:${avatarColor(message.authorUid)};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0b0c12;`;
-    av.textContent = initialsFor(name === "You" ? displayName() : name);
+    av.style.cssText = `width:30px;height:30px;border-radius:50%;background:${avatarColor(message.authorUid)};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0b0c12;overflow:hidden;`;
+    if (photoURL) {
+      const img = document.createElement("img");
+      img.src = photoURL;
+      img.alt = "";
+      img.style.cssText = "width:100%;height:100%;object-fit:cover;";
+      av.append(img);
+    } else {
+      av.textContent = initialsFor(name === "You" ? displayName() : name);
+    }
     wrap.append(av);
   }
 

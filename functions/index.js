@@ -7,9 +7,8 @@
 //   bell or email link). Grants membership via Admin SDK and clears the invite.
 //
 // sendInviteEmail: DB trigger — fires when an admin writes a new invite record.
-//   If the invitee already has a verified account, membership is granted
-//   immediately (so the board streams into their app live) and the invite is
-//   cleared. Either way an email goes out via Resend so they know they're in.
+//   Only sends the email; it never grants membership itself, so every invite
+//   — new account or existing — is only ever joined via acceptInvite.
 
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onValueCreated } = require("firebase-functions/v2/database");
@@ -189,29 +188,10 @@ exports.sendInviteEmail = onValueCreated(
     if (!invite || !invite.email) return;
 
     const boardId = event.params.boardId;
-    const key = event.params.emailKey;
 
-    // If the invitee already has a verified account, grant membership right away
-    // so the board appears in their app instantly (their live userBoards
-    // subscription picks it up) instead of waiting for them to next sign in.
-    // No account yet -> fall through and email them; they'll join on login.
-    try {
-      const userRecord = await admin.auth().getUserByEmail(invite.email);
-      if (userRecord && userRecord.emailVerified) {
-        await grantMembership(
-          boardId,
-          userRecord.uid,
-          { name: userRecord.displayName || invite.email.split("@")[0], email: invite.email },
-          invite.role || "editor"
-        );
-        await clearInvite(boardId, key);
-      }
-    } catch (err) {
-      if (err.code !== "auth/user-not-found") {
-        console.error("Live invite grant failed", err);
-      }
-    }
-
+    // Membership is never granted here — only ever via the explicit acceptInvite
+    // call (email link or the next-sign-in auto-accept in main.js), regardless of
+    // whether the invitee already has an account. Just send the email.
     const resend = new Resend(process.env.RESEND_API_KEY);
     const appUrl = process.env.APP_URL || "https://huddle-b73f3.web.app/";
     const fromEmail = process.env.INVITE_FROM_EMAIL || "noreply@huddlegames.org";

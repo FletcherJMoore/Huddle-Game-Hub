@@ -7,6 +7,7 @@ import {
   majority,
   avatarColor,
   plainName,
+  photoURLFor,
   displayName
 } from "../boards/board-model.js";
 import { initialsFor } from "../../utils/format.js";
@@ -112,7 +113,7 @@ function ownedByAvatars(board, item) {
   row.className = "owned-by";
   const avs = document.createElement("div");
   avs.className = "avs";
-  owners.slice(0, 5).forEach((uid) => avs.append(avatarEl(uid, plainName(board, uid), "av")));
+  owners.slice(0, 5).forEach((uid) => avs.append(avatarEl(uid, plainName(board, uid), "av", photoURLFor(board, uid))));
   row.append(avs, document.createTextNode(owners.length === 1 ? "owns this" : `${owners.length} own this`));
   return row;
 }
@@ -389,7 +390,7 @@ function pendingCard(board, item) {
   if (item.addedBy) {
     const prop = document.createElement("div");
     prop.className = "game-proposer";
-    const av = avatarEl(item.addedBy, plainName(board, item.addedBy), "av");
+    const av = avatarEl(item.addedBy, plainName(board, item.addedBy), "av", photoURLFor(board, item.addedBy));
     prop.append(av, document.createTextNode(`Proposed by ${plainName(board, item.addedBy)}`));
     info.append(prop);
   }
@@ -438,7 +439,7 @@ function pendingCard(board, item) {
     const avs = document.createElement("div");
     avs.className = "avs";
     waiting.slice(0, 4).forEach((uid) => {
-      avs.append(avatarEl(uid, plainName(board, uid), "av"));
+      avs.append(avatarEl(uid, plainName(board, uid), "av", photoURLFor(board, uid)));
     });
     row.append(txt, avs);
     if (canEdit()) {

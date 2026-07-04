@@ -2952,11 +2952,24 @@ button {
   margin-bottom: 26px;
 }
 
+.change-photo-row {
+  margin-top: 6px;
+}
+
 .avatar.big {
   width: 66px;
   height: 66px;
   color: #fff;
   font-size: 23px;
+}
+
+.avatar img,
+.avatar-btn img,
+.av img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .settings-section-title {

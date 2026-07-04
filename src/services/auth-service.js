@@ -35,6 +35,10 @@ export function setDisplayName(user, name) {
   return updateProfile(user, { displayName: name });
 }
 
+export function setPhotoURL(user, photoURL) {
+  return updateProfile(user, { photoURL });
+}
+
 export function updateUserPassword(user, password) {
   return updatePassword(user, password);
 }

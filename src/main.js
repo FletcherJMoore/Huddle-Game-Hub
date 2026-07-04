@@ -20,6 +20,7 @@ import { renderCommonGames, bindSteamEvents } from "./features/steam/steam.js";
 import { renderProfile, bindProfileEvents } from "./features/profile/profile.js";
 import { enablePush } from "./services/push-service.js";
 import { hydrateIcons } from "./utils/icons.js";
+import { getPrefs } from "./utils/prefs.js";
 
 let lastBoardId = null;
 
@@ -90,17 +91,18 @@ function renderApp() {
 
   const board = activeBoard();
   const onBoard = store.view === "board" && Boolean(board);
+  const accentOverride = store.currentUser ? getPrefs(store.currentUser.uid).accentOverride : null;
 
   elements.dashboardScreen.classList.toggle("hidden", onBoard);
   elements.boardScreen.classList.toggle("hidden", !onBoard);
 
   if (onBoard) {
     store.state.activeBoardId = board.id;
-    setAccent(board.accent);
+    setAccent(accentOverride || board.accent);
     renderBoard(board);
   } else {
     store.view = "dashboard";
-    setAccent("#7c5cff");
+    setAccent(accentOverride || "#7c5cff");
     renderDashboard();
   }
 
@@ -168,7 +170,12 @@ function syncOwnProfiles() {
   const profile = currentProfile();
   store.state.boards.forEach((board) => {
     const stored = board.memberProfiles?.[store.currentUser.uid];
-    if (!stored || stored.name !== profile.name || stored.email !== profile.email) {
+    if (
+      !stored ||
+      stored.name !== profile.name ||
+      stored.email !== profile.email ||
+      (stored.photoURL ?? null) !== (profile.photoURL ?? null)
+    ) {
       ensureMemberProfile(store.services.db, board.id, store.currentUser.uid, profile).catch(() => {});
     }
   });

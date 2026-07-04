@@ -1,7 +1,7 @@
 import { store, activeBoard } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
-import { canManage, memberIdsOf, avatarColor, plainName, displayName } from "../boards/board-model.js";
-import { initialsFor } from "../../utils/format.js";
+import { canManage, memberIdsOf, plainName, photoURLFor, displayName } from "../boards/board-model.js";
+import { avatarEl } from "../boards/board-list.js";
 import { isValidEmail } from "../../utils/invite.js";
 import { createInvite, revokeInvite, subscribeToInvites } from "../../services/invites-repository.js";
 import { openModal, showToast } from "../shell/shell.js";
@@ -13,11 +13,7 @@ let pendingInvites = [];
 export function renderHeaderAvatars(board) {
   const ids = memberIdsOf(board);
   const avs = ids.slice(0, 5).map((uid) => {
-    const av = document.createElement("div");
-    av.className = "av";
-    av.style.background = avatarColor(uid);
-    av.textContent = initialsFor(plainName(board, uid));
-    av.title = plainName(board, uid);
+    const av = avatarEl(uid, plainName(board, uid), "av", photoURLFor(board, uid));
     const dot = document.createElement("span");
     dot.className = "av-status";
     dot.style.background = uid === store.currentUser?.uid ? "#56d364" : "#3a3c52";

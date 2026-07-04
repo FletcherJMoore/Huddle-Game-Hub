@@ -12,11 +12,18 @@ export function displayName() {
 }
 
 export function currentProfile() {
-  return { name: displayName(), email: store.currentUser?.email ?? "" };
+  return { name: displayName(), email: store.currentUser?.email ?? "", photoURL: store.currentUser?.photoURL ?? null };
 }
 
 export function profileFor(board, uid) {
   return board?.memberProfiles?.[uid] ?? null;
+}
+
+// Photo URL for any member of a board — the current user's own live Auth
+// photo, or whatever was last synced into memberProfiles for anyone else.
+export function photoURLFor(board, uid) {
+  if (uid === store.currentUser?.uid) return store.currentUser?.photoURL ?? null;
+  return profileFor(board, uid)?.photoURL ?? null;
 }
 
 export function memberIdsOf(board) {
