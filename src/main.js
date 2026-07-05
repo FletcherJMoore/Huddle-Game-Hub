@@ -132,7 +132,6 @@ function renderBoard(board) {
   elements.boardName.textContent = board.name;
   elements.boardSubtitle.textContent = board.subtitle || `${board.games.length} games in the roster`;
   elements.boardOnline.textContent = `● ${count} online`;
-  elements.boardMemberLabel.textContent = `${count} ${count === 1 ? "member" : "members"}`;
   elements.boardTopGame.textContent = `Top game: ${topGame?.title || "none yet"}`;
   elements.boardNextNight.textContent = nextSession
     ? `Next night: ${formatShortDate(nextSession.date)} at ${sessionTimeLabel(nextSession.start, nextSession.end)}`

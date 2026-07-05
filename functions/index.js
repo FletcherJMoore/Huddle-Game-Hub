@@ -12,11 +12,15 @@
 //
 // searchCatalogGames: proxies a title search to the RAWG games database for
 //   the propose-game modal. Keeps the RAWG_API_KEY server-side.
+//
+// searchCatalogBoardGames: same idea for the "Party Game" side of the propose
+//   modal, backed by BoardGameGeek's public XML API2 (no API key needed).
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onValueCreated } = require("firebase-functions/v2/database");
 const admin = require("firebase-admin");
 const { Resend } = require("resend");
+const { XMLParser } = require("fast-xml-parser");
 
 admin.initializeApp();
 
@@ -328,6 +332,63 @@ exports.searchCatalogGames = onCall({ secrets: ["RAWG_API_KEY"] }, async (reques
     genre: g.genres?.[0]?.name || "",
     platforms: mapRawgPlatforms(g.platforms)
   }));
+
+  return { results };
+});
+
+// ---------- Games catalog search (BoardGameGeek) ----------
+// Same idea as searchCatalogGames but for the "Party Game" side — backed by
+// BoardGameGeek's free XML API2 (no key required). We hit /search for name
+// matches, then /thing for the details (image, player count, category) of
+// the top few hits, keeping the parsed shape identical to the RAWG results
+// so the client can treat both catalogs the same way.
+
+const bggXmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
+
+function asArray(value) {
+  if (value === undefined || value === null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+exports.searchCatalogBoardGames = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+
+  const query = String(request.data?.query || "").trim();
+  if (!query) return { results: [] };
+
+  const searchParams = new URLSearchParams({ query, type: "boardgame" });
+  const searchResp = await fetch(`https://boardgamegeek.com/xmlapi2/search?${searchParams.toString()}`);
+  if (!searchResp.ok) throw new HttpsError("unavailable", "Games catalog search is unavailable right now.");
+  const searchXml = bggXmlParser.parse(await searchResp.text());
+  const ids = asArray(searchXml.items?.item)
+    .map((item) => item["@_id"])
+    .filter(Boolean)
+    .slice(0, 6);
+  if (!ids.length) return { results: [] };
+
+  const thingResp = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${ids.join(",")}`);
+  if (!thingResp.ok) throw new HttpsError("unavailable", "Games catalog search is unavailable right now.");
+  const thingXml = bggXmlParser.parse(await thingResp.text());
+  const thingById = new Map(asArray(thingXml.items?.item).map((thing) => [String(thing["@_id"]), thing]));
+
+  const results = ids
+    .map((id) => thingById.get(String(id)))
+    .filter(Boolean)
+    .map((thing) => {
+      const names = asArray(thing.name);
+      const name = names.find((n) => n["@_type"] === "primary")?.["@_value"] || names[0]?.["@_value"] || "Untitled";
+      const category = asArray(thing.link).find((l) => l["@_type"] === "boardgamecategory")?.["@_value"] || "";
+      const min = thing.minplayers?.["@_value"];
+      const max = thing.maxplayers?.["@_value"];
+      const players = min && max ? (min === max ? min : `${min}-${max}`) : "";
+      return {
+        id: Number(thing["@_id"]),
+        name,
+        coverImageUrl: thing.thumbnail || thing.image || null,
+        genre: category,
+        players
+      };
+    });
 
   return { results };
 });

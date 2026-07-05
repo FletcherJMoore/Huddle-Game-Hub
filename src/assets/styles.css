@@ -3277,4 +3277,16 @@ button {
     border-bottom: 1px solid #ffffff0d !important;
     padding: 12px !important;
   }
+  /* The Day/Start/End row (propose time) has three columns and overflows
+     narrow phones — stack the day full-width, start/end share the row below. */
+  #proposeTimeForm .field-row {
+    flex-wrap: wrap;
+  }
+  #proposeTimeForm .field-grow {
+    flex: 1 1 100%;
+  }
+  #proposeTimeForm .field-narrow {
+    flex: 1;
+    width: auto;
+  }
 }

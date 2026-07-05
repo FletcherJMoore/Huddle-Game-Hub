@@ -150,15 +150,13 @@ function boardCard(board) {
 
   const memberRow = document.createElement("div");
   memberRow.className = "board-card-members";
-  const avatars = document.createElement("div");
   ids.slice(0, 4).forEach((uid) => {
-    avatars.append(avatarEl(uid, plainName(board, uid), "av", photoURLFor(board, uid)));
+    memberRow.append(avatarEl(uid, plainName(board, uid), "av", photoURLFor(board, uid)));
   });
   const memberLabel = document.createElement("span");
   memberLabel.className = "more";
   memberLabel.textContent = `${ids.length} ${ids.length === 1 ? "member" : "members"}`;
-  avatars.append(memberLabel);
-  memberRow.append(avatars);
+  memberRow.append(memberLabel);
 
   const tags = document.createElement("div");
   tags.className = "board-card-tags";

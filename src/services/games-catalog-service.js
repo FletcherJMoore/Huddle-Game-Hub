@@ -8,3 +8,12 @@ export async function searchCatalog(functions, query) {
   const result = await callable({ query });
   return result.data?.results ?? [];
 }
+
+// Same idea, but for the "Party Game" side of the propose modal — proxies to
+// BoardGameGeek instead of RAWG.
+export async function searchBoardGameCatalog(functions, query) {
+  if (!functions) return [];
+  const callable = httpsCallable(functions, "searchCatalogBoardGames");
+  const result = await callable({ query });
+  return result.data?.results ?? [];
+}
