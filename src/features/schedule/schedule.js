@@ -53,7 +53,8 @@ export function sessionLabel(board, session) {
 }
 
 // Distinct people who said yes to ANY option at this time slot — used for the
-// heatmap, which is about interest in the day, not which game wins.
+// calendar's day-cell shading, which is about interest in the day, not which
+// specific game wins.
 function sessionYesUids(session) {
   const uids = new Set();
   (session.options ?? []).forEach((option) => {
@@ -68,26 +69,39 @@ function availableGames(board) {
   return [...(board.games ?? [])].filter((g) => g.status !== "never").sort((a, b) => a.title.localeCompare(b.title));
 }
 
+function toDateStr(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfWeek(date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay());
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function dayInterest(board, dateStr) {
+  return (board.schedule ?? [])
+    .filter((s) => s.date === dateStr)
+    .reduce((sum, s) => sum + 1 + sessionYesUids(s).size, 0);
+}
+
+function formatLongDate(dateStr) {
+  return new Date(`${dateStr}T00:00`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+
+// Which month/week is showing, and which single day is selected — purely
+// local UI navigation state, not persisted.
+let calendarView = "month";
+let viewDate = new Date();
+let selectedDate = toDateStr(new Date());
+
 export function renderSchedule(board) {
   renderAvailabilityPresets();
-  renderHeatmap(board);
-
-  const sessions = [...(board.schedule ?? [])].sort(
-    (a, b) => sessionScore(b) - sessionScore(a) || `${a.date}T${a.start}`.localeCompare(`${b.date}T${b.start}`)
-  );
-
-  if (!sessions.length) {
-    elements.sessionList.replaceChildren(
-      emptyState("No times proposed yet", [
-        { label: "Propose a time", variant: "primary", onClick: openProposeTime },
-        { label: "Friday night", onClick: () => applyAvailabilityPreset("friday") }
-      ])
-    );
-    return;
-  }
-
-  const bestId = sessionScore(sessions[0]) > 0 ? sessions[0].id : null;
-  elements.sessionList.replaceChildren(...sessions.map((s) => sessionCard(board, s, s.id === bestId)));
+  renderCalendarHeader();
+  if (calendarView === "week") renderWeekGrid(board);
+  else renderMonthGrid(board);
+  renderSelectedDayPanel(board);
 }
 
 function renderAvailabilityPresets() {
@@ -107,44 +121,144 @@ function renderAvailabilityPresets() {
   );
 }
 
-function renderHeatmap(board) {
-  const intensity = new Array(7).fill(0);
-  (board.schedule ?? []).forEach((s) => {
-    if (!s.date) return;
-    const d = new Date(`${s.date}T00:00`).getDay();
-    intensity[d] += 1 + sessionYesUids(s).size;
+function renderCalendarHeader() {
+  elements.calLabel.textContent = calendarView === "week" ? weekRangeLabel(viewDate) : monthLabel(viewDate);
+  elements.calViewToggle.querySelectorAll(".view-opt").forEach((btn) => {
+    btn.classList.toggle("selected", btn.dataset.view === calendarView);
   });
-  const max = Math.max(1, ...intensity);
-  let bestDay = -1;
-  intensity.forEach((v, i) => {
-    if (v > (intensity[bestDay] ?? -1)) bestDay = i;
-  });
+}
 
-  elements.heatmap.replaceChildren(
-    ...DAY_LABELS.map((label, i) => {
-      const ratio = intensity[i] / max;
-      const isBest = i === bestDay && intensity[i];
+function monthLabel(date) {
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
 
-      const col = document.createElement("div");
-      col.className = "heat-day";
-      const cell = document.createElement("div");
-      cell.className = "heat-cell";
-      cell.style.background = intensity[i] ? `rgba(124,92,255,${0.15 + ratio * 0.6})` : "rgba(255,255,255,0.03)";
-      cell.style.borderColor = isBest ? "rgba(124,92,255,0.6)" : "transparent";
-      const num = document.createElement("span");
-      num.style.color = ratio > 0.5 ? "#fff" : "#8b8da3";
-      num.textContent = intensity[i] ? String(intensity[i]) : "";
-      cell.append(num);
-      const lbl = document.createElement("div");
-      lbl.className = "heat-label";
-      lbl.textContent = label;
-      col.append(cell, lbl);
-      return col;
+function weekRangeLabel(date) {
+  const start = startOfWeek(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const sameMonth = start.getMonth() === end.getMonth();
+  const startLabel = start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const endLabel = end.toLocaleDateString(undefined, sameMonth ? { day: "numeric" } : { month: "short", day: "numeric" });
+  return `${startLabel} – ${endLabel}`;
+}
+
+function renderWeekdayHeaders() {
+  elements.calWeekdays.replaceChildren(
+    ...DAY_LABELS.map((label) => {
+      const el = document.createElement("div");
+      el.className = "cal-weekday";
+      el.textContent = label;
+      return el;
     })
   );
+}
 
-  elements.bestDayLabel.textContent =
-    bestDay >= 0 && intensity[bestDay] ? `${DAY_LABELS[bestDay]} looks strongest.` : "";
+function renderMonthGrid(board) {
+  renderWeekdayHeaders();
+  const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const gridStart = startOfWeek(first);
+
+  const cells = [];
+  for (let i = 0; i < 42; i++) {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + i);
+    cells.push(dayCell(board, date, date.getMonth() !== viewDate.getMonth()));
+  }
+  elements.calGrid.className = "calendar-grid month";
+  elements.calGrid.replaceChildren(...cells);
+}
+
+function renderWeekGrid(board) {
+  renderWeekdayHeaders();
+  const start = startOfWeek(viewDate);
+
+  const cells = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    cells.push(dayCell(board, date, false));
+  }
+  elements.calGrid.className = "calendar-grid week";
+  elements.calGrid.replaceChildren(...cells);
+}
+
+function dayCell(board, date, dimmed) {
+  const dateStr = toDateStr(date);
+  const interest = dayInterest(board, dateStr);
+
+  const cell = document.createElement("button");
+  cell.type = "button";
+  cell.className = "cal-day";
+  if (dimmed) cell.classList.add("dimmed");
+  if (dateStr === toDateStr(new Date())) cell.classList.add("today");
+  if (dateStr === selectedDate) cell.classList.add("selected");
+  if (interest > 0) {
+    cell.classList.add("has-sessions");
+    const ratio = Math.min(1, interest / 4);
+    cell.style.background = `rgba(124,92,255,${0.15 + ratio * 0.55})`;
+  }
+
+  const num = document.createElement("span");
+  num.className = "cal-day-num";
+  num.textContent = String(date.getDate());
+  cell.append(num);
+
+  cell.addEventListener("click", () => {
+    selectedDate = dateStr;
+    viewDate = date;
+    render();
+  });
+
+  return cell;
+}
+
+function stepView(direction) {
+  const next = new Date(viewDate);
+  if (calendarView === "week") next.setDate(next.getDate() + direction * 7);
+  else next.setMonth(next.getMonth() + direction);
+  viewDate = next;
+  render();
+}
+
+function goToday() {
+  viewDate = new Date();
+  selectedDate = toDateStr(viewDate);
+  render();
+}
+
+function renderSelectedDayPanel(board) {
+  const sessions = (board.schedule ?? []).filter((s) => s.date === selectedDate);
+  const sortedByScore = [...(board.schedule ?? [])].sort((a, b) => sessionScore(b) - sessionScore(a));
+  const overallBestId = sortedByScore.length && sessionScore(sortedByScore[0]) > 0 ? sortedByScore[0].id : null;
+
+  const header = document.createElement("div");
+  header.className = "selected-day-header";
+  const label = document.createElement("h3");
+  label.textContent = formatLongDate(selectedDate);
+  header.append(label);
+  if (canEdit()) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-accent";
+    btn.append(icon("plus", { size: 14 }), document.createTextNode("Propose a time"));
+    btn.addEventListener("click", () => openProposeTime(selectedDate));
+    header.append(btn);
+  }
+
+  const list = document.createElement("div");
+  list.className = "session-list";
+  if (!sessions.length) {
+    list.append(
+      emptyState(
+        "No times proposed for this day yet",
+        canEdit() ? [{ label: "Propose a time", variant: "primary", onClick: () => openProposeTime(selectedDate) }] : []
+      )
+    );
+  } else {
+    list.append(...sessions.map((s) => sessionCard(board, s, s.id === overallBestId)));
+  }
+
+  elements.selectedDayPanel.replaceChildren(header, list);
 }
 
 function sessionCard(board, session, isBest) {
@@ -456,19 +570,29 @@ function renderProposeTimeGameOptions() {
   });
 }
 
-export function openProposeTime() {
+export function openProposeTime(prefillDate) {
   if (!canEdit()) {
     showToast("You don't have edit access on this board");
     return;
   }
   elements.proposeTimeForm.reset();
   renderProposeTimeGameOptions();
+  if (prefillDate) elements.ptDate.value = prefillDate;
   openModal("proposeTime");
   setTimeout(() => elements.ptDate.focus(), 50);
 }
 
 export function bindScheduleEvents() {
-  elements.proposeTimeButton.addEventListener("click", openProposeTime);
+  elements.proposeTimeButton.addEventListener("click", () => openProposeTime(selectedDate));
+  elements.calPrevButton.addEventListener("click", () => stepView(-1));
+  elements.calNextButton.addEventListener("click", () => stepView(1));
+  elements.calTodayButton.addEventListener("click", goToday);
+  elements.calViewToggle.addEventListener("click", (event) => {
+    const btn = event.target.closest(".view-opt");
+    if (!btn || btn.dataset.view === calendarView) return;
+    calendarView = btn.dataset.view;
+    render();
+  });
 
   elements.proposeTimeForm.addEventListener("submit", (event) => {
     event.preventDefault();

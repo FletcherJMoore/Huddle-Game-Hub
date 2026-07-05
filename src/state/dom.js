@@ -92,9 +92,14 @@ export const elements = {
   // schedule
   availabilityPresets: $("availabilityPresets"),
   proposeTimeButton: $("proposeTimeButton"),
-  heatmap: $("heatmap"),
-  bestDayLabel: $("bestDayLabel"),
-  sessionList: $("sessionList"),
+  calPrevButton: $("calPrevButton"),
+  calTodayButton: $("calTodayButton"),
+  calNextButton: $("calNextButton"),
+  calLabel: $("calLabel"),
+  calViewToggle: $("calViewToggle"),
+  calWeekdays: $("calWeekdays"),
+  calGrid: $("calGrid"),
+  selectedDayPanel: $("selectedDayPanel"),
 
   // chat
   chatPanel: $("chatPanel"),

@@ -201,12 +201,25 @@
                   <button class="btn btn-accent" id="proposeTimeButton" type="button"><span class="ico" data-icon="plus"></span>Propose time</button>
                 </div>
                 <div class="availability-presets" id="availabilityPresets"></div>
-                <div class="heatmap-card">
-                  <div class="eyebrow">Best days</div>
-                  <div class="heatmap" id="heatmap"></div>
-                  <div class="heatmap-note muted" id="bestDayLabel"></div>
+
+                <div class="calendar-card">
+                  <div class="calendar-toolbar">
+                    <div class="calendar-nav">
+                      <button class="icon-btn sm" id="calPrevButton" type="button" aria-label="Previous"><span class="ico" data-icon="chevron-left"></span></button>
+                      <button class="btn btn-surface" id="calTodayButton" type="button">Today</button>
+                      <button class="icon-btn sm" id="calNextButton" type="button" aria-label="Next"><span class="ico" data-icon="chevron-right"></span></button>
+                      <span class="calendar-label" id="calLabel"></span>
+                    </div>
+                    <div class="calendar-view-toggle" id="calViewToggle">
+                      <button class="view-opt" data-view="month" type="button">Month</button>
+                      <button class="view-opt" data-view="week" type="button">Week</button>
+                    </div>
+                  </div>
+                  <div class="calendar-weekdays" id="calWeekdays"></div>
+                  <div class="calendar-grid" id="calGrid"></div>
                 </div>
-                <div class="session-list" id="sessionList"></div>
+
+                <div class="selected-day-panel" id="selectedDayPanel"></div>
               </section>
             </div>
           </main>
