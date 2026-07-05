@@ -207,6 +207,7 @@ function dayCell(board, date, dimmed) {
     selectedDate = dateStr;
     viewDate = date;
     render();
+    if (canEdit()) openProposeTime(dateStr);
   });
 
   return cell;
@@ -578,6 +579,8 @@ export function openProposeTime(prefillDate) {
   elements.proposeTimeForm.reset();
   renderProposeTimeGameOptions();
   if (prefillDate) elements.ptDate.value = prefillDate;
+  elements.ptStart.value = "19:00";
+  elements.ptEnd.value = "21:00";
   openModal("proposeTime");
   setTimeout(() => elements.ptDate.focus(), 50);
 }
