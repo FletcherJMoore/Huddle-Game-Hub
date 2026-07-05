@@ -156,7 +156,6 @@
               </div>
               <div class="board-head-actions">
                 <div class="avatar-cluster" id="headerAvatars"></div>
-                <span class="muted" id="boardMemberLabel"></span>
                 <button class="btn btn-surface" id="inviteButton" type="button"><span class="ico" data-icon="plus"></span>Invite</button>
                 <button class="icon-btn sm hidden" id="boardSettingsButton" type="button" aria-label="Board settings" title="Board settings"><span class="ico" data-icon="settings"></span></button>
               </div>
@@ -254,6 +253,12 @@
           <h3 id="pgModalTitle">Propose a game</h3>
           <p class="modal-sub">Add details so the crew can make a quick call.</p>
           <form id="proposeGameForm">
+            <label>Type</label>
+            <div class="calendar-view-toggle" id="pgKindToggle">
+              <button class="view-opt selected" data-kind="video" type="button">Video Game</button>
+              <button class="view-opt" data-kind="party" type="button">Party Game</button>
+            </div>
+
             <label for="pgTitle">Game</label>
             <div class="catalog-search">
               <input id="pgTitle" type="text" placeholder="e.g. Deep Rock Galactic" maxlength="80" required autocomplete="off" />
@@ -273,8 +278,10 @@
               </div>
             </div>
 
-            <label>Platforms</label>
-            <div class="platform-picker" id="pgPlatforms"></div>
+            <div id="pgPlatformsSection">
+              <label>Platforms</label>
+              <div class="platform-picker" id="pgPlatforms"></div>
+            </div>
 
             <label>Tags</label>
             <div class="platform-picker" id="pgTags"></div>

@@ -125,6 +125,7 @@ export function normalizeGame(raw) {
   return {
     id: raw.id ?? crypto.randomUUID(),
     title: raw.title ?? "Untitled game",
+    kind: raw.kind === "party" ? "party" : "video",
     genre: raw.genre ?? "",
     variant: raw.variant ?? "",
     players: raw.players ?? "",
