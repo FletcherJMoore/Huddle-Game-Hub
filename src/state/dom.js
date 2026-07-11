@@ -99,6 +99,11 @@ export const elements = {
   calViewToggle: $("calViewToggle"),
   calWeekdays: $("calWeekdays"),
   calGrid: $("calGrid"),
+  hourGrid: $("hourGrid"),
+  hourGridHeadScroll: $("hourGridHeadScroll"),
+  hourGridHead: $("hourGridHead"),
+  hourGridBodyScroll: $("hourGridBodyScroll"),
+  hourGridBody: $("hourGridBody"),
   selectedDayPanel: $("selectedDayPanel"),
 
   // chat

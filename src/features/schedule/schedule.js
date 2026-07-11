@@ -2,7 +2,7 @@ import { store, activeBoard, updateActiveBoard, render } from "../../state/store
 import { elements } from "../../state/dom.js";
 import { canEdit, plainName } from "../boards/board-model.js";
 import { emptyState } from "../../components/empty-state.js";
-import { dowShort, dayNum, sessionTimeLabel, formatShortDate } from "../../utils/format.js";
+import { dowShort, dayNum, sessionTimeLabel, formatShortDate, formatTime12 } from "../../utils/format.js";
 import { openModal, closeModal, showToast } from "../shell/shell.js";
 import { icon } from "../../utils/icons.js";
 
@@ -99,8 +99,18 @@ let selectedDate = toDateStr(new Date());
 export function renderSchedule(board) {
   renderAvailabilityPresets();
   renderCalendarHeader();
-  if (calendarView === "week") renderWeekGrid(board);
-  else renderMonthGrid(board);
+  if (calendarView === "week") {
+    elements.calWeekdays.classList.add("hidden");
+    elements.calGrid.classList.add("hidden");
+    elements.hourGrid.classList.remove("hidden");
+    renderHourGrid(board);
+  } else {
+    ghost = null;
+    elements.hourGrid.classList.add("hidden");
+    elements.calWeekdays.classList.remove("hidden");
+    elements.calGrid.classList.remove("hidden");
+    renderMonthGrid(board);
+  }
   renderSelectedDayPanel(board);
 }
 
@@ -168,18 +178,284 @@ function renderMonthGrid(board) {
   elements.calGrid.replaceChildren(...cells);
 }
 
-function renderWeekGrid(board) {
-  renderWeekdayHeaders();
-  const start = startOfWeek(viewDate);
+function weekDays(date) {
+  const start = startOfWeek(date);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+}
 
-  const cells = [];
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(start);
-    date.setDate(start.getDate() + i);
-    cells.push(dayCell(board, date, false));
+// ============ HOUR GRID (week view) ============
+// Tap an empty slot to drop a draggable ghost block (with two resize
+// handles), tap the block to open "Propose a time" pre-filled with the
+// exact date + time range — the Google-Calendar-style alternative to the
+// flat day-cell grid, for picking an exact time instead of just a day.
+
+const HOURS_IN_DAY = 24;
+const HOUR_PX = 56;
+const SNAP_MIN = 15;
+const DAY_MIN = 24 * 60;
+
+function hhmmToMinutes(hhmm) {
+  if (!hhmm) return 0;
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+
+function minutesToHHMM(total) {
+  const clamped = Math.max(0, Math.min(Math.round(total), DAY_MIN));
+  const h = Math.floor(clamped / 60) % 24;
+  const m = clamped % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function snapMinutes(min) {
+  return Math.round(min / SNAP_MIN) * SNAP_MIN;
+}
+
+function clampMinutes(min) {
+  return Math.max(0, Math.min(min, DAY_MIN));
+}
+
+function hourLabel(h) {
+  const period = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour} ${period}`;
+}
+
+// Pending drag-to-create selection on the hour grid — { dateStr, startMin,
+// endMin } while the user is placing/resizing it, else null.
+let ghost = null;
+
+function renderHourGrid(board) {
+  const days = weekDays(viewDate);
+  renderHourGridHead(board, days);
+  renderHourGridBody(board, days);
+}
+
+function renderHourGridHead(board, days) {
+  const todayStr = toDateStr(new Date());
+  const corner = document.createElement("div");
+  corner.className = "hour-grid-corner";
+
+  const cells = days.map((date) => {
+    const dateStr = toDateStr(date);
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "hour-grid-day-header";
+    if (dateStr === todayStr) cell.classList.add("today");
+    if (dateStr === selectedDate) cell.classList.add("selected");
+    if (dayInterest(board, dateStr) > 0) cell.classList.add("has-sessions");
+
+    const dow = document.createElement("div");
+    dow.className = "dow";
+    dow.textContent = DAY_LABELS[date.getDay()];
+    const num = document.createElement("div");
+    num.className = "num";
+    num.textContent = String(date.getDate());
+    cell.append(dow, num);
+
+    cell.addEventListener("click", () => {
+      selectedDate = dateStr;
+      render();
+    });
+    return cell;
+  });
+
+  elements.hourGridHead.replaceChildren(corner, ...cells);
+}
+
+// Simple greedy lane assignment so overlapping sessions on the same day sit
+// side by side instead of stacking on top of each other.
+function layoutSessionsForDay(sessions) {
+  const items = sessions
+    .filter((s) => s.start)
+    .map((s) => {
+      const startMin = hhmmToMinutes(s.start);
+      const endMin = Math.max(hhmmToMinutes(s.end), startMin + SNAP_MIN);
+      return { session: s, startMin, endMin };
+    })
+    .sort((a, b) => a.startMin - b.startMin);
+
+  const laneEnds = [];
+  items.forEach((item) => {
+    let lane = laneEnds.findIndex((end) => end <= item.startMin);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(item.endMin);
+    } else {
+      laneEnds[lane] = item.endMin;
+    }
+    item.lane = lane;
+  });
+  const totalLanes = laneEnds.length || 1;
+  items.forEach((item) => (item.totalLanes = totalLanes));
+  return items;
+}
+
+function sessionBlock(board, item) {
+  const { session, startMin, endMin, lane, totalLanes } = item;
+  const block = document.createElement("div");
+  block.className = "hg-event";
+  block.style.top = `${(startMin / DAY_MIN) * 100}%`;
+  block.style.height = `${((endMin - startMin) / DAY_MIN) * 100}%`;
+  block.style.left = `${(lane / totalLanes) * 100}%`;
+  block.style.width = `${100 / totalLanes}%`;
+
+  const title = document.createElement("div");
+  title.className = "hg-event-title";
+  title.textContent = sessionLabel(board, session);
+  const time = document.createElement("div");
+  time.className = "hg-event-time";
+  time.textContent = sessionTimeLabel(session.start, session.end);
+  block.append(title, time);
+  return block;
+}
+
+function ghostBlock() {
+  const block = document.createElement("div");
+  block.className = "hg-ghost";
+  block.style.top = `${(ghost.startMin / DAY_MIN) * 100}%`;
+  block.style.height = `${((ghost.endMin - ghost.startMin) / DAY_MIN) * 100}%`;
+
+  const label = document.createElement("div");
+  label.className = "hg-ghost-label";
+  label.textContent = `${formatTime12(minutesToHHMM(ghost.startMin))} – ${formatTime12(minutesToHHMM(ghost.endMin))}`;
+  block.append(label);
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "hg-ghost-cancel";
+  cancelBtn.textContent = "✕";
+  cancelBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    ghost = null;
+    render();
+  });
+  block.append(cancelBtn);
+
+  block.addEventListener("click", (event) => {
+    if (event.target.closest(".hg-handle, .hg-ghost-cancel")) return;
+    event.stopPropagation();
+    const { dateStr, startMin, endMin } = ghost;
+    ghost = null;
+    render();
+    openProposeTime(dateStr, minutesToHHMM(startMin), minutesToHHMM(endMin));
+  });
+
+  const topHandle = document.createElement("div");
+  topHandle.className = "hg-handle hg-handle-top";
+  const bottomHandle = document.createElement("div");
+  bottomHandle.className = "hg-handle hg-handle-bottom";
+  block.append(topHandle, bottomHandle);
+
+  bindHandleDrag(topHandle, "start", block, label);
+  bindHandleDrag(bottomHandle, "end", block, label);
+
+  return block;
+}
+
+// Handle dragging mutates the ghost block's own styles directly rather than
+// re-rendering the grid on every pointermove — re-rendering would replace
+// the column element mid-gesture and break the getBoundingClientRect() the
+// drag math depends on.
+function bindHandleDrag(handleEl, edge, block, label) {
+  handleEl.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    const col = handleEl.closest(".hour-grid-col");
+    if (!col) return;
+
+    const move = (moveEvent) => {
+      const rect = col.getBoundingClientRect();
+      const ratio = (moveEvent.clientY - rect.top) / rect.height;
+      const min = clampMinutes(snapMinutes(ratio * DAY_MIN));
+      if (edge === "start") ghost.startMin = Math.min(min, ghost.endMin - SNAP_MIN);
+      else ghost.endMin = Math.max(min, ghost.startMin + SNAP_MIN);
+      block.style.top = `${(ghost.startMin / DAY_MIN) * 100}%`;
+      block.style.height = `${((ghost.endMin - ghost.startMin) / DAY_MIN) * 100}%`;
+      label.textContent = `${formatTime12(minutesToHHMM(ghost.startMin))} – ${formatTime12(minutesToHHMM(ghost.endMin))}`;
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+}
+
+function renderHourGridBody(board, days) {
+  const scrollEl = elements.hourGridBodyScroll;
+  const prevScrollTop = scrollEl.scrollTop;
+  const prevScrollLeft = scrollEl.scrollLeft;
+  const alreadyInitialized = scrollEl.dataset.initialized === "true";
+
+  const gutter = document.createElement("div");
+  gutter.className = "hour-grid-gutter";
+  for (let h = 0; h < HOURS_IN_DAY; h++) {
+    const label = document.createElement("div");
+    label.className = "hour-grid-hour-label";
+    label.textContent = hourLabel(h);
+    gutter.append(label);
   }
-  elements.calGrid.className = "calendar-grid week";
-  elements.calGrid.replaceChildren(...cells);
+
+  const columns = document.createElement("div");
+  columns.className = "hour-grid-columns";
+
+  const todayStr = toDateStr(new Date());
+  const now = new Date();
+
+  days.forEach((date) => {
+    const dateStr = toDateStr(date);
+    const col = document.createElement("div");
+    col.className = "hour-grid-col";
+    col.style.height = `${HOURS_IN_DAY * HOUR_PX}px`;
+
+    for (let h = 0; h < HOURS_IN_DAY; h++) {
+      const line = document.createElement("div");
+      line.className = "hour-grid-hourline";
+      col.append(line);
+    }
+
+    const sessions = (board.schedule ?? []).filter((s) => s.date === dateStr);
+    layoutSessionsForDay(sessions).forEach((item) => col.append(sessionBlock(board, item)));
+
+    if (dateStr === todayStr) {
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const nowLine = document.createElement("div");
+      nowLine.className = "hour-grid-now";
+      nowLine.style.top = `${(nowMin / DAY_MIN) * 100}%`;
+      col.append(nowLine);
+    }
+
+    if (ghost && ghost.dateStr === dateStr) col.append(ghostBlock());
+
+    col.addEventListener("click", (event) => {
+      if (event.target.closest(".hg-event, .hg-ghost, .hg-handle")) return;
+      const rect = col.getBoundingClientRect();
+      const ratio = (event.clientY - rect.top) / rect.height;
+      const startMin = Math.min(clampMinutes(snapMinutes(ratio * DAY_MIN)), DAY_MIN - 60);
+      ghost = { dateStr, startMin, endMin: startMin + 60 };
+      selectedDate = dateStr;
+      render();
+    });
+
+    columns.append(col);
+  });
+
+  elements.hourGridBody.replaceChildren(gutter, columns);
+
+  if (alreadyInitialized) {
+    scrollEl.scrollTop = prevScrollTop;
+    scrollEl.scrollLeft = prevScrollLeft;
+  } else {
+    const anchorHour = days.some((d) => toDateStr(d) === todayStr) ? Math.max(now.getHours() - 1, 0) : 8;
+    scrollEl.scrollTop = anchorHour * HOUR_PX;
+    scrollEl.dataset.initialized = "true";
+  }
 }
 
 function dayCell(board, date, dimmed) {
@@ -206,8 +482,10 @@ function dayCell(board, date, dimmed) {
   cell.addEventListener("click", () => {
     selectedDate = dateStr;
     viewDate = date;
+    // Jump into the hourly grid to pick the exact time, rather than opening
+    // the modal straight off a whole-day click.
+    calendarView = "week";
     render();
-    if (canEdit()) openProposeTime(dateStr);
   });
 
   return cell;
@@ -218,12 +496,14 @@ function stepView(direction) {
   if (calendarView === "week") next.setDate(next.getDate() + direction * 7);
   else next.setMonth(next.getMonth() + direction);
   viewDate = next;
+  ghost = null;
   render();
 }
 
 function goToday() {
   viewDate = new Date();
   selectedDate = toDateStr(viewDate);
+  ghost = null;
   render();
 }
 
@@ -571,7 +851,7 @@ function renderProposeTimeGameOptions() {
   });
 }
 
-export function openProposeTime(prefillDate) {
+export function openProposeTime(prefillDate, prefillStart, prefillEnd) {
   if (!canEdit()) {
     showToast("You don't have edit access on this board");
     return;
@@ -579,8 +859,8 @@ export function openProposeTime(prefillDate) {
   elements.proposeTimeForm.reset();
   renderProposeTimeGameOptions();
   if (prefillDate) elements.ptDate.value = prefillDate;
-  elements.ptStart.value = "19:00";
-  elements.ptEnd.value = "21:00";
+  elements.ptStart.value = prefillStart || "19:00";
+  elements.ptEnd.value = prefillEnd || "21:00";
   openModal("proposeTime");
   setTimeout(() => elements.ptDate.focus(), 50);
 }
@@ -595,6 +875,9 @@ export function bindScheduleEvents() {
     if (!btn || btn.dataset.view === calendarView) return;
     calendarView = btn.dataset.view;
     render();
+  });
+  elements.hourGridBodyScroll.addEventListener("scroll", () => {
+    elements.hourGridHeadScroll.scrollLeft = elements.hourGridBodyScroll.scrollLeft;
   });
 
   elements.proposeTimeForm.addEventListener("submit", (event) => {
