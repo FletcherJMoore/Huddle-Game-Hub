@@ -29,38 +29,21 @@ let lastBoardId = null;
 let knownBoardIds = new Set();
 let boardsBaselineSet = false;
 
-// --- 30-minute session timeout with a top-right countdown ---
-const SESSION_MS = 30 * 60 * 1000;
-let sessionInterval = null;
-let sessionExpiry = 0;
+// --- 24-hour session timeout, enforced silently in the background ---
+const SESSION_MS = 24 * 60 * 60 * 1000;
+let sessionTimeout = null;
 
 function startSessionTimer() {
-  sessionExpiry = Date.now() + SESSION_MS;
-  elements.sessionTimer.classList.remove("hidden");
-  if (sessionInterval) clearInterval(sessionInterval);
-  tickSession();
-  sessionInterval = setInterval(tickSession, 1000);
+  if (sessionTimeout) clearTimeout(sessionTimeout);
+  sessionTimeout = setTimeout(() => {
+    setAuthNotice("Your session expired after 24 hours. Please log in again.");
+    if (store.services) signOutUser(store.services.auth);
+  }, SESSION_MS);
 }
 
 function stopSessionTimer() {
-  if (sessionInterval) clearInterval(sessionInterval);
-  sessionInterval = null;
-  elements.sessionTimer.classList.add("hidden");
-}
-
-function tickSession() {
-  const remaining = sessionExpiry - Date.now();
-  if (remaining <= 0) {
-    stopSessionTimer();
-    setAuthNotice("Your session expired after 30 minutes. Please log in again.");
-    if (store.services) signOutUser(store.services.auth);
-    return;
-  }
-  const totalSec = Math.floor(remaining / 1000);
-  const minutes = Math.floor(totalSec / 60);
-  const seconds = totalSec % 60;
-  elements.sessionTimer.textContent = `⏳ ${minutes}:${String(seconds).padStart(2, "0")}`;
-  elements.sessionTimer.classList.toggle("warn", remaining <= 5 * 60 * 1000);
+  if (sessionTimeout) clearTimeout(sessionTimeout);
+  sessionTimeout = null;
 }
 
 // Top-level render: routes between auth / dashboard / board.

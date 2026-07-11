@@ -6,7 +6,6 @@ const $ = (id) => document.getElementById(id);
 export const elements = {
   // shell
   appShell: $("appShell"),
-  sessionTimer: $("sessionTimer"),
   authScreen: $("authScreen"),
   appRoot: $("appRoot"),
   dashboardScreen: $("dashboardScreen"),
@@ -72,6 +71,8 @@ export const elements = {
   // tabs + views
   tabRoster: $("tabRoster"),
   tabSchedule: $("tabSchedule"),
+  tabChatMobile: $("tabChatMobile"),
+  chatTabBadge: $("chatTabBadge"),
   rosterView: $("rosterView"),
   scheduleView: $("scheduleView"),
 
@@ -104,6 +105,7 @@ export const elements = {
   chatPanel: $("chatPanel"),
   chatHeadInfo: $("chatHeadInfo"),
   chatBody: $("chatBody"),
+  chatBackButton: $("chatBackButton"),
   chatToggle: $("chatToggle"),
   chatOnline: $("chatOnline"),
   chatLog: $("chatLog"),

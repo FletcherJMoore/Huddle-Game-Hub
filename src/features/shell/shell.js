@@ -17,6 +17,7 @@ const MODALS = {
 export function setView(view) {
   store.view = view;
   closeMenus();
+  elements.chatPanel.classList.remove("mobile-open");
   render();
 }
 
@@ -25,17 +26,20 @@ export function openBoard(boardId) {
   store.view = "board";
   store.boardTab = "roster";
   closeMenus();
+  elements.chatPanel.classList.remove("mobile-open");
   render();
 }
 
 export function goDashboard() {
   store.view = "dashboard";
   closeMenus();
+  elements.chatPanel.classList.remove("mobile-open");
   render();
 }
 
 export function setTab(tab) {
   store.boardTab = tab;
+  elements.chatPanel.classList.remove("mobile-open");
   render();
 }
 
