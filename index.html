@@ -12,8 +12,6 @@
         <span class="blob blob-2"></span>
       </div>
 
-      <div id="sessionTimer" class="session-timer hidden" title="Time left before you'll need to sign in again"></div>
-
       <section class="auth-screen hidden" id="authScreen" aria-label="Sign in">
         <div class="auth-card" id="authCard">
           <div class="auth-pitch" id="authPitch">
@@ -164,6 +162,10 @@
             <nav class="board-tabs">
               <button class="tab active" id="tabRoster" type="button"><span class="ico" data-icon="gamepad-2"></span>Games</button>
               <button class="tab" id="tabSchedule" type="button"><span class="ico" data-icon="calendar"></span>Schedule</button>
+              <button class="tab" id="tabChatMobile" type="button">
+                <span class="ico" data-icon="message-circle"></span>Chat
+                <span class="dot-badge hidden" id="chatTabBadge">0</span>
+              </button>
             </nav>
 
             <div class="board-content">
@@ -225,9 +227,14 @@
 
           <aside class="chat-panel" id="chatPanel">
             <div class="chat-head">
-              <div class="chat-head-id" id="chatHeadInfo">
-                <strong># general</strong>
-                <span class="muted" id="chatOnline">0 online now</span>
+              <div class="chat-head-left">
+                <button class="icon-btn sm" id="chatBackButton" type="button" aria-label="Back">
+                  <span class="ico" data-icon="chevron-left"></span>
+                </button>
+                <div class="chat-head-id" id="chatHeadInfo">
+                  <strong># general</strong>
+                  <span class="muted" id="chatOnline">0 online now</span>
+                </div>
               </div>
               <button class="icon-btn sm" id="chatToggle" type="button" aria-label="Collapse chat">&gt;</button>
             </div>

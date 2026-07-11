@@ -2130,6 +2130,24 @@ option {
   flex-shrink: 0;
 }
 
+.chat-head-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The back button and the mobile "Chat" tab only make sense once chat is its
+   own full-screen page below the mobile breakpoint (see the mobile-open
+   overrides further down). */
+#chatBackButton,
+#tabChatMobile {
+  display: none;
+}
+
+#tabChatMobile {
+  position: relative;
+}
+
 .chat-head-id strong {
   font-family: "Space Grotesk", sans-serif;
   font-weight: 600;
@@ -2142,8 +2160,16 @@ option {
   margin-top: 2px;
 }
 
+.chat-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .chat-log {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px 16px 8px;
   display: flex;
@@ -2908,21 +2934,6 @@ button {
 }
 
 /* ============ CLEAN SHELL BRIDGE ============ */
-.session-timer {
-  position: fixed;
-  top: 14px;
-  right: 16px;
-  z-index: 55;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
-  border-radius: var(--radius-sm);
-  padding: 6px 11px;
-}
-
 .dropdown-backdrop {
   position: fixed;
   inset: 0;
@@ -3233,13 +3244,29 @@ button {
     padding-bottom: 64px !important;
     overflow: visible !important;
   }
+  /* Chat becomes its own full-screen page on mobile (Instagram-style DMs)
+     instead of stacking below the board content — see #chatPanel.mobile-open. */
   #chatPanel {
-    width: 100% !important;
-    border-left: none !important;
-    border-top: 1px solid #ffffff0a !important;
+    display: none;
   }
-  #chatLog {
-    max-height: 340px;
+  #chatPanel.mobile-open {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    width: 100%;
+    height: 100dvh;
+    border-left: none;
+  }
+  #chatPanel.mobile-open .chat-log {
+    max-height: none;
+  }
+  #chatToggle {
+    display: none !important;
+  }
+  #chatBackButton,
+  #tabChatMobile {
+    display: inline-flex;
   }
   #authCard {
     grid-template-columns: 1fr !important;

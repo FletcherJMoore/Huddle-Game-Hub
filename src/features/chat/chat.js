@@ -3,7 +3,7 @@
 
 import { store, activeBoard, saveLocal, pushBoard, updateActiveBoard } from "../../state/store.js";
 import { elements } from "../../state/dom.js";
-import { canEditBoard, memberIdsOf, plainName, avatarColor, photoURLFor, displayName } from "../boards/board-model.js";
+import { canEditBoard, memberIdsOf, plainName, avatarColor, photoURLFor, displayName, unreadCount } from "../boards/board-model.js";
 import { initialsFor, timeLabel, sessionTimeLabel, formatShortDate, sortSchedule } from "../../utils/format.js";
 import { emptyState } from "../../components/empty-state.js";
 import { sessionLabel } from "../schedule/schedule.js";
@@ -26,18 +26,42 @@ function markRead(board) {
   pushBoard(board);
 }
 
+// Chat is a persistent sidebar on desktop but a full-screen page the user
+// navigates into on mobile (see #chatPanel.mobile-open) — either way, this is
+// true only while the user can actually see the thread, which is what should
+// gate marking messages read.
+function isChatVisible() {
+  return !store.chatCollapsed && elements.chatPanel.offsetParent !== null;
+}
+
 export function renderChat(board = activeBoard()) {
   if (!board || !store.currentUser) return;
 
   const count = memberIdsOf(board).length;
   elements.chatOnline.textContent = `${count} online now`;
 
-  if (!store.chatCollapsed) markRead(board);
+  if (isChatVisible()) markRead(board);
   renderThread(board);
+
+  const unread = unreadCount(board);
+  elements.chatTabBadge.textContent = unread > 9 ? "9+" : unread;
+  elements.chatTabBadge.classList.toggle("hidden", unread === 0);
 
   const editable = canEditBoard(board);
   elements.chatMessage.disabled = !editable;
   elements.chatMessage.placeholder = editable ? "Message # general…" : "View only";
+}
+
+// ---------- mobile full-screen chat page ----------
+export function openChatMobile() {
+  elements.chatPanel.classList.add("mobile-open");
+  markRead(activeBoard());
+  renderChat();
+  elements.chatLog.scrollTop = elements.chatLog.scrollHeight;
+}
+
+export function closeChatMobile() {
+  elements.chatPanel.classList.remove("mobile-open");
 }
 
 function renderThread(board) {
@@ -132,6 +156,9 @@ function postMessage(text, { system = false } = {}) {
 }
 
 export function bindChatEvents() {
+  elements.tabChatMobile.addEventListener("click", openChatMobile);
+  elements.chatBackButton.addEventListener("click", closeChatMobile);
+
   elements.chatForm.addEventListener("submit", (event) => {
     event.preventDefault();
     postMessage(elements.chatMessage.value);
