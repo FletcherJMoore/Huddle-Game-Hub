@@ -602,14 +602,16 @@ function resolveCatalogFields(existing) {
       catalogId: existing?.catalogId ?? null,
       coverImageUrl: existing?.coverImageUrl ?? null,
       genre: existing?.genre ?? "",
+      description: existing?.description ?? "",
       steamAppId: existing?.steamAppId ?? null
     };
   }
-  if (!pgCatalogPick) return { catalogId: null, coverImageUrl: null, genre: "", steamAppId: null };
+  if (!pgCatalogPick) return { catalogId: null, coverImageUrl: null, genre: "", description: "", steamAppId: null };
   return {
     catalogId: pgCatalogPick.id,
     coverImageUrl: pgCatalogPick.coverImageUrl,
     genre: pgCatalogPick.genre || "",
+    description: pgCatalogPick.description || "",
     steamAppId: null
   };
 }

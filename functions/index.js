@@ -10,8 +10,10 @@
 //   Only sends the email; it never grants membership itself, so every invite
 //   — new account or existing — is only ever joined via acceptInvite.
 //
-// searchCatalogGames: proxies a title search to the RAWG games database for
-//   the propose-game modal. Keeps the RAWG_API_KEY server-side.
+// searchCatalogGames: proxies a title search to IGDB (Twitch's game database)
+//   for the propose-game modal. IGDB's `cover` field is real box art, unlike
+//   RAWG's background_image, so it's what the shelf-view case fronts use.
+//   Keeps the IGDB_CLIENT_ID/IGDB_CLIENT_SECRET server-side.
 //
 // searchCatalogBoardGames: same idea for the "Party Game" side of the propose
 //   modal, backed by BoardGameGeek's public XML API2 (no API key needed).
@@ -286,51 +288,95 @@ exports.notifyNewMessage = onValueCreated(
   }
 );
 
-// ---------- Games catalog search (RAWG) ----------
+// ---------- Games catalog search (IGDB) ----------
 // Lets proposing a game search a general games database instead of requiring
-// any platform account to be linked. Keeps the API key and RAWG's raw
+// any platform account to be linked. Keeps the credentials and IGDB's raw
 // response shape server-side — the client only ever sees fields it already
-// understands (its own PLATFORMS list, not RAWG's finer-grained platform ids).
+// understands (its own PLATFORMS list, not IGDB's finer-grained platform ids).
 
-const RAWG_PLATFORM_MAP = [
+// Keeps catalog descriptions short enough for a case-detail panel, and decodes
+// the double-encoded HTML entities BoardGameGeek's XML descriptions ship with
+// (eg. "&amp;#10;" for a literal newline) — IGDB's summary is already plain text.
+function truncateText(raw, max = 220) {
+  if (!raw) return "";
+  const text = String(raw)
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#10;|&#13;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
+
+const IGDB_PLATFORM_MAP = [
   { match: /playstation 5/i, value: "PS5" },
   { match: /xbox/i, value: "Xbox" },
   { match: /nintendo switch/i, value: "Switch" },
-  { match: /^pc$/i, value: "PC" },
+  { match: /^pc \(microsoft windows\)$/i, value: "PC" },
   { match: /ios|android/i, value: "Mobile" }
 ];
 
-function mapRawgPlatforms(rawgPlatforms) {
+function mapIgdbPlatforms(igdbPlatforms) {
   const mapped = new Set();
-  (rawgPlatforms || []).forEach(({ platform }) => {
-    const hit = RAWG_PLATFORM_MAP.find((p) => p.match.test(platform?.name || ""));
+  (igdbPlatforms || []).forEach((platform) => {
+    const hit = IGDB_PLATFORM_MAP.find((p) => p.match.test(platform?.name || ""));
     if (hit) mapped.add(hit.value);
   });
   return [...mapped];
 }
 
-exports.searchCatalogGames = onCall({ secrets: ["RAWG_API_KEY"] }, async (request) => {
+// IGDB sits behind Twitch's OAuth — trade the Client ID/Secret for a short-lived
+// app access token and cache it in memory for the life of the function instance
+// (tokens last ~60 days, so a cold start is the only time this actually refetches).
+let igdbToken = null;
+let igdbTokenExpiresAt = 0;
+
+async function getIgdbToken() {
+  if (igdbToken && Date.now() < igdbTokenExpiresAt) return igdbToken;
+
+  const params = new URLSearchParams({
+    client_id: process.env.IGDB_CLIENT_ID,
+    client_secret: process.env.IGDB_CLIENT_SECRET,
+    grant_type: "client_credentials"
+  });
+  const resp = await fetch(`https://id.twitch.tv/oauth2/token?${params.toString()}`, { method: "POST" });
+  if (!resp.ok) throw new HttpsError("unavailable", "Games catalog search is unavailable right now.");
+  const data = await resp.json();
+
+  igdbToken = data.access_token;
+  igdbTokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000; // 60s safety margin
+  return igdbToken;
+}
+
+exports.searchCatalogGames = onCall({ secrets: ["IGDB_CLIENT_ID", "IGDB_CLIENT_SECRET"] }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
 
   const query = String(request.data?.query || "").trim();
   if (!query) return { results: [] };
 
-  const params = new URLSearchParams({
-    key: process.env.RAWG_API_KEY,
-    search: query,
-    page_size: "6"
+  const token = await getIgdbToken();
+  const resp = await fetch("https://api.igdb.com/v4/games", {
+    method: "POST",
+    headers: {
+      "Client-ID": process.env.IGDB_CLIENT_ID,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "text/plain"
+    },
+    body: `search "${query.replace(/"/g, "")}"; fields name, summary, cover.image_id, platforms.name, genres.name; limit 6;`
   });
-
-  const resp = await fetch(`https://api.rawg.io/api/games?${params.toString()}`);
   if (!resp.ok) throw new HttpsError("unavailable", "Games catalog search is unavailable right now.");
   const data = await resp.json();
 
-  const results = (data.results || []).map((g) => ({
+  const results = (data || []).map((g) => ({
     id: g.id,
     name: g.name,
-    coverImageUrl: g.background_image || null,
+    coverImageUrl: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : null,
     genre: g.genres?.[0]?.name || "",
-    platforms: mapRawgPlatforms(g.platforms)
+    description: truncateText(g.summary),
+    platforms: mapIgdbPlatforms(g.platforms)
   }));
 
   return { results };
@@ -340,7 +386,7 @@ exports.searchCatalogGames = onCall({ secrets: ["RAWG_API_KEY"] }, async (reques
 // Same idea as searchCatalogGames but for the "Party Game" side — backed by
 // BoardGameGeek's free XML API2 (no key required). We hit /search for name
 // matches, then /thing for the details (image, player count, category) of
-// the top few hits, keeping the parsed shape identical to the RAWG results
+// the top few hits, keeping the parsed shape identical to the IGDB results
 // so the client can treat both catalogs the same way.
 
 const bggXmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
@@ -386,6 +432,7 @@ exports.searchCatalogBoardGames = onCall(async (request) => {
         name,
         coverImageUrl: thing.thumbnail || thing.image || null,
         genre: category,
+        description: truncateText(thing.description),
         players
       };
     });
