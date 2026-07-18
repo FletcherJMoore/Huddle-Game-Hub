@@ -5,7 +5,7 @@ export const PLATFORMS = ["PC", "Xbox", "PS5", "Switch", "Mobile"];
 // Gameplay tags offered when proposing a game.
 export const GAME_TAGS = ["Co-op", "PvP", "Quick", "Campaign", "Free", "Game Pass"];
 
-// Which catalog a proposed game's title search hits — video games (RAWG) or
+// Which catalog a proposed game's title search hits — video games (IGDB) or
 // party/board games (BoardGameGeek).
 export const GAME_KINDS = ["video", "party"];
 export const GAME_KIND_LABELS = { video: "Video Game", party: "Party Game" };

@@ -10,7 +10,7 @@ export async function searchCatalog(functions, query) {
 }
 
 // Same idea, but for the "Party Game" side of the propose modal — proxies to
-// BoardGameGeek instead of RAWG.
+// BoardGameGeek instead of IGDB.
 export async function searchBoardGameCatalog(functions, query) {
   if (!functions) return [];
   const callable = httpsCallable(functions, "searchCatalogBoardGames");
