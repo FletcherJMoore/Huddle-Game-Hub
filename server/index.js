@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 
 import { pool } from "./db.js";
-import { authMiddleware, authRouter } from "./auth.js";
+import { authMiddleware, authRouter, authConfigured } from "./auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, "..", "dist");
@@ -42,4 +42,6 @@ app.use((req, res, next) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Huddle server listening on :${port}`));
+app.listen(port, () =>
+  console.log(`Huddle server listening on :${port} (auth: ${authConfigured ? "enabled" : "DISABLED"})`)
+);
