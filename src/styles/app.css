@@ -1,0 +1,195 @@
+:root {
+  --bg: #12121c;
+  --bg-elev: #1c1c2b;
+  --card: #1e1e30;
+  --border: #2c2c42;
+  --text: #e9e9f4;
+  --text-dim: #a0a0b8;
+  --accent: #7c5cff;
+  --accent-hover: #8f73ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Splash ---- */
+.splash,
+.auth-screen,
+.home {
+  min-height: 100%;
+}
+
+.splash {
+  display: grid;
+  place-items: center;
+}
+
+.splash-mark {
+  font-size: 56px;
+}
+
+/* ---- Login ---- */
+.auth-screen {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(1200px 600px at 50% -10%, rgba(124, 92, 255, 0.18), transparent 60%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 40px 32px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+.auth-logo {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.auth-card h1 {
+  margin: 16px 0 4px;
+  font-size: 24px;
+}
+
+.auth-tagline {
+  margin: 0 0 28px;
+  color: var(--text-dim);
+}
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fff;
+  color: #1f1f1f;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.google-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.google-btn:active {
+  transform: translateY(0);
+}
+
+/* ---- Home ---- */
+.home {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.home-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-fallback {
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.home-user-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.home-user-text span {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.ghost-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.ghost-btn:hover {
+  background: var(--bg-elev);
+  border-color: var(--accent);
+}
+
+.home-body {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.signed-in-card {
+  max-width: 440px;
+  padding: 36px 32px;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+
+.signed-in-emoji {
+  font-size: 44px;
+}
+
+.signed-in-card h2 {
+  margin: 12px 0 8px;
+}
+
+.signed-in-card p {
+  margin: 0;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
