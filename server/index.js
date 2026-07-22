@@ -10,12 +10,19 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 
 import { pool } from "./db.js";
+import { authMiddleware, authRouter } from "./auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, "..", "dist");
 
 const app = express();
+// Railway terminates TLS at a proxy; trust it so secure cookies are set and
+// req.protocol reflects https (needed for the OAuth callback URL).
+app.set("trust proxy", 1);
 app.use(express.json());
+app.use(authMiddleware());
+
+app.use("/api/auth", authRouter);
 
 app.get("/api/health", async (_req, res) => {
   try {
