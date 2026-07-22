@@ -1,10 +1,10 @@
 name: Deploy Firebase production
 
-# Deploys the built app, Cloud Functions, and Realtime Database rules whenever
-# main is updated. A merged PR to main triggers this workflow automatically.
+# Deploys the built app, Cloud Functions, and Realtime Database rules to
+# Firebase. Manual-only during the Railway migration: the live Firebase app
+# stays deployable via "Run workflow", but merging to main no longer
+# auto-deploys to Firebase (Railway now owns deploys). Removed at cutover.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 # Don't run two deploys at once; let a newer main finish after the current one.
