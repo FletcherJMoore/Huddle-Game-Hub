@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { useAuth } from "./auth/AuthProvider.jsx";
 import LoginScreen from "./auth/LoginScreen.jsx";
-import Home from "./app/Home.jsx";
+import AppShell from "./app/AppShell.jsx";
 
 function Splash() {
   return (
@@ -31,7 +31,7 @@ export default function App() {
 
   return (
     <AnimatePresence mode="wait">
-      {loading ? <Splash key="splash" /> : user ? <Home key="home" /> : <LoginScreen key="login" />}
+      {loading ? <Splash key="splash" /> : user ? <AppShell key="app" /> : <LoginScreen key="login" />}
     </AnimatePresence>
   );
 }
