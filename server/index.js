@@ -11,6 +11,7 @@ import express from "express";
 
 import { pool } from "./db.js";
 import { authMiddleware, authRouter, authConfigured } from "./auth.js";
+import { boardsRouter } from "./boards.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, "..", "dist");
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use(authMiddleware());
 
 app.use("/api/auth", authRouter);
+app.use("/api/boards", boardsRouter);
 
 app.get("/api/health", async (_req, res) => {
   try {
@@ -31,6 +33,13 @@ app.get("/api/health", async (_req, res) => {
   } catch (err) {
     res.status(503).json({ status: "error", message: err.message });
   }
+});
+
+// JSON error handler for API routes, so a thrown error returns a clean
+// {error} response instead of Express's default HTML page.
+app.use("/api", (err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: "Something went wrong on the server." });
 });
 
 // Static assets, then an index.html fallback for any non-API GET so the SPA's
