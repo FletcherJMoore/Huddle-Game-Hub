@@ -17,7 +17,7 @@ function GameBox({ game, memberCount, onOpen }) {
       layout
       className="game-box"
       onClick={onOpen}
-      whileHover={{ y: -6, rotateX: 7, scale: 1.03 }}
+      whileHover={{ y: -6, scale: 1.03 }}
       whileTap={{ scale: 0.98 }}
       transition={{ layout: { type: "spring", stiffness: 520, damping: 42 }, duration: 0.2 }}
     >
