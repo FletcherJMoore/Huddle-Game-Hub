@@ -3,6 +3,8 @@
 // free-form content (games, schedule, reads, …) lives in boards.content JSONB;
 // only board identity/membership are relational.
 
+import { randomUUID } from "node:crypto";
+
 import express from "express";
 
 import { pool, query } from "./db.js";
@@ -22,6 +24,31 @@ async function roleOf(boardId, userId) {
 }
 
 const canManage = (role) => role === "owner" || role === "editor";
+
+// Read-modify-write of a board's content JSONB inside a transaction, locking the
+// row (FOR UPDATE) so concurrent mutations (e.g. two people voting at once)
+// serialize instead of clobbering each other. `mutate(content)` edits in place.
+async function mutateContent(boardId, mutate) {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const { rows } = await client.query("select content from boards where id = $1 for update", [boardId]);
+    if (!rows.length) {
+      await client.query("rollback");
+      return null;
+    }
+    const content = rows[0].content ?? {};
+    mutate(content);
+    await client.query("update boards set content = $1, updated_at = now() where id = $2", [content, boardId]);
+    await client.query("commit");
+    return content;
+  } catch (err) {
+    await client.query("rollback");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
 
 // GET /api/boards — summaries of the boards the caller belongs to.
 boardsRouter.get("/", async (req, res, next) => {
@@ -138,6 +165,99 @@ boardsRouter.delete("/:id", async (req, res, next) => {
     if (role !== "owner") return res.status(403).json({ error: "Only the owner can delete a board." });
     await query("delete from boards where id = $1", [req.params.id]);
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Games (stored in boards.content.games) ----
+
+// POST /api/boards/:id/games — propose a game (any member).
+boardsRouter.post("/:id/games", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+
+    const b = req.body ?? {};
+    const title = String(b.title ?? "").trim();
+    if (!title) return res.status(400).json({ error: "A game title is required." });
+
+    const game = {
+      id: randomUUID(),
+      title: title.slice(0, 120),
+      kind: b.kind === "party" ? "party" : "video",
+      genre: String(b.genre ?? "").slice(0, 80),
+      players: String(b.players ?? "").slice(0, 40),
+      platforms: Array.isArray(b.platforms) ? b.platforms.slice(0, 8).map(String) : [],
+      coverImageUrl: b.coverImageUrl ? String(b.coverImageUrl) : null,
+      catalogId: b.catalogId ?? null,
+      approvals: {},
+      addedBy: req.user.id,
+      createdAt: new Date().toISOString()
+    };
+
+    const content = await mutateContent(req.params.id, (c) => {
+      c.games = Array.isArray(c.games) ? c.games : [];
+      c.games.push(game);
+    });
+    if (!content) return res.status(404).json({ error: "Board not found." });
+    res.status(201).json({ game, games: content.games });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/boards/:id/games/:gameId/vote — set the caller's vote (any member).
+boardsRouter.post("/:id/games/:gameId/vote", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+
+    const vote = req.body?.vote ?? null;
+    if (!["up", "down", null].includes(vote)) {
+      return res.status(400).json({ error: "vote must be 'up', 'down', or null." });
+    }
+
+    let found = false;
+    const content = await mutateContent(req.params.id, (c) => {
+      const game = (c.games ?? []).find((g) => g.id === req.params.gameId);
+      if (!game) return;
+      found = true;
+      game.approvals = game.approvals ?? {};
+      if (vote === null) delete game.approvals[req.user.id];
+      else game.approvals[req.user.id] = vote;
+    });
+    if (!content) return res.status(404).json({ error: "Board not found." });
+    if (!found) return res.status(404).json({ error: "Game not found." });
+    res.json({ games: content.games });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/boards/:id/games/:gameId — remove (adder, or owner/editor).
+boardsRouter.delete("/:id/games/:gameId", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+
+    let found = false;
+    let denied = false;
+    const content = await mutateContent(req.params.id, (c) => {
+      const games = c.games ?? [];
+      const game = games.find((g) => g.id === req.params.gameId);
+      if (!game) return;
+      found = true;
+      if (game.addedBy !== req.user.id && !canManage(role)) {
+        denied = true;
+        return;
+      }
+      c.games = games.filter((g) => g.id !== req.params.gameId);
+    });
+    if (!content) return res.status(404).json({ error: "Board not found." });
+    if (!found) return res.status(404).json({ error: "Game not found." });
+    if (denied) return res.status(403).json({ error: "You can only remove games you added." });
+    res.json({ games: content.games });
   } catch (err) {
     next(err);
   }

@@ -59,3 +59,26 @@ export async function getBoard(id) {
 export async function deleteBoard(id) {
   return json(await request(`/api/boards/${id}`, { method: "DELETE" }));
 }
+
+export async function searchCatalog(query, kind) {
+  const params = new URLSearchParams({ q: query, type: kind === "party" ? "party" : "video" });
+  return (await json(await request(`/api/catalog/search?${params}`))).results;
+}
+
+export async function addGame(boardId, game) {
+  const res = await request(`/api/boards/${boardId}/games`, { method: "POST", body: JSON.stringify(game) });
+  return (await json(res)).games;
+}
+
+export async function voteGame(boardId, gameId, vote) {
+  const res = await request(`/api/boards/${boardId}/games/${gameId}/vote`, {
+    method: "POST",
+    body: JSON.stringify({ vote })
+  });
+  return (await json(res)).games;
+}
+
+export async function removeGame(boardId, gameId) {
+  const res = await request(`/api/boards/${boardId}/games/${gameId}`, { method: "DELETE" });
+  return (await json(res)).games;
+}
