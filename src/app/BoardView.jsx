@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
 import { getBoard } from "../lib/api.js";
+import GamesTab from "./GamesTab.jsx";
+
+const TABS = [
+  { id: "games", label: "Games", ready: true },
+  { id: "schedule", label: "Schedule", ready: false },
+  { id: "chat", label: "Chat", ready: false }
+];
 
 function MemberChip({ member }) {
   const initial = (member.name || member.email || "U").trim().charAt(0).toUpperCase();
@@ -19,6 +26,7 @@ function MemberChip({ member }) {
 export default function BoardView({ boardId, onBack }) {
   const [board, setBoard] = useState(null);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState("games");
 
   useEffect(() => {
     let alive = true;
@@ -75,19 +83,27 @@ export default function BoardView({ boardId, onBack }) {
       </header>
 
       <div className="board-tabs">
-        {["Games", "Schedule", "Chat"].map((tab) => (
-          <span key={tab} className="board-tab disabled">
-            {tab}
-          </span>
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            className={`board-tab${tab === t.id ? " active" : ""}${t.ready ? "" : " disabled"}`}
+            onClick={() => t.ready && setTab(t.id)}
+          >
+            {t.label}
+          </button>
         ))}
       </div>
 
-      <div className="board-placeholder">
-        <p className="muted">
-          Games, schedule, and chat land in the next slices — the board itself now lives in Postgres
-          and loads through the new API.
-        </p>
-      </div>
+      {tab === "games" ? (
+        <GamesTab board={board} />
+      ) : (
+        <div className="board-placeholder">
+          <p className="muted">
+            {TABS.find((t) => t.id === tab)?.label} lands in the next slice — the board already lives in
+            Postgres and loads through the new API.
+          </p>
+        </div>
+      )}
     </motion.main>
   );
 }

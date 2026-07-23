@@ -12,6 +12,7 @@ import express from "express";
 import { pool } from "./db.js";
 import { authMiddleware, authRouter, authConfigured } from "./auth.js";
 import { boardsRouter } from "./boards.js";
+import { catalogRouter } from "./catalog.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, "..", "dist");
@@ -25,6 +26,7 @@ app.use(authMiddleware());
 
 app.use("/api/auth", authRouter);
 app.use("/api/boards", boardsRouter);
+app.use("/api/catalog", catalogRouter);
 
 app.get("/api/health", async (_req, res) => {
   try {
