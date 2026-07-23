@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
 import { searchCatalog, addGame } from "../lib/api.js";
+import { pickBestCover } from "../lib/covers.js";
 
 export default function ProposeGameModal({ boardId, onClose, onAdded }) {
   const [kind, setKind] = useState("video");
@@ -44,6 +45,23 @@ export default function ProposeGameModal({ boardId, onClose, onAdded }) {
       setError(err.message || "Couldn't add the game.");
       setBusy(false);
     }
+  }
+
+  // Choose the best-fitting box art among the result's candidates, then add.
+  async function pickResult(r) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    const coverImageUrl = await pickBestCover(r.covers?.length ? r.covers : [r.coverImageUrl]);
+    submit({
+      title: r.title,
+      kind,
+      genre: r.genre,
+      players: r.players,
+      platforms: r.platforms,
+      coverImageUrl,
+      catalogId: r.catalogId
+    });
   }
 
   return (
@@ -96,17 +114,7 @@ export default function ProposeGameModal({ boardId, onClose, onAdded }) {
               type="button"
               className="catalog-result"
               disabled={busy}
-              onClick={() =>
-                submit({
-                  title: r.title,
-                  kind,
-                  genre: r.genre,
-                  players: r.players,
-                  platforms: r.platforms,
-                  coverImageUrl: r.coverImageUrl,
-                  catalogId: r.catalogId
-                })
-              }
+              onClick={() => pickResult(r)}
             >
               <div className="catalog-cover">
                 {r.coverImageUrl ? <img src={r.coverImageUrl} alt="" referrerPolicy="no-referrer" /> : "🎮"}

@@ -71,6 +71,17 @@ function mapVggPlatforms(thing) {
   return [...mapped];
 }
 
+// All the box arts we know for a title — the primary image plus each version's
+// — deduped, primary first. The client measures these and keeps the one whose
+// aspect ratio is closest to a game box.
+function coversOf(thing) {
+  const primary = thing.thumbnail || thing.image || null;
+  const versionImages = asArray(thing.versions?.item)
+    .map((v) => v.thumbnail || v.image)
+    .filter(Boolean);
+  return [...new Set([primary, ...versionImages].filter(Boolean))].slice(0, 6);
+}
+
 // /search for name matches, then /thing for details of the top few hits. Since
 // 2025-07-02 the API requires a registered app's Bearer token on every request.
 async function fetchGeekThings(query, type) {
@@ -85,7 +96,11 @@ async function fetchGeekThings(query, type) {
     .slice(0, 6);
   if (!ids.length) return [];
 
-  const thingResp = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${ids.join(",")}`, { headers });
+  // versions=1 pulls each title's alternate editions/releases inline — most
+  // games have several box arts, and we want the one that best fits the shelf.
+  const thingResp = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${ids.join(",")}&versions=1`, {
+    headers
+  });
   if (!thingResp.ok) throw new Error("catalog-unavailable");
   const thingById = new Map(
     asArray(parser.parse(await thingResp.text()).items?.item).map((t) => [String(t["@_id"]), t])
@@ -100,16 +115,20 @@ catalogRouter.get("/search", async (req, res) => {
 
   try {
     const things = await fetchGeekThings(query, kind === "party" ? "boardgame" : "videogame");
-    const results = things.map((thing) => ({
-      catalogId: Number(thing["@_id"]),
-      title: primaryName(thing),
-      coverImageUrl: thing.thumbnail || thing.image || null,
-      genre: kind === "party" ? linkValue(thing, "boardgamecategory") : linkValue(thing, "videogamegenre"),
-      description: truncateText(thing.description),
-      players: playersOf(thing),
-      platforms: kind === "party" ? [] : mapVggPlatforms(thing),
-      kind
-    }));
+    const results = things.map((thing) => {
+      const covers = coversOf(thing);
+      return {
+        catalogId: Number(thing["@_id"]),
+        title: primaryName(thing),
+        coverImageUrl: covers[0] ?? null,
+        covers,
+        genre: kind === "party" ? linkValue(thing, "boardgamecategory") : linkValue(thing, "videogamegenre"),
+        description: truncateText(thing.description),
+        players: playersOf(thing),
+        platforms: kind === "party" ? [] : mapVggPlatforms(thing),
+        kind
+      };
+    });
     res.json({ results });
   } catch {
     res.status(502).json({ error: "Games catalog search is unavailable right now." });
