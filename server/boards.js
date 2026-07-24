@@ -262,3 +262,94 @@ boardsRouter.delete("/:id/games/:gameId", async (req, res, next) => {
     next(err);
   }
 });
+
+// ---- Schedule (sessions, stored in boards.content.schedule) ----
+
+// POST /api/boards/:id/sessions — propose a game night (any member). The
+// proposer is RSVP'd "in" by default.
+boardsRouter.post("/:id/sessions", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+
+    const b = req.body ?? {};
+    const date = String(b.date ?? "").trim();
+    if (!date) return res.status(400).json({ error: "A date is required." });
+
+    const session = {
+      id: randomUUID(),
+      date,
+      start: String(b.start ?? "").slice(0, 5),
+      end: String(b.end ?? "").slice(0, 5),
+      activity: String(b.activity ?? "").slice(0, 120),
+      rsvps: { [req.user.id]: "in" },
+      createdBy: req.user.id,
+      createdAt: new Date().toISOString()
+    };
+
+    const content = await mutateContent(req.params.id, (c) => {
+      c.schedule = Array.isArray(c.schedule) ? c.schedule : [];
+      c.schedule.push(session);
+    });
+    if (!content) return res.status(404).json({ error: "Board not found." });
+    res.status(201).json({ session, schedule: content.schedule });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/boards/:id/sessions/:sessionId/rsvp — set the caller's RSVP.
+boardsRouter.post("/:id/sessions/:sessionId/rsvp", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+
+    const rsvp = req.body?.rsvp ?? null;
+    if (!["in", "out", "maybe", null].includes(rsvp)) {
+      return res.status(400).json({ error: "rsvp must be 'in', 'out', 'maybe', or null." });
+    }
+
+    let found = false;
+    const content = await mutateContent(req.params.id, (c) => {
+      const session = (c.schedule ?? []).find((s) => s.id === req.params.sessionId);
+      if (!session) return;
+      found = true;
+      session.rsvps = session.rsvps ?? {};
+      if (rsvp === null) delete session.rsvps[req.user.id];
+      else session.rsvps[req.user.id] = rsvp;
+    });
+    if (!content) return res.status(404).json({ error: "Board not found." });
+    if (!found) return res.status(404).json({ error: "Session not found." });
+    res.json({ schedule: content.schedule });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/boards/:id/sessions/:sessionId — remove (proposer, or owner/editor).
+boardsRouter.delete("/:id/sessions/:sessionId", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+
+    let found = false;
+    let denied = false;
+    const content = await mutateContent(req.params.id, (c) => {
+      const sessions = c.schedule ?? [];
+      const session = sessions.find((s) => s.id === req.params.sessionId);
+      if (!session) return;
+      found = true;
+      if (session.createdBy !== req.user.id && !canManage(role)) {
+        denied = true;
+        return;
+      }
+      c.schedule = sessions.filter((s) => s.id !== req.params.sessionId);
+    });
+    if (!content) return res.status(404).json({ error: "Board not found." });
+    if (!found) return res.status(404).json({ error: "Session not found." });
+    if (denied) return res.status(403).json({ error: "You can only remove nights you proposed." });
+    res.json({ schedule: content.schedule });
+  } catch (err) {
+    next(err);
+  }
+});

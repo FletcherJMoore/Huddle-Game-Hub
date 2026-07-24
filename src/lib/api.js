@@ -82,3 +82,21 @@ export async function removeGame(boardId, gameId) {
   const res = await request(`/api/boards/${boardId}/games/${gameId}`, { method: "DELETE" });
   return (await json(res)).games;
 }
+
+export async function createSession(boardId, session) {
+  const res = await request(`/api/boards/${boardId}/sessions`, { method: "POST", body: JSON.stringify(session) });
+  return (await json(res)).schedule;
+}
+
+export async function rsvpSession(boardId, sessionId, rsvp) {
+  const res = await request(`/api/boards/${boardId}/sessions/${sessionId}/rsvp`, {
+    method: "POST",
+    body: JSON.stringify({ rsvp })
+  });
+  return (await json(res)).schedule;
+}
+
+export async function removeSession(boardId, sessionId) {
+  const res = await request(`/api/boards/${boardId}/sessions/${sessionId}`, { method: "DELETE" });
+  return (await json(res)).schedule;
+}

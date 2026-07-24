@@ -8,7 +8,7 @@ export default function TopBar({ onHome, showHome }) {
     <header className="topbar">
       <button className="topbar-brand" onClick={onHome} aria-label="Home">
         <span className="topbar-logo">🎮</span>
-        <span className="topbar-title">Huddle</span>
+        <span className="topbar-title gradient-text">Huddle</span>
         {showHome && <span className="topbar-crumb">/ board</span>}
       </button>
 

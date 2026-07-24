@@ -2,74 +2,63 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { useAuth } from "../auth/AuthProvider.jsx";
+import { useAchievements } from "./AchievementProvider.jsx";
 import { voteGame, removeGame } from "../lib/api.js";
 import { voteCounts, sortByScore, isAgreed, myVote, majorityThreshold } from "../lib/games.js";
-import CoverArt from "./CoverArt.jsx";
+import GameCarousel from "./GameCarousel.jsx";
 import GameDetail from "./GameDetail.jsx";
 import ProposeGameModal from "./ProposeGameModal.jsx";
 
-function GameBox({ game, memberCount, onOpen }) {
-  const { score } = voteCounts(game);
-  const agreed = isAgreed(game, memberCount);
-
-  return (
-    <motion.button
-      layout
-      className="game-box"
-      onClick={onOpen}
-      whileHover={{ y: -6, scale: 1.03 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ layout: { type: "spring", stiffness: 520, damping: 42 }, duration: 0.2 }}
-    >
-      <div className="box-frame">
-        <motion.div className="box-cover" layoutId={`cover-${game.id}`}>
-          <CoverArt game={game} />
-        </motion.div>
-        <span className={`box-score${score > 0 ? " pos" : score < 0 ? " neg" : ""}`}>{score}</span>
-        {agreed && (
-          <span className="box-star" title="In rotation" aria-hidden="true">
-            ★
-          </span>
-        )}
-      </div>
-    </motion.button>
-  );
-}
+const KINDS = [
+  { id: "video", label: "🎮 Video" },
+  { id: "party", label: "🎲 Board" }
+];
 
 export default function GamesTab({ board }) {
   const { user } = useAuth();
+  const { unlock } = useAchievements();
   const [games, setGames] = useState(board.content?.games ?? []);
-  const [selectedId, setSelectedId] = useState(null);
+  const [kind, setKind] = useState("video");
+  const [search, setSearch] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [proposing, setProposing] = useState(false);
 
   const memberCount = board.members.length;
   const canManage = board.role === "owner" || board.role === "editor";
-  const ranked = useMemo(() => sortByScore(games), [games]);
-  const selected = games.find((g) => g.id === selectedId) ?? null;
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return sortByScore(
+      games.filter((g) => g.kind === kind && (!q || g.title.toLowerCase().includes(q)))
+    );
+  }, [games, kind, search]);
+
+  const active = filtered[Math.min(activeIndex, Math.max(0, filtered.length - 1))] ?? null;
 
   async function handleVote(gameId, vote) {
     const game = games.find((g) => g.id === gameId);
     const next = myVote(game, user.id) === vote ? null : vote;
 
-    setGames((gs) =>
-      gs.map((g) => {
-        if (g.id !== gameId) return g;
-        const approvals = { ...(g.approvals ?? {}) };
-        if (next === null) delete approvals[user.id];
-        else approvals[user.id] = next;
-        return { ...g, approvals };
-      })
-    );
+    const approvals = { ...(game.approvals ?? {}) };
+    if (next === null) delete approvals[user.id];
+    else approvals[user.id] = next;
+
+    if (!isAgreed(game, memberCount) && isAgreed({ ...game, approvals }, memberCount)) {
+      unlock(`${game.title} entered the rotation`, 20);
+    }
+
+    setGames((gs) => gs.map((g) => (g.id === gameId ? { ...g, approvals } : g)));
 
     try {
       setGames(await voteGame(board.id, gameId, next));
     } catch {
-      /* keep optimistic; a reload reconciles */
+      /* keep optimistic */
     }
   }
 
   async function handleRemove(gameId) {
-    setSelectedId(null);
+    setDetailOpen(false);
     try {
       setGames(await removeGame(board.id, gameId));
     } catch {
@@ -77,51 +66,112 @@ export default function GamesTab({ board }) {
     }
   }
 
+  const activeMeta = active
+    ? [active.genre, active.players && `${active.players} players`, ...(active.platforms ?? [])]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
+  const mine = active ? myVote(active, user.id) : null;
+  const score = active ? voteCounts(active).score : 0;
+
   return (
     <div className="games-tab">
-      <div className="games-head">
-        <span className="muted">
-          {games.length} {games.length === 1 ? "game" : "games"} · majority ={" "}
-          {majorityThreshold(memberCount)} up-votes
-        </span>
+      <div className="games-controls">
+        <div className="segmented">
+          {KINDS.map((k) => (
+            <button
+              key={k.id}
+              className={`seg-option${kind === k.id ? " selected" : ""}`}
+              onClick={() => {
+                setKind(k.id);
+                setActiveIndex(0);
+              }}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+        <input
+          className="game-search"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setActiveIndex(0);
+          }}
+          placeholder="Search games…"
+        />
         <button className="primary-btn" onClick={() => setProposing(true)}>
-          + Propose game
+          + Propose
         </button>
       </div>
 
-      {ranked.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-emoji">🕹️</div>
-          <h2>No games yet</h2>
-          <p className="muted">Propose a game and let the crew vote it up.</p>
+          <div className="empty-emoji">{kind === "video" ? "🎮" : "🎲"}</div>
+          <h2>No {kind === "video" ? "video" : "board"} games yet</h2>
+          <p className="muted">
+            {search.trim() ? "Nothing matches that search." : "Propose one and let the crew vote it up."}
+          </p>
           <button className="primary-btn" onClick={() => setProposing(true)}>
             + Propose game
           </button>
         </div>
       ) : (
-        <motion.div className="game-shelf" layout>
-          {ranked.map((game) => (
-            <GameBox
-              key={game.id}
-              game={game}
-              memberCount={memberCount}
-              onOpen={() => setSelectedId(game.id)}
-            />
-          ))}
-        </motion.div>
+        <>
+          <GameCarousel
+            key={`${kind}-${search.trim()}`}
+            games={filtered}
+            onActiveChange={setActiveIndex}
+            onOpenDetail={() => setDetailOpen(true)}
+            memberCount={memberCount}
+          />
+
+          {active && (
+            <div className="carousel-info">
+              <div className="carousel-title-row">
+                <h3 className="gradient-text">{active.title}</h3>
+                {isAgreed(active, memberCount) && <span className="agreed-badge">In rotation</span>}
+              </div>
+              {activeMeta && <p className="muted carousel-meta">{activeMeta}</p>}
+
+              <div className="carousel-vote">
+                <button
+                  className={`vote-big${mine === "up" ? " active-up" : ""}`}
+                  onClick={() => handleVote(active.id, "up")}
+                  aria-label="Upvote"
+                >
+                  ▲
+                </button>
+                <motion.span key={score} className="detail-score" initial={{ scale: 1.3 }} animate={{ scale: 1 }}>
+                  {score}
+                </motion.span>
+                <button
+                  className={`vote-big${mine === "down" ? " active-down" : ""}`}
+                  onClick={() => handleVote(active.id, "down")}
+                  aria-label="Downvote"
+                >
+                  ▼
+                </button>
+                <button className="ghost-btn" onClick={() => setDetailOpen(true)}>
+                  Details
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <AnimatePresence>
-        {selected && (
+        {detailOpen && active && (
           <GameDetail
-            key={selected.id}
-            game={selected}
+            key={active.id}
+            game={active}
             memberCount={memberCount}
-            mine={myVote(selected, user.id)}
-            canRemove={selected.addedBy === user.id || canManage}
+            mine={myVote(active, user.id)}
+            canRemove={active.addedBy === user.id || canManage}
             onVote={handleVote}
             onRemove={handleRemove}
-            onClose={() => setSelectedId(null)}
+            onClose={() => setDetailOpen(false)}
           />
         )}
       </AnimatePresence>

@@ -27,7 +27,7 @@ export default function LoginScreen() {
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
         <div className="auth-logo">🎮</div>
-        <h1>Huddle Game Hub</h1>
+        <h1 className="gradient-text">Huddle Game Hub</h1>
         <p className="auth-tagline">Plan game nights with your crew.</p>
 
         {/* Full-page navigation kicks off the server-side OAuth flow. */}
