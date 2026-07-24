@@ -3,10 +3,11 @@ import { motion } from "framer-motion";
 
 import { getBoard } from "../lib/api.js";
 import GamesTab from "./GamesTab.jsx";
+import ScheduleTab from "./ScheduleTab.jsx";
 
 const TABS = [
   { id: "games", label: "Games", ready: true },
-  { id: "schedule", label: "Schedule", ready: false },
+  { id: "schedule", label: "Schedule", ready: true },
   { id: "chat", label: "Chat", ready: false }
 ];
 
@@ -73,7 +74,7 @@ export default function BoardView({ boardId, onBack }) {
       <header className="board-header">
         <span className="board-header-emoji">{board.emoji || "🎮"}</span>
         <div>
-          <h1>{board.name}</h1>
+          <h1 className="gradient-text">{board.name}</h1>
           <div className="member-chips">
             {board.members.map((m) => (
               <MemberChip key={m.userId} member={m} />
@@ -83,19 +84,21 @@ export default function BoardView({ boardId, onBack }) {
       </header>
 
       <div className="board-tabs">
-        {TABS.map((t) => (
+        {TABS.map((t, i) => (
           <button
             key={t.id}
-            className={`board-tab${tab === t.id ? " active" : ""}${t.ready ? "" : " disabled"}`}
+            className={`board-tab blade-${i}${tab === t.id ? " active" : ""}${t.ready ? "" : " disabled"}`}
             onClick={() => t.ready && setTab(t.id)}
           >
-            {t.label}
+            <span>{t.label}</span>
           </button>
         ))}
       </div>
 
       {tab === "games" ? (
         <GamesTab board={board} />
+      ) : tab === "schedule" ? (
+        <ScheduleTab board={board} />
       ) : (
         <div className="board-placeholder">
           <p className="muted">

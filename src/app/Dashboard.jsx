@@ -5,12 +5,29 @@ import { listBoards, createBoard } from "../lib/api.js";
 
 const EMOJI_CHOICES = ["🎮", "🎲", "🕹️", "🃏", "🏆", "🎯", "👾", "🍕"];
 
+// A few brand-family gradients so the tile grid reads multi-colored like a
+// Metro dashboard while staying on-palette.
+const TILE_GRADS = [
+  "linear-gradient(150deg,#2563eb,#1e3a8a)",
+  "linear-gradient(150deg,#0891b2,#155e75)",
+  "linear-gradient(150deg,#4f46e5,#3730a3)",
+  "linear-gradient(150deg,#0ea5e9,#0369a1)",
+  "linear-gradient(150deg,#3b82f6,#0891b2)",
+  "linear-gradient(150deg,#6366f1,#1e40af)"
+];
+
+function tileGrad(seed) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  return TILE_GRADS[hash % TILE_GRADS.length];
+}
+
 function BoardCard({ board, onOpen, index }) {
   return (
     <motion.button
       className="board-card"
       onClick={() => onOpen(board.id)}
-      style={{ "--card-accent": board.accent || "#7c5cff" }}
+      style={{ backgroundImage: tileGrad(board.id || board.name || "board") }}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, type: "spring", stiffness: 300, damping: 26 }}
@@ -66,7 +83,7 @@ export default function Dashboard({ onOpenBoard }) {
   return (
     <main className="dashboard">
       <div className="dashboard-head">
-        <h1>Your boards</h1>
+        <h1 className="gradient-text">Your boards</h1>
         <button className="primary-btn" onClick={() => setCreating(true)}>
           + New board
         </button>

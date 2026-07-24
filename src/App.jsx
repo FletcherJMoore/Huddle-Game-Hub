@@ -30,8 +30,11 @@ export default function App() {
   const { user, loading } = useAuth();
 
   return (
-    <AnimatePresence mode="wait">
-      {loading ? <Splash key="splash" /> : user ? <AppShell key="app" /> : <LoginScreen key="login" />}
-    </AnimatePresence>
+    <>
+      <div className="aurora" aria-hidden="true" />
+      <AnimatePresence mode="wait">
+        {loading ? <Splash key="splash" /> : user ? <AppShell key="app" /> : <LoginScreen key="login" />}
+      </AnimatePresence>
+    </>
   );
 }
