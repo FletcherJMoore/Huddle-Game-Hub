@@ -75,11 +75,27 @@ function mapVggPlatforms(thing) {
 // — deduped, primary first. The client measures these and keeps the one whose
 // aspect ratio is closest to a game box.
 function coversOf(thing) {
-  const primary = thing.thumbnail || thing.image || null;
+  // Prefer the full-size image over the ~150px thumbnail so covers aren't blurry.
+  const primary = thing.image || thing.thumbnail || null;
   const versionImages = asArray(thing.versions?.item)
-    .map((v) => v.thumbnail || v.image)
+    .map((v) => v.image || v.thumbnail)
     .filter(Boolean);
   return [...new Set([primary, ...versionImages].filter(Boolean))].slice(0, 6);
+}
+
+function mapGeekThing(thing, kind) {
+  const covers = coversOf(thing);
+  return {
+    catalogId: Number(thing["@_id"]),
+    title: primaryName(thing),
+    coverImageUrl: covers[0] ?? null,
+    covers,
+    genre: kind === "party" ? linkValue(thing, "boardgamecategory") : linkValue(thing, "videogamegenre"),
+    description: truncateText(thing.description),
+    players: playersOf(thing),
+    platforms: kind === "party" ? [] : mapVggPlatforms(thing),
+    kind
+  };
 }
 
 // /search for name matches, then /thing for details of the top few hits. Since
@@ -108,28 +124,100 @@ async function fetchGeekThings(query, type) {
   return ids.map((id) => thingById.get(String(id))).filter(Boolean);
 }
 
+// ---- IGDB (video games, via a Twitch app) — clean, high-res cover art ----
+
+const IGDB_PLATFORM_MAP = [
+  { match: /playstation 5/i, value: "PS5" },
+  { match: /xbox/i, value: "Xbox" },
+  { match: /switch/i, value: "Switch" },
+  { match: /windows|^pc/i, value: "PC" },
+  { match: /ios|android/i, value: "Mobile" }
+];
+
+let twitchToken = null;
+let twitchTokenExpiry = 0;
+
+// Client-credentials token for the IGDB (Twitch) API, cached until it expires.
+async function getTwitchToken() {
+  const { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET } = process.env;
+  if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) return null;
+  if (twitchToken && Date.now() < twitchTokenExpiry) return twitchToken;
+
+  const params = new URLSearchParams({
+    client_id: TWITCH_CLIENT_ID,
+    client_secret: TWITCH_CLIENT_SECRET,
+    grant_type: "client_credentials"
+  });
+  const resp = await fetch(`https://id.twitch.tv/oauth2/token?${params}`, { method: "POST" });
+  if (!resp.ok) return null;
+
+  const data = await resp.json();
+  twitchToken = data.access_token;
+  twitchTokenExpiry = Date.now() + Math.max(0, (data.expires_in ?? 3600) - 60) * 1000;
+  return twitchToken;
+}
+
+// Returns mapped video-game results, or null if IGDB isn't configured/available
+// so the caller can fall back to VideoGameGeek.
+async function searchIgdb(query) {
+  const token = await getTwitchToken();
+  if (!token) return null;
+
+  const resp = await fetch("https://api.igdb.com/v4/games", {
+    method: "POST",
+    headers: {
+      "Client-ID": process.env.TWITCH_CLIENT_ID,
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json"
+    },
+    body:
+      `search "${query.replace(/"/g, "")}"; ` +
+      "fields name, cover.image_id, genres.name, platforms.name, summary; " +
+      "where cover != null; limit 8;"
+  });
+  if (!resp.ok) return null;
+
+  const games = await resp.json();
+  return games.map((g) => {
+    const cover = g.cover?.image_id
+      ? `https://images.igdb.com/igdb/image/upload/t_720p/${g.cover.image_id}.jpg`
+      : null;
+    const platforms = new Set();
+    (g.platforms ?? []).forEach((p) => {
+      const hit = IGDB_PLATFORM_MAP.find((x) => x.match.test(p.name || ""));
+      if (hit) platforms.add(hit.value);
+    });
+    return {
+      catalogId: g.id,
+      title: g.name,
+      coverImageUrl: cover,
+      covers: cover ? [cover] : [],
+      genre: g.genres?.[0]?.name ?? "",
+      description: truncateText(g.summary),
+      players: "",
+      platforms: [...platforms],
+      kind: "video"
+    };
+  });
+}
+
+// Video games use IGDB when a Twitch app is configured (falling back to
+// VideoGameGeek); board games always use BoardGameGeek.
 catalogRouter.get("/search", async (req, res) => {
   const query = String(req.query.q ?? "").trim();
   const kind = req.query.type === "party" ? "party" : "video";
   if (!query) return res.json({ results: [] });
 
   try {
-    const things = await fetchGeekThings(query, kind === "party" ? "boardgame" : "videogame");
-    const results = things.map((thing) => {
-      const covers = coversOf(thing);
-      return {
-        catalogId: Number(thing["@_id"]),
-        title: primaryName(thing),
-        coverImageUrl: covers[0] ?? null,
-        covers,
-        genre: kind === "party" ? linkValue(thing, "boardgamecategory") : linkValue(thing, "videogamegenre"),
-        description: truncateText(thing.description),
-        players: playersOf(thing),
-        platforms: kind === "party" ? [] : mapVggPlatforms(thing),
-        kind
-      };
-    });
-    res.json({ results });
+    if (kind === "video") {
+      const igdb = await searchIgdb(query);
+      if (igdb) return res.json({ results: igdb });
+      const things = await fetchGeekThings(query, "videogame");
+      return res.json({ results: things.map((t) => mapGeekThing(t, "video")) });
+    }
+
+    const things = await fetchGeekThings(query, "boardgame");
+    res.json({ results: things.map((t) => mapGeekThing(t, "party")) });
   } catch {
     res.status(502).json({ error: "Games catalog search is unavailable right now." });
   }
