@@ -4,6 +4,7 @@
 //   2. Serves the built Vite SPA (dist/) with a client-side-routing fallback.
 // Auth, board APIs, and the Socket.IO realtime layer land in later phases.
 
+import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +14,7 @@ import { pool } from "./db.js";
 import { authMiddleware, authRouter, authConfigured } from "./auth.js";
 import { boardsRouter } from "./boards.js";
 import { catalogRouter } from "./catalog.js";
+import { initRealtime } from "./realtime.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, "..", "dist");
@@ -52,7 +54,10 @@ app.use((req, res, next) => {
   res.sendFile(path.join(DIST_DIR, "index.html"));
 });
 
+const server = http.createServer(app);
+initRealtime(server);
+
 const port = process.env.PORT || 3000;
-app.listen(port, () =>
+server.listen(port, () =>
   console.log(`Huddle server listening on :${port} (auth: ${authConfigured ? "enabled" : "DISABLED"})`)
 );

@@ -94,15 +94,11 @@ if (authConfigured) {
   });
 }
 
-// Session + Passport middleware, mounted before any route that needs req.user.
-// When auth is unconfigured this is a single pass-through so the app still boots.
-export function authMiddleware() {
-  if (!authConfigured) return [(_req, _res, next) => next()];
-
-  const PgSession = connectPgSimple(session);
-  return [
-    session({
-      store: new PgSession({ pool, createTableIfMissing: true }),
+// One session middleware instance, shared by Express and Socket.IO so a socket
+// handshake resolves to the same logged-in user.
+export const sessionMiddleware = authConfigured
+  ? session({
+      store: new (connectPgSimple(session))({ pool, createTableIfMissing: true }),
       secret: AUTH_SECRET,
       resave: false,
       saveUninitialized: false,
@@ -112,10 +108,13 @@ export function authMiddleware() {
         secure: APP_URL.startsWith("https://"), // Railway serves over TLS
         maxAge: 24 * 60 * 60 * 1000
       }
-    }),
-    passport.initialize(),
-    passport.session()
-  ];
+    })
+  : (_req, _res, next) => next();
+
+// Session + Passport middleware, mounted before any route that needs req.user.
+export function authMiddleware() {
+  if (!authConfigured) return [(_req, _res, next) => next()];
+  return [sessionMiddleware, passport.initialize(), passport.session()];
 }
 
 export const authRouter = express.Router();

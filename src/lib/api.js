@@ -100,3 +100,12 @@ export async function removeSession(boardId, sessionId) {
   const res = await request(`/api/boards/${boardId}/sessions/${sessionId}`, { method: "DELETE" });
   return (await json(res)).schedule;
 }
+
+export async function getMessages(boardId) {
+  return (await json(await request(`/api/boards/${boardId}/messages`))).messages;
+}
+
+export async function sendMessage(boardId, text) {
+  const res = await request(`/api/boards/${boardId}/messages`, { method: "POST", body: JSON.stringify({ text }) });
+  return (await json(res)).message;
+}

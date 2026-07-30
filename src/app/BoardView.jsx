@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
-import { getBoard } from "../lib/api.js";
+import { getBoard, getMessages, sendMessage } from "../lib/api.js";
+import { getSocket } from "../lib/socket.js";
 import GamesTab from "./GamesTab.jsx";
 import ScheduleTab from "./ScheduleTab.jsx";
+import ChatTab from "./ChatTab.jsx";
 
 const TABS = [
-  { id: "games", label: "Games", ready: true },
-  { id: "schedule", label: "Schedule", ready: true },
-  { id: "chat", label: "Chat", ready: false }
+  { id: "games", label: "Games" },
+  { id: "schedule", label: "Schedule" },
+  { id: "chat", label: "Chat" }
 ];
 
 function MemberChip({ member }) {
@@ -29,17 +31,50 @@ export default function BoardView({ boardId, onBack }) {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("games");
 
+  // Live board content, kept in sync via the board's socket room.
+  const [games, setGames] = useState([]);
+  const [schedule, setSchedule] = useState([]);
+  const [messages, setMessages] = useState([]);
+
   useEffect(() => {
     let alive = true;
     setBoard(null);
     setError("");
+
     getBoard(boardId)
-      .then((b) => alive && setBoard(b))
+      .then((b) => {
+        if (!alive) return;
+        setBoard(b);
+        setGames(b.content?.games ?? []);
+        setSchedule(b.content?.schedule ?? []);
+      })
       .catch((err) => alive && setError(err.message || "Couldn't load this board."));
+    getMessages(boardId)
+      .then((m) => alive && setMessages(m))
+      .catch(() => {});
+
+    const socket = getSocket();
+    socket.emit("join", boardId);
+    const onContent = (c) => {
+      setGames(c.games ?? []);
+      setSchedule(c.schedule ?? []);
+    };
+    const onMessage = (m) => setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+    socket.on("board:content", onContent);
+    socket.on("board:message", onMessage);
+
     return () => {
       alive = false;
+      socket.emit("leave", boardId);
+      socket.off("board:content", onContent);
+      socket.off("board:message", onMessage);
     };
   }, [boardId]);
+
+  async function handleSend(text) {
+    const message = await sendMessage(boardId, text);
+    setMessages((prev) => (prev.some((x) => x.id === message.id) ? prev : [...prev, message]));
+  }
 
   if (error) {
     return (
@@ -87,8 +122,8 @@ export default function BoardView({ boardId, onBack }) {
         {TABS.map((t, i) => (
           <button
             key={t.id}
-            className={`board-tab blade-${i}${tab === t.id ? " active" : ""}${t.ready ? "" : " disabled"}`}
-            onClick={() => t.ready && setTab(t.id)}
+            className={`board-tab blade-${i}${tab === t.id ? " active" : ""}`}
+            onClick={() => setTab(t.id)}
           >
             <span>{t.label}</span>
           </button>
@@ -96,16 +131,11 @@ export default function BoardView({ boardId, onBack }) {
       </div>
 
       {tab === "games" ? (
-        <GamesTab board={board} />
+        <GamesTab board={board} serverGames={games} />
       ) : tab === "schedule" ? (
-        <ScheduleTab board={board} />
+        <ScheduleTab board={board} serverSchedule={schedule} />
       ) : (
-        <div className="board-placeholder">
-          <p className="muted">
-            {TABS.find((t) => t.id === tab)?.label} lands in the next slice — the board already lives in
-            Postgres and loads through the new API.
-          </p>
-        </div>
+        <ChatTab messages={messages} onSend={handleSend} />
       )}
     </motion.main>
   );
