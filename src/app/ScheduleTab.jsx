@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { useAuth } from "../auth/AuthProvider.jsx";
@@ -55,10 +55,16 @@ function SessionCard({ session, mine, canRemove, onRsvp, onRemove }) {
   );
 }
 
-export default function ScheduleTab({ board }) {
+export default function ScheduleTab({ board, serverSchedule }) {
   const { user } = useAuth();
-  const [schedule, setSchedule] = useState(board.content?.schedule ?? []);
+  const [schedule, setSchedule] = useState(serverSchedule ?? board.content?.schedule ?? []);
   const [proposing, setProposing] = useState(false);
+
+  // Reconcile with live updates broadcast to the board room.
+  useEffect(() => {
+    if (serverSchedule) setSchedule(serverSchedule);
+  }, [serverSchedule]);
+
 
   const canManage = board.role === "owner" || board.role === "editor";
   const sorted = useMemo(() => sortSessions(schedule), [schedule]);

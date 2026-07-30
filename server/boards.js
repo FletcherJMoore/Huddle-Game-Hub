@@ -9,9 +9,18 @@ import express from "express";
 
 import { pool, query } from "./db.js";
 import { requireAuth } from "./auth.js";
+import { emitToBoard } from "./realtime.js";
 
 export const boardsRouter = express.Router();
 boardsRouter.use(requireAuth);
+
+// Push a board's games + schedule to everyone in its room after a mutation.
+function broadcastContent(boardId, content) {
+  emitToBoard(boardId, "board:content", {
+    games: content.games ?? [],
+    schedule: content.schedule ?? []
+  });
+}
 
 // The caller's role on a board ('owner' | 'editor' | 'member'), or null if not
 // a member. Non-membership is reported as 404 so board ids aren't enumerable.
@@ -201,6 +210,7 @@ boardsRouter.post("/:id/games", async (req, res, next) => {
       c.games.push(game);
     });
     if (!content) return res.status(404).json({ error: "Board not found." });
+    broadcastContent(req.params.id, content);
     res.status(201).json({ game, games: content.games });
   } catch (err) {
     next(err);
@@ -229,6 +239,7 @@ boardsRouter.post("/:id/games/:gameId/vote", async (req, res, next) => {
     });
     if (!content) return res.status(404).json({ error: "Board not found." });
     if (!found) return res.status(404).json({ error: "Game not found." });
+    broadcastContent(req.params.id, content);
     res.json({ games: content.games });
   } catch (err) {
     next(err);
@@ -257,6 +268,7 @@ boardsRouter.delete("/:id/games/:gameId", async (req, res, next) => {
     if (!content) return res.status(404).json({ error: "Board not found." });
     if (!found) return res.status(404).json({ error: "Game not found." });
     if (denied) return res.status(403).json({ error: "You can only remove games you added." });
+    broadcastContent(req.params.id, content);
     res.json({ games: content.games });
   } catch (err) {
     next(err);
@@ -292,6 +304,7 @@ boardsRouter.post("/:id/sessions", async (req, res, next) => {
       c.schedule.push(session);
     });
     if (!content) return res.status(404).json({ error: "Board not found." });
+    broadcastContent(req.params.id, content);
     res.status(201).json({ session, schedule: content.schedule });
   } catch (err) {
     next(err);
@@ -320,6 +333,7 @@ boardsRouter.post("/:id/sessions/:sessionId/rsvp", async (req, res, next) => {
     });
     if (!content) return res.status(404).json({ error: "Board not found." });
     if (!found) return res.status(404).json({ error: "Session not found." });
+    broadcastContent(req.params.id, content);
     res.json({ schedule: content.schedule });
   } catch (err) {
     next(err);
@@ -348,7 +362,71 @@ boardsRouter.delete("/:id/sessions/:sessionId", async (req, res, next) => {
     if (!content) return res.status(404).json({ error: "Board not found." });
     if (!found) return res.status(404).json({ error: "Session not found." });
     if (denied) return res.status(403).json({ error: "You can only remove nights you proposed." });
+    broadcastContent(req.params.id, content);
     res.json({ schedule: content.schedule });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Chat (messages table) ----
+
+// GET /api/boards/:id/messages — recent history (members only).
+boardsRouter.get("/:id/messages", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+
+    const { rows } = await query(
+      `select m.id, m.text, m.created_at as "createdAt",
+              u.id as "authorId", u.name as "authorName", u.photo_url as "authorPhotoUrl"
+         from messages m
+         left join users u on u.id = m.author_id
+        where m.board_id = $1
+        order by m.created_at desc
+        limit 100`,
+      [req.params.id]
+    );
+
+    const messages = rows
+      .map((r) => ({
+        id: r.id,
+        text: r.text,
+        createdAt: r.createdAt,
+        author: { id: r.authorId, name: r.authorName, photoUrl: r.authorPhotoUrl }
+      }))
+      .reverse();
+
+    res.json({ messages });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/boards/:id/messages — send a message (members only); broadcasts it.
+boardsRouter.post("/:id/messages", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+
+    const text = String(req.body?.text ?? "").trim();
+    if (!text) return res.status(400).json({ error: "Message can't be empty." });
+
+    const { rows } = await query(
+      `insert into messages (board_id, author_id, text) values ($1, $2, $3)
+       returning id, text, created_at as "createdAt"`,
+      [req.params.id, req.user.id, text.slice(0, 2000)]
+    );
+
+    const message = {
+      id: rows[0].id,
+      text: rows[0].text,
+      createdAt: rows[0].createdAt,
+      author: { id: req.user.id, name: req.user.name, photoUrl: req.user.photo_url }
+    };
+
+    emitToBoard(req.params.id, "board:message", message);
+    res.status(201).json({ message });
   } catch (err) {
     next(err);
   }
