@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { useAuth } from "../auth/AuthProvider.jsx";
@@ -14,11 +14,17 @@ const KINDS = [
   { id: "party", label: "🎲 Board" }
 ];
 
-export default function GamesTab({ board }) {
+export default function GamesTab({ board, serverGames }) {
   const { user } = useAuth();
   const { unlock } = useAchievements();
-  const [games, setGames] = useState(board.content?.games ?? []);
+  const [games, setGames] = useState(serverGames ?? board.content?.games ?? []);
   const [kind, setKind] = useState("video");
+
+  // Reconcile with live updates broadcast to the board room.
+  useEffect(() => {
+    if (serverGames) setGames(serverGames);
+  }, [serverGames]);
+
   const [search, setSearch] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [detailOpen, setDetailOpen] = useState(false);
