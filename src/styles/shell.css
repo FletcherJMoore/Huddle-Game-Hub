@@ -1311,6 +1311,36 @@ img.cover {
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
+.add-member-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+.add-member-row {
+  display: flex;
+  gap: 8px;
+}
+.add-member-row .text-input {
+  flex: 1;
+}
+.add-member-row .primary-btn {
+  white-space: nowrap;
+}
+.add-member-feedback {
+  font-size: 12px;
+}
+.add-member-feedback.ok {
+  color: var(--accent);
+}
+.add-member-feedback.err {
+  color: var(--danger);
+}
+
 .danger-row {
   display: flex;
   align-items: center;
