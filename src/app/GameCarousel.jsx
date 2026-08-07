@@ -5,24 +5,21 @@ import CoverArt from "./CoverArt.jsx";
 import { voteCounts, isAgreed } from "../lib/games.js";
 
 const RADIUS = 250; // px the cases sit out from the cylinder axis
-
-// Normalize an angle to (-180, 180] to judge how front/back-facing a case is.
-function normalize(angle) {
-  return (((angle % 360) + 540) % 360) - 180;
-}
+const STEP = 44; // degrees between neighbouring cases
+const WINDOW = 108; // cull cases angled further back than this
 
 function Case({ game, angle, memberCount, isCenter, onClick }) {
-  const facing = Math.abs(normalize(angle));
-  const hidden = facing > 108;
+  const facing = Math.abs(angle);
+  const hidden = facing > WINDOW;
   return (
     <motion.button
       type="button"
       className={`game-case${isCenter ? " center" : ""}${isCenter && isAgreed(game, memberCount) ? " agreed" : ""}`}
       onClick={onClick}
       initial={false}
-      animate={{ rotateY: angle, opacity: hidden ? 0 : facing > 62 ? 0.5 : 1 }}
+      animate={{ rotateY: angle, opacity: hidden ? 0 : facing > 60 ? 0.5 : 1 }}
       transformTemplate={({ rotateY }) => `rotateY(${rotateY}) translateZ(${RADIUS}px)`}
-      transition={{ type: "spring", stiffness: 110, damping: 20 }}
+      transition={{ type: "spring", stiffness: 130, damping: 20 }}
       style={{ pointerEvents: hidden ? "none" : "auto", zIndex: Math.round(200 - facing) }}
       aria-hidden={hidden}
       aria-label={game.title}
@@ -35,35 +32,27 @@ function Case({ game, angle, memberCount, isCenter, onClick }) {
   );
 }
 
-// A revolving door: the cases sit evenly around a cylinder and rotate so each
-// comes full circle to the front. `rotation` is an unbounded step counter so
-// advancing always animates one short step, even across the seam.
-// Fixed angular step so a few games still fan out nicely and a full roster
-// wraps all the way around the cylinder.
-const STEP = 46;
-
+// A revolving shelf: the focused case faces the viewer (always centered), the
+// rest angle back. Flip with the arrows, by dragging, or by clicking a side
+// case. Stops at the first/last case rather than spinning into empty space.
 export default function GameCarousel({ games, onActiveChange, onOpenDetail, memberCount }) {
   const count = games.length;
-  const step = STEP;
-  const [rotation, setRotation] = useState(0);
+  const [active, setActive] = useState(0);
 
-  const activeIndex = count ? ((rotation % count) + count) % count : 0;
+  // Keep the index in range when the filtered set changes.
+  useEffect(() => {
+    setActive((a) => Math.min(a, Math.max(0, count - 1)));
+  }, [count]);
 
   useEffect(() => {
-    onActiveChange(activeIndex);
-  }, [activeIndex, onActiveChange]);
+    onActiveChange(active);
+  }, [active, onActiveChange]);
 
-  const go = (dir) => setRotation((r) => r + dir);
-
-  const bringToFront = (i) => {
-    let diff = (((i - activeIndex) % count) + count) % count;
-    if (diff > count / 2) diff -= count; // spin the short way
-    setRotation((r) => r + diff);
-  };
+  const go = (dir) => setActive((a) => Math.max(0, Math.min(count - 1, a + dir)));
 
   return (
     <div className="carousel">
-      <button className="carousel-arrow" onClick={() => go(-1)} aria-label="Previous game" disabled={count < 2}>
+      <button className="carousel-arrow" onClick={() => go(-1)} disabled={active === 0} aria-label="Previous game">
         ‹
       </button>
 
@@ -82,16 +71,21 @@ export default function GameCarousel({ games, onActiveChange, onOpenDetail, memb
             <Case
               key={game.id}
               game={game}
-              angle={(i - rotation) * step}
+              angle={(i - active) * STEP}
               memberCount={memberCount}
-              isCenter={i === activeIndex}
-              onClick={() => (i === activeIndex ? onOpenDetail() : bringToFront(i))}
+              isCenter={i === active}
+              onClick={() => (i === active ? onOpenDetail() : setActive(i))}
             />
           ))}
         </div>
       </motion.div>
 
-      <button className="carousel-arrow" onClick={() => go(1)} aria-label="Next game" disabled={count < 2}>
+      <button
+        className="carousel-arrow"
+        onClick={() => go(1)}
+        disabled={active >= count - 1}
+        aria-label="Next game"
+      >
         ›
       </button>
     </div>
