@@ -2,11 +2,19 @@
   --bg: #070b16;
   --bg-elev: #0e1526;
   --card: #111a2e;
+  --card-hover: #16213a;
   --border: #223052;
   --text: #eaf1ff;
   --text-dim: #90a2c6;
+  --text-faint: #5c6b8a;
+  --danger: #ff7a8a;
+  --success: #22c55e;
   --accent: #3b82f6;
   --accent-hover: #5b9bff;
+  /* accent-tinted washes follow whatever accent the user picks */
+  --accent-wash: color-mix(in oklab, var(--accent) 16%, transparent);
+  --accent-wash-soft: color-mix(in oklab, var(--accent) 10%, transparent);
+  --tip-bg: #1a2440;
   --pink: #38bdf8;
   --cyan: #22d3ee;
   --grad: linear-gradient(100deg, #3b82f6, #38bdf8 55%, #22d3ee);
@@ -14,6 +22,21 @@
   --grad-soft: linear-gradient(135deg, rgba(59, 130, 246, 0.24), rgba(56, 189, 248, 0.16) 55%, rgba(34, 211, 238, 0.12));
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f6fb;
+  --bg-elev: #ffffff;
+  --card: #ffffff;
+  --card-hover: #eef1f7;
+  --border: #dde3ee;
+  --text: #10152a;
+  --text-dim: #5b6478;
+  --text-faint: #8a93a8;
+  --danger: #c53d52;
+  --tip-bg: #10152a;
+  --accent-wash: color-mix(in oklab, var(--accent) 10%, transparent);
+  --accent-wash-soft: color-mix(in oklab, var(--accent) 7%, transparent);
 }
 
 * {
@@ -1224,7 +1247,7 @@ h3,
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
 }
 
@@ -1372,14 +1395,14 @@ h3,
 
 .carousel-info {
   text-align: center;
-  margin-top: 10px;
+  margin-top: 30px;
 }
 
 .carousel-title-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -1389,7 +1412,7 @@ h3,
 }
 
 .carousel-meta {
-  margin: 6px 0 0;
+  margin: 12px 0 0;
   font-size: 14px;
 }
 
@@ -1397,8 +1420,8 @@ h3,
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 14px;
+  gap: 14px;
+  margin-top: 26px;
 }
 
 /* ---- Achievement toasts (Xbox 360) ---- */

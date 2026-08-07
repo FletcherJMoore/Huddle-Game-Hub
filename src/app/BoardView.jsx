@@ -1,46 +1,34 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 
-import { getBoard, getMessages, sendMessage } from "../lib/api.js";
+import { useAuth } from "../auth/AuthProvider.jsx";
+import {
+  getBoard,
+  voteGame,
+  rsvpSession,
+  createSession,
+  updateBoard,
+  deleteBoard,
+  MOCK
+} from "../lib/api.js";
 import { getSocket } from "../lib/socket.js";
-import GamesTab from "./GamesTab.jsx";
-import ScheduleTab from "./ScheduleTab.jsx";
-import ChatTab from "./ChatTab.jsx";
+import { myVote } from "../lib/games.js";
+import { myRsvp } from "../lib/schedule.js";
+import { BoardOverview, BoardCatalog, BoardPeople, BoardAdmin } from "./BoardScreens.jsx";
+import Calendar from "./Calendar.jsx";
+import ProposeGameModal from "./ProposeGameModal.jsx";
 
-const TABS = [
-  { id: "games", label: "Games" },
-  { id: "schedule", label: "Schedule" },
-  { id: "chat", label: "Chat" }
-];
-
-function MemberChip({ member }) {
-  const initial = (member.name || member.email || "U").trim().charAt(0).toUpperCase();
-  return (
-    <div className="member-chip" title={`${member.name || member.email} · ${member.role}`}>
-      {member.photoUrl ? (
-        <img className="avatar avatar-sm" src={member.photoUrl} alt="" referrerPolicy="no-referrer" />
-      ) : (
-        <div className="avatar avatar-sm avatar-fallback">{initial}</div>
-      )}
-    </div>
-  );
-}
-
-export default function BoardView({ boardId, onBack }) {
+export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onSetTab }) {
+  const { user } = useAuth();
   const [board, setBoard] = useState(null);
-  const [error, setError] = useState("");
-  const [tab, setTab] = useState("games");
-
-  // Live board content, kept in sync via the board's socket room.
   const [games, setGames] = useState([]);
   const [schedule, setSchedule] = useState([]);
-  const [messages, setMessages] = useState([]);
+  const [error, setError] = useState("");
+  const [proposing, setProposing] = useState(false);
 
   useEffect(() => {
     let alive = true;
     setBoard(null);
     setError("");
-
     getBoard(boardId)
       .then((b) => {
         if (!alive) return;
@@ -49,94 +37,146 @@ export default function BoardView({ boardId, onBack }) {
         setSchedule(b.content?.schedule ?? []);
       })
       .catch((err) => alive && setError(err.message || "Couldn't load this board."));
-    getMessages(boardId)
-      .then((m) => alive && setMessages(m))
-      .catch(() => {});
 
+    if (MOCK) return () => {
+      alive = false;
+    };
+
+    // Join the board's socket room so votes/RSVPs from other members land live.
     const socket = getSocket();
     socket.emit("join", boardId);
     const onContent = (c) => {
       setGames(c.games ?? []);
       setSchedule(c.schedule ?? []);
     };
-    const onMessage = (m) => setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
     socket.on("board:content", onContent);
-    socket.on("board:message", onMessage);
 
     return () => {
       alive = false;
       socket.emit("leave", boardId);
       socket.off("board:content", onContent);
-      socket.off("board:message", onMessage);
     };
   }, [boardId]);
 
-  async function handleSend(text) {
-    const message = await sendMessage(boardId, text);
-    setMessages((prev) => (prev.some((x) => x.id === message.id) ? prev : [...prev, message]));
+  const isAdmin = board?.role === "owner" || board?.role === "editor";
+
+  async function handleVote(gameId, vote) {
+    const game = games.find((g) => g.id === gameId);
+    const next = myVote(game, user.id) === vote ? null : vote;
+    setGames((gs) =>
+      gs.map((g) => {
+        if (g.id !== gameId) return g;
+        const approvals = { ...(g.approvals ?? {}) };
+        if (next === null) delete approvals[user.id];
+        else approvals[user.id] = next;
+        return { ...g, approvals };
+      })
+    );
+    try {
+      setGames(await voteGame(boardId, gameId, next));
+    } catch {
+      /* keep optimistic */
+    }
+  }
+
+  async function handleRsvp(sessionId, rsvp) {
+    const s = schedule.find((x) => x.id === sessionId);
+    const next = myRsvp(s, user.id) === rsvp ? null : rsvp;
+    setSchedule((prev) =>
+      prev.map((x) => {
+        if (x.id !== sessionId) return x;
+        const rsvps = { ...(x.rsvps ?? {}) };
+        if (next === null) delete rsvps[user.id];
+        else rsvps[user.id] = next;
+        return { ...x, rsvps };
+      })
+    );
+    try {
+      setSchedule(await rsvpSession(boardId, sessionId, next));
+    } catch {
+      /* keep optimistic */
+    }
+  }
+
+  async function handleCreate(session) {
+    try {
+      setSchedule(await createSession(boardId, session));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function handleMeta(patch) {
+    setBoard((b) => ({ ...b, ...patch }));
+    onMetaChange?.(boardId, patch);
+    updateBoard(boardId, patch).catch(() => {});
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("Delete this board for everyone? This can't be undone.")) return;
+    try {
+      await deleteBoard(boardId);
+    } catch {
+      /* ignore */
+    }
+    onExit();
+  }
+
+  function handleRemoveMember(userId) {
+    setBoard((b) => ({ ...b, members: b.members.filter((m) => m.userId !== userId) }));
   }
 
   if (error) {
     return (
-      <main className="board-view">
-        <button className="ghost-btn" onClick={onBack}>
-          ← Back
+      <div className="board-error">
+        <button className="ghost-btn" onClick={onExit}>
+          ← Overview
         </button>
         <p className="form-error">{error}</p>
-      </main>
+      </div>
     );
   }
-
-  if (!board) {
-    return (
-      <main className="board-view">
-        <p className="muted">Loading…</p>
-      </main>
-    );
-  }
+  if (!board) return <p className="muted">Loading…</p>;
 
   return (
-    <motion.main
-      className="board-view"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <button className="ghost-btn back-btn" onClick={onBack}>
-        ← All boards
-      </button>
-
-      <header className="board-header">
-        <span className="board-header-emoji">{board.emoji || "🎮"}</span>
-        <div>
-          <h1 className="gradient-text">{board.name}</h1>
-          <div className="member-chips">
-            {board.members.map((m) => (
-              <MemberChip key={m.userId} member={m} />
-            ))}
-          </div>
-        </div>
-      </header>
-
-      <div className="board-tabs">
-        {TABS.map((t, i) => (
-          <button
-            key={t.id}
-            className={`board-tab blade-${i}${tab === t.id ? " active" : ""}`}
-            onClick={() => setTab(t.id)}
-          >
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {tab === "games" ? (
-        <GamesTab board={board} serverGames={games} />
-      ) : tab === "schedule" ? (
-        <ScheduleTab board={board} serverSchedule={schedule} />
-      ) : (
-        <ChatTab messages={messages} onSend={handleSend} />
+    <>
+      {boardTab === "overview" && (
+        <BoardOverview board={board} games={games} schedule={schedule} user={user} onRsvp={handleRsvp} onSetTab={onSetTab} />
       )}
-    </motion.main>
+      {boardTab === "catalog" && (
+        <BoardCatalog
+          board={board}
+          games={games}
+          user={user}
+          onVote={handleVote}
+          onProposeGame={() => setProposing(true)}
+          onSetTab={onSetTab}
+        />
+      )}
+      {boardTab === "people" && <BoardPeople board={board} isAdmin={isAdmin} onRemoveMember={handleRemoveMember} />}
+      {boardTab === "calendar" && (
+        <Calendar board={board} games={games} schedule={schedule} user={user} onCreate={handleCreate} onRsvp={handleRsvp} />
+      )}
+      {boardTab === "admin" && (
+        <BoardAdmin
+          board={board}
+          onRename={(name) => handleMeta({ name })}
+          onSetEmoji={(emoji) => handleMeta({ emoji })}
+          onDelete={handleDelete}
+          onRemoveMember={handleRemoveMember}
+        />
+      )}
+
+      {proposing && (
+        <ProposeGameModal
+          boardId={boardId}
+          onClose={() => setProposing(false)}
+          onAdded={(updated) => {
+            setGames(updated);
+            setProposing(false);
+          }}
+        />
+      )}
+    </>
   );
 }
