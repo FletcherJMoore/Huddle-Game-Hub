@@ -71,6 +71,8 @@ const mockContent = {
   ]
 };
 
+const mockExtraMembers = {}; // boardId -> [members added this session]
+
 function mockBoard(id) {
   const summary = mockBoards.find((b) => b.id === id) || mockBoards[0];
   return {
@@ -78,7 +80,7 @@ function mockBoard(id) {
     name: summary.name,
     emoji: summary.emoji,
     role: summary.role,
-    members: mockMembers.slice(0, summary.memberCount),
+    members: [...mockMembers.slice(0, summary.memberCount), ...(mockExtraMembers[id] || [])],
     content: mockContent
   };
 }
@@ -144,6 +146,22 @@ export async function updateBoard(id, patch) {
     return { ok: true };
   }
   return json(await request(`/api/boards/${id}`, { method: "PATCH", body: JSON.stringify(patch) }));
+}
+
+// Add an existing Huddle user to a board by email (no invite step). Returns the
+// updated member list.
+export async function addMember(boardId, email) {
+  if (MOCK) {
+    const clean = email.trim().toLowerCase();
+    const known = mockMembers.find((m) => m.name.toLowerCase().replace(/\s+/g, ".") + "@huddle.gg" === clean);
+    const member = known || { userId: `u${Date.now()}`, name: clean.split("@")[0], photoUrl: null, role: "member", online: false, since: "Just now" };
+    mockExtraMembers[boardId] = [...(mockExtraMembers[boardId] || []), { ...member, role: "member" }];
+    const summary = mockBoards.find((b) => b.id === boardId);
+    if (summary) summary.memberCount += 1;
+    return mockBoard(boardId).members;
+  }
+  const res = await request(`/api/boards/${boardId}/members`, { method: "POST", body: JSON.stringify({ email }) });
+  return (await json(res)).members;
 }
 
 export async function deleteBoard(id) {

@@ -8,6 +8,7 @@ import {
   createSession,
   updateBoard,
   deleteBoard,
+  addMember,
   MOCK
 } from "../lib/api.js";
 import { getSocket } from "../lib/socket.js";
@@ -126,6 +127,13 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
     setBoard((b) => ({ ...b, members: b.members.filter((m) => m.userId !== userId) }));
   }
 
+  // Add a user by email; resolves the updated member list or throws for the
+  // Admin form to surface the server's message.
+  async function handleAddMember(email) {
+    const members = await addMember(boardId, email);
+    setBoard((b) => ({ ...b, members }));
+  }
+
   if (error) {
     return (
       <div className="board-error">
@@ -163,6 +171,7 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
           onRename={(name) => handleMeta({ name })}
           onSetEmoji={(emoji) => handleMeta({ emoji })}
           onDelete={handleDelete}
+          onAddMember={handleAddMember}
           onRemoveMember={handleRemoveMember}
         />
       )}

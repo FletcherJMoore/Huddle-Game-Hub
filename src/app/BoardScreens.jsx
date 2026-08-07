@@ -361,9 +361,28 @@ export function BoardPeople({ board, isAdmin, onRemoveMember }) {
 
 // ---- Board → Admin settings ----
 
-export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onRemoveMember }) {
+export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember, onRemoveMember }) {
   const [name, setName] = useState(board.name);
   const [emoji, setEmoji] = useState(board.emoji || "🎮");
+  const [email, setEmail] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [feedback, setFeedback] = useState(null); // { ok, text }
+
+  async function addMember() {
+    const value = email.trim();
+    if (!value || adding) return;
+    setAdding(true);
+    setFeedback(null);
+    try {
+      await onAddMember(value);
+      setFeedback({ ok: true, text: `Added ${value} to the board.` });
+      setEmail("");
+    } catch (err) {
+      setFeedback({ ok: false, text: err.message || "Couldn't add that user." });
+    } finally {
+      setAdding(false);
+    }
+  }
 
   return (
     <div className="narrow-col">
@@ -400,6 +419,25 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onRemoveMemb
 
       <div className="subhead-row">
         <h2>Members &amp; roles</h2>
+      </div>
+      <div className="add-member-card">
+        <div className="add-member-row">
+          <input
+            className="text-input"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addMember()}
+            placeholder="teammate@email.com"
+          />
+          <button className="primary-btn" onClick={addMember} disabled={adding || !email.trim()}>
+            {adding ? "Adding…" : "Add to board"}
+          </button>
+        </div>
+        <span className="hint">
+          Adds an existing Huddle user right away — no invite email. They'll need to have signed in once.
+        </span>
+        {feedback && <span className={`add-member-feedback${feedback.ok ? " ok" : " err"}`}>{feedback.text}</span>}
       </div>
       <div className="list-card">
         {board.members.map((m) => (

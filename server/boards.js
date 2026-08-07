@@ -34,6 +34,18 @@ async function roleOf(boardId, userId) {
 
 const canManage = (role) => role === "owner" || role === "editor";
 
+// The board's members, in the shape the client renders (owner → editor → member).
+async function membersOf(boardId) {
+  const { rows } = await query(
+    `select u.id as "userId", u.name, u.email, u.photo_url as "photoUrl", m.role
+       from board_members m join users u on u.id = m.user_id
+      where m.board_id = $1
+      order by case m.role when 'owner' then 0 when 'editor' then 1 else 2 end, u.name`,
+    [boardId]
+  );
+  return rows;
+}
+
 // Read-modify-write of a board's content JSONB inside a transaction, locking the
 // row (FOR UPDATE) so concurrent mutations (e.g. two people voting at once)
 // serialize instead of clobbering each other. `mutate(content)` edits in place.
@@ -121,15 +133,42 @@ boardsRouter.get("/:id", async (req, res, next) => {
     const board = rows[0];
     if (!board) return res.status(404).json({ error: "Board not found." });
 
-    const { rows: members } = await query(
-      `select u.id as "userId", u.name, u.email, u.photo_url as "photoUrl", m.role
-         from board_members m join users u on u.id = m.user_id
-        where m.board_id = $1
-        order by case m.role when 'owner' then 0 when 'editor' then 1 else 2 end, u.name`,
-      [req.params.id]
-    );
+    res.json({ board: { ...board, role, members: await membersOf(req.params.id) } });
+  } catch (err) {
+    next(err);
+  }
+});
 
-    res.json({ board: { ...board, role, members } });
+// POST /api/boards/:id/members — add an existing Huddle user to the board by
+// email, no invite/confirmation step (owner/editor only). Returns the fresh
+// member list. Users only exist after they've signed in with Google at least
+// once, so this can't add a stranger — only someone who's used the app.
+boardsRouter.post("/:id/members", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+    if (!canManage(role)) {
+      return res.status(403).json({ error: "Only the owner or editors can add members." });
+    }
+
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: "An email is required." });
+    const newRole = req.body?.role === "editor" ? "editor" : "member";
+
+    const { rows } = await query("select id from users where lower(email) = $1", [email]);
+    const target = rows[0];
+    if (!target) {
+      return res.status(404).json({ error: "No Huddle user with that email yet — they need to sign in once first." });
+    }
+    if (await roleOf(req.params.id, target.id)) {
+      return res.status(409).json({ error: "They're already on this board." });
+    }
+
+    await query(
+      "insert into board_members (board_id, user_id, role) values ($1, $2, $3) on conflict do nothing",
+      [req.params.id, target.id, newRole]
+    );
+    res.status(201).json({ members: await membersOf(req.params.id) });
   } catch (err) {
     next(err);
   }
