@@ -192,9 +192,11 @@ const MOCK_STEAM = [
   { steamAppId: 1245620, title: "Elden Ring", playtimeForever: 5400 },
   { steamAppId: 1145360, title: "Hades", playtimeForever: 2100 },
   { steamAppId: 413150, title: "Stardew Valley", playtimeForever: 1800 },
+  { steamAppId: 319510, title: "Five Nights at Freddy's", playtimeForever: 1600 }, // no portrait capsule → header fallback
   { steamAppId: 105600, title: "Terraria", playtimeForever: 1500 },
   { steamAppId: 620, title: "Portal 2", playtimeForever: 900 },
-  { steamAppId: 730, title: "Counter-Strike 2", playtimeForever: 600 }
+  { steamAppId: 730, title: "Counter-Strike 2", playtimeForever: 600 },
+  { steamAppId: 3527290, title: "PEAK", playtimeForever: 300 } // no predictable art → initials placeholder
 ].map((g) => ({
   ...g,
   catalogId: null,

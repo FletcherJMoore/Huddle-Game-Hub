@@ -1,14 +1,49 @@
 // Small presentational primitives shared across the shell's screens.
 
+import { useEffect, useMemo, useState } from "react";
+
 import { gradFor, initialsOf } from "./theme.jsx";
 import { Search } from "./icons.jsx";
 
-// Cover art: real box art when the catalog gave us a URL, otherwise a stable
-// gradient "box" stamped with the title's initials.
+const steamImg = (appid, file) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/${file}`;
+
+// Ordered box-art URLs to try for a game. For Steam titles the portrait capsule
+// (library_600x900) is nicest but many older/newer apps lack it, so we fall
+// back to the landscape header and the store capsule, which almost always
+// exist. BGG catalog hits already ship a `covers` array.
+function coverCandidates(game) {
+  if (Array.isArray(game.covers) && game.covers.length) return game.covers;
+  const list = [];
+  if (game.coverImageUrl || game.cover) list.push(game.coverImageUrl || game.cover);
+  if (game.steamAppId) {
+    list.push(
+      steamImg(game.steamAppId, "library_600x900.jpg"),
+      steamImg(game.steamAppId, "header.jpg"),
+      steamImg(game.steamAppId, "capsule_616x353.jpg")
+    );
+  }
+  return [...new Set(list)];
+}
+
+// Cover art: walks the candidate URLs, dropping to the next when one fails to
+// load, and finally to a stable gradient "box" stamped with the title's
+// initials — so a missing image is never a broken tile.
 export function Cover({ game, className = "" }) {
-  const url = game.coverImageUrl || game.cover;
+  const candidates = useMemo(() => coverCandidates(game), [game.coverImageUrl, game.cover, game.steamAppId, game.covers]);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => setIdx(0), [candidates[0]]);
+
+  const url = candidates[idx];
   if (url) {
-    return <img className={`cover ${className}`} src={url} alt="" referrerPolicy="no-referrer" />;
+    return (
+      <img
+        className={`cover ${className}`}
+        src={url}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setIdx((i) => i + 1)}
+      />
+    );
   }
   return (
     <span className={`cover ${className}`} style={{ backgroundImage: gradFor(game.title || game.id || "game") }}>
