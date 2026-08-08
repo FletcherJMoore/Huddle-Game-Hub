@@ -14,6 +14,7 @@ import { pool } from "./db.js";
 import { authMiddleware, authRouter, authConfigured } from "./auth.js";
 import { boardsRouter } from "./boards.js";
 import { catalogRouter } from "./catalog.js";
+import { steamRouter } from "./steam.js";
 import { initRealtime } from "./realtime.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -29,6 +30,7 @@ app.use(authMiddleware());
 app.use("/api/auth", authRouter);
 app.use("/api/boards", boardsRouter);
 app.use("/api/catalog", catalogRouter);
+app.use("/api/steam", steamRouter);
 
 app.get("/api/health", async (_req, res) => {
   try {
