@@ -182,6 +182,38 @@ export async function searchCatalog(query, kind) {
   return (await json(await request(`/api/catalog/search?${params}`))).results;
 }
 
+// ---- Steam library ----
+
+// The link flow is a full-page redirect to Steam's OpenID, so it's a URL, not a
+// fetch. Steam returns to /?steam=linked.
+export const STEAM_LOGIN_URL = "/api/auth/steam";
+
+const MOCK_STEAM = [
+  { steamAppId: 1245620, title: "Elden Ring", playtimeForever: 5400 },
+  { steamAppId: 1145360, title: "Hades", playtimeForever: 2100 },
+  { steamAppId: 413150, title: "Stardew Valley", playtimeForever: 1800 },
+  { steamAppId: 105600, title: "Terraria", playtimeForever: 1500 },
+  { steamAppId: 620, title: "Portal 2", playtimeForever: 900 },
+  { steamAppId: 730, title: "Counter-Strike 2", playtimeForever: 600 }
+].map((g) => ({
+  ...g,
+  catalogId: null,
+  kind: "video",
+  platforms: ["PC"],
+  players: "",
+  coverImageUrl: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.steamAppId}/library_600x900.jpg`
+}));
+
+export async function getSteamLibrary() {
+  if (MOCK) return { linked: true, persona: "you", count: MOCK_STEAM.length, games: MOCK_STEAM };
+  return json(await request("/api/steam/games"));
+}
+
+export async function unlinkSteam() {
+  if (MOCK) return { ok: true };
+  return json(await request("/api/steam", { method: "DELETE" }));
+}
+
 export async function addGame(boardId, game) {
   if (MOCK) {
     mockContent.games.push({ id: `g${Date.now()}`, approvals: { me: "up" }, addedBy: "me", owners: 1, ...game });

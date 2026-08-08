@@ -213,7 +213,7 @@ export default function AppShell() {
           ) : nav === "friends" ? (
             <FriendsScreen />
           ) : nav === "catalog" ? (
-            <CatalogScreen />
+            <CatalogScreen boards={boards} />
           ) : (
             <OverviewScreen user={user} boards={boards} onOpenBoard={selectBoard} />
           )}

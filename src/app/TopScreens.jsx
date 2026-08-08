@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { searchCatalog } from "../lib/api.js";
+import { searchCatalog, addGame, getSteamLibrary, unlinkSteam, STEAM_LOGIN_URL } from "../lib/api.js";
 import { FRIENDS } from "../lib/social.js";
 import { gradFor } from "./theme.jsx";
 import { Cover, Avatar, SearchBox } from "./ui.jsx";
@@ -100,7 +100,65 @@ export function FriendsScreen() {
   );
 }
 
-export function CatalogScreen({ onAddToBoard }) {
+// A game card's "Add to board" control — opens a small board picker and adds
+// the game to the chosen board's catalog (via the same propose-a-game endpoint).
+function AddToBoardButton({ game, boards }) {
+  const [open, setOpen] = useState(false);
+  const [added, setAdded] = useState(null);
+
+  async function pick(board) {
+    setOpen(false);
+    try {
+      await addGame(board.id, {
+        title: game.title,
+        kind: game.kind || "video",
+        genre: game.genre || "",
+        players: game.players || "",
+        platforms: game.platforms || [],
+        coverImageUrl: game.coverImageUrl || null,
+        catalogId: game.catalogId ?? null
+      });
+      setAdded(board.name);
+    } catch {
+      /* leave the button ready to retry */
+    }
+  }
+
+  if (added) {
+    return (
+      <button className="ghost-btn sm" disabled>
+        Added to {added}
+      </button>
+    );
+  }
+
+  return (
+    <div className="add-board-wrap">
+      <button className="ghost-btn sm" onClick={() => setOpen((o) => !o)}>
+        Add to board
+      </button>
+      {open && (
+        <>
+          <div className="add-board-backdrop" onClick={() => setOpen(false)} />
+          <div className="add-board-menu">
+            {boards.length === 0 ? (
+              <span className="hint">No boards yet</span>
+            ) : (
+              boards.map((b) => (
+                <button key={b.id} className="switcher-row" onClick={() => pick(b)}>
+                  <span className="switcher-emoji">{b.emoji || "🎮"}</span>
+                  <span className="switcher-name">{b.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function BrowseCatalog({ boards }) {
   const [q, setQ] = useState("");
   const [games, setGames] = useState([]);
   useEffect(() => {
@@ -124,12 +182,99 @@ export function CatalogScreen({ onAddToBoard }) {
             <span className="game-meta">
               {(g.platforms || []).join(", ")} · {g.players} players
             </span>
-            <button className="ghost-btn sm" onClick={() => onAddToBoard?.(g)}>
-              Add to board
-            </button>
+            <AddToBoardButton game={g} boards={boards} />
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function hoursLabel(minutes) {
+  if (!minutes) return "Never played";
+  const hrs = minutes / 60;
+  return hrs >= 1 ? `${Math.round(hrs)} hrs on record` : `${minutes} min on record`;
+}
+
+function SteamLinkCTA() {
+  return (
+    <div className="steam-cta">
+      <div className="steam-cta-mark">🎮</div>
+      <h3>Link your Steam account</h3>
+      <p className="muted">Pull in the games you own on Steam, then add any of them to a board.</p>
+      <a className="steam-btn" href={STEAM_LOGIN_URL}>
+        Sign in through Steam
+      </a>
+      <span className="hint">Your Steam profile's game details need to be public.</span>
+    </div>
+  );
+}
+
+function SteamLibrary({ boards }) {
+  const [lib, setLib] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    getSteamLibrary()
+      .then(setLib)
+      .catch((e) => setError(e.message || "Couldn't load your Steam library."));
+  }, []);
+
+  async function unlink() {
+    await unlinkSteam().catch(() => {});
+    setLib({ linked: false, games: [] });
+  }
+
+  if (error) return <div className="list-card"><div className="list-row muted">{error}</div></div>;
+  if (!lib) return <p className="muted">Loading…</p>;
+  if (!lib.linked) return <SteamLinkCTA />;
+
+  return (
+    <div>
+      <div className="steam-head">
+        <span className="steam-status">
+          <span className="steam-dot" /> Linked{lib.persona ? ` as ${lib.persona}` : ""} · {lib.count ?? lib.games.length} games
+        </span>
+        <button className="ghost-btn sm" onClick={unlink}>
+          Unlink
+        </button>
+      </div>
+      {lib.games.length === 0 ? (
+        <div className="list-card">
+          <div className="list-row muted">No games found — make sure your Steam profile's game details are public.</div>
+        </div>
+      ) : (
+        <div className="catalog-grid">
+          {lib.games.map((g) => (
+            <div key={g.steamAppId} className="game-card">
+              <Cover game={g} className="cover-3x4" />
+              <span className="game-title">{g.title}</span>
+              <span className="game-meta">{hoursLabel(g.playtimeForever)}</span>
+              <AddToBoardButton game={g} boards={boards} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CatalogScreen({ boards = [] }) {
+  const [mode, setMode] = useState(() =>
+    new URLSearchParams(window.location.search).get("steam") === "linked" ? "steam" : "browse"
+  );
+
+  return (
+    <div>
+      <div className="segmented-2 catalog-modes">
+        <button className={mode === "browse" ? "seg-on" : ""} onClick={() => setMode("browse")}>
+          Browse
+        </button>
+        <button className={mode === "steam" ? "seg-on" : ""} onClick={() => setMode("steam")}>
+          My Steam library
+        </button>
+      </div>
+      {mode === "browse" ? <BrowseCatalog boards={boards} /> : <SteamLibrary boards={boards} />}
     </div>
   );
 }
