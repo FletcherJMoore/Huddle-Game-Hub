@@ -196,14 +196,21 @@ const MOCK_STEAM = [
   { steamAppId: 105600, title: "Terraria", playtimeForever: 1500 },
   { steamAppId: 620, title: "Portal 2", playtimeForever: 900 },
   { steamAppId: 730, title: "Counter-Strike 2", playtimeForever: 600 },
-  { steamAppId: 3527290, title: "PEAK", playtimeForever: 300 } // no predictable art → initials placeholder
+  // No predictable CDN capsule — the server resolves its real header via Steam's
+  // appdetails API; hardcoded here so the mock preview shows the resolved result.
+  {
+    steamAppId: 3527290,
+    title: "PEAK",
+    playtimeForever: 300,
+    cover: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3527290/31bac6b2eccf09b368f5e95ce510bae2baf3cfcd/header.jpg"
+  }
 ].map((g) => ({
   ...g,
   catalogId: null,
   kind: "video",
   platforms: ["PC"],
   players: "",
-  coverImageUrl: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.steamAppId}/library_600x900.jpg`
+  coverImageUrl: g.cover || `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.steamAppId}/library_600x900.jpg`
 }));
 
 export async function getSteamLibrary() {
