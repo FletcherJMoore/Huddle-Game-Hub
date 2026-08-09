@@ -28,21 +28,41 @@ function coverCandidates(game) {
 // Cover art: walks the candidate URLs, dropping to the next when one fails to
 // load, and finally to a stable gradient "box" stamped with the title's
 // initials — so a missing image is never a broken tile.
+//
+// Portrait art fills the 3:4 slot. When we fall back to a landscape image (a
+// Steam `header`/`capsule`, wider than the slot), cropping it to fill would
+// throw most of the art away — so instead we show it whole, scaled to the slot
+// width, and blur-fill the leftover top/bottom with a copy of the same image.
 export function Cover({ game, className = "" }) {
   const candidates = useMemo(() => coverCandidates(game), [game.coverImageUrl, game.cover, game.steamAppId, game.covers]);
   const [idx, setIdx] = useState(0);
-  useEffect(() => setIdx(0), [candidates[0]]);
+  const [fit, setFit] = useState(false);
+  useEffect(() => {
+    setIdx(0);
+    setFit(false);
+  }, [candidates[0]]);
 
   const url = candidates[idx];
   if (url) {
     return (
-      <img
-        className={`cover ${className}`}
-        src={url}
-        alt=""
-        referrerPolicy="no-referrer"
-        onError={() => setIdx((i) => i + 1)}
-      />
+      <span className={`cover ${className}`} data-fit={fit ? "true" : undefined}>
+        {fit && <img className="cover-blur" src={url} alt="" aria-hidden="true" referrerPolicy="no-referrer" />}
+        <img
+          className="cover-img"
+          src={url}
+          alt=""
+          referrerPolicy="no-referrer"
+          onLoad={(e) => {
+            const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+            // Wider than ~square can't fill a 3:4 slot cleanly → letterbox-blur.
+            setFit(Boolean(w && h && w / h > 0.9));
+          }}
+          onError={() => {
+            setFit(false);
+            setIdx((i) => i + 1);
+          }}
+        />
+      </span>
     );
   }
   return (
