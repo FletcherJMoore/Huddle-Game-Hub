@@ -316,3 +316,11 @@ export async function sendMessage(boardId, text) {
   const res = await request(`/api/boards/${boardId}/messages`, { method: "POST", body: JSON.stringify({ text }) });
   return (await json(res)).message;
 }
+
+export async function deleteMessage(boardId, messageId) {
+  if (MOCK) {
+    mockMessages[boardId] = (mockMessages[boardId] || []).filter((m) => m.id !== messageId);
+    return { ok: true };
+  }
+  return json(await request(`/api/boards/${boardId}/messages/${messageId}`, { method: "DELETE" }));
+}

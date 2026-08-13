@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { getMessages, sendMessage, MOCK } from "../lib/api.js";
+import { getMessages, sendMessage, deleteMessage, MOCK } from "../lib/api.js";
 import { getSocket } from "../lib/socket.js";
 import { FRIENDS, SEED_MESSAGES, SEED_REACTIONS, REACTION_EMOJI } from "../lib/social.js";
 import { Avatar } from "./ui.jsx";
@@ -18,7 +18,7 @@ export default function ChatDrawer({ boards, user, activeBoardId, onClose }) {
   // DMs have no backend yet, so they live in local state.
   const [dmMessages, setDmMessages] = useState(SEED_MESSAGES);
   const [reactions, setReactions] = useState(SEED_REACTIONS);
-  const [picker, setPicker] = useState(null);
+  const [picker, setPicker] = useState(null); // message key with an open press-hold menu
   // Board chat is realtime (REST history + socket board:message).
   const [boardMessages, setBoardMessages] = useState([]);
   const holdTimer = useRef(null);
@@ -50,18 +50,24 @@ export default function ChatDrawer({ boards, user, activeBoardId, onClose }) {
     };
   }, [thread]);
 
-  // Live incoming board messages. The socket is joined to the active board's
-  // room by BoardView, so messages that arrive are for that board.
+  // Live board activity — new messages, and unsends. The socket is joined to the
+  // active board's room by BoardView, so events that arrive are for that board.
   useEffect(() => {
     if (MOCK) return undefined;
     const socket = getSocket();
+    const forActiveThread = () => threadRef.current === `board-${activeBoardId}`;
     const onMessage = (m) => {
-      if (threadRef.current === `board-${activeBoardId}`) {
-        setBoardMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
-      }
+      if (forActiveThread()) setBoardMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+    };
+    const onDelete = ({ id }) => {
+      if (forActiveThread()) setBoardMessages((prev) => prev.filter((x) => x.id !== id));
     };
     socket.on("board:message", onMessage);
-    return () => socket.off("board:message", onMessage);
+    socket.on("board:message:delete", onDelete);
+    return () => {
+      socket.off("board:message", onMessage);
+      socket.off("board:message:delete", onDelete);
+    };
   }, [activeBoardId]);
 
   function toggleReaction(key, emoji) {
@@ -84,6 +90,21 @@ export default function ChatDrawer({ boards, user, activeBoardId, onClose }) {
   };
   const endHold = () => clearTimeout(holdTimer.current);
 
+  // Unsend a message (your own — the server also enforces it for board chats).
+  async function handleDelete(bubble) {
+    setPicker(null);
+    if (isBoard) {
+      setBoardMessages((prev) => prev.filter((m) => m.id !== bubble.id));
+      try {
+        await deleteMessage(boardId, bubble.id);
+      } catch {
+        /* best effort — the broadcast keeps other clients in sync */
+      }
+    } else {
+      setDmMessages((prev) => ({ ...prev, [thread]: (prev[thread] || []).filter((_, i) => i !== bubble.dmIndex) }));
+    }
+  }
+
   async function send() {
     const text = draft.trim();
     if (!text || !thread) return;
@@ -100,17 +121,19 @@ export default function ChatDrawer({ boards, user, activeBoardId, onClose }) {
     }
   }
 
-  // Normalize both shapes to a common bubble descriptor for rendering.
+  // Normalize both message shapes to a common bubble descriptor, carrying enough
+  // identity (board id / dm index) to unsend.
   const bubbles = !thread
     ? []
     : isBoard
     ? boardMessages.map((m) => ({
+        id: m.id,
         me: m.author?.id === user?.id,
         text: m.text,
         meta: `${m.author?.name || "Someone"} · ${timeLabel(m.createdAt)}`,
         reactable: false
       }))
-    : (dmMessages[thread] || []).map((m) => ({ me: m.me, text: m.text, meta: m.meta, reactable: true }));
+    : (dmMessages[thread] || []).map((m, i) => ({ dmIndex: i, me: m.me, text: m.text, meta: m.meta, reactable: true }));
 
   return (
     <div className="chat-drawer">
@@ -165,15 +188,16 @@ export default function ChatDrawer({ boards, user, activeBoardId, onClose }) {
             {bubbles.map((m, i) => {
               const key = `${thread}:${i}`;
               const rs = m.reactable ? reactions[key] || [] : [];
+              const hasMenu = m.reactable || m.me; // press-hold opens reactions and/or unsend
               return (
                 <div key={key} className={`chat-msg-row${m.me ? " me" : ""}`}>
                   <span
                     className={`chat-bubble${m.me ? " me" : ""}`}
                     onDoubleClick={m.reactable ? () => toggleReaction(key, "❤️") : undefined}
-                    onMouseDown={m.reactable ? startHold(key) : undefined}
+                    onMouseDown={hasMenu ? startHold(key) : undefined}
                     onMouseUp={endHold}
                     onMouseLeave={endHold}
-                    onTouchStart={m.reactable ? startHold(key) : undefined}
+                    onTouchStart={hasMenu ? startHold(key) : undefined}
                     onTouchEnd={endHold}
                   >
                     {m.text}
@@ -191,13 +215,19 @@ export default function ChatDrawer({ boards, user, activeBoardId, onClose }) {
                       ))}
                     </span>
                   )}
-                  {picker === key && (
+                  {picker === key && hasMenu && (
                     <span className="react-picker" onClick={(e) => e.stopPropagation()}>
-                      {REACTION_EMOJI.map((emoji) => (
-                        <button key={emoji} onClick={() => toggleReaction(key, emoji)}>
-                          {emoji}
+                      {m.reactable &&
+                        REACTION_EMOJI.map((emoji) => (
+                          <button key={emoji} onClick={() => toggleReaction(key, emoji)}>
+                            {emoji}
+                          </button>
+                        ))}
+                      {m.me && (
+                        <button className={`unsend-btn${m.reactable ? " divided" : ""}`} onClick={() => handleDelete(m)}>
+                          Unsend
                         </button>
-                      ))}
+                      )}
                     </span>
                   )}
                   <span className="chat-meta">{m.meta}</span>
