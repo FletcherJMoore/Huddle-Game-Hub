@@ -470,3 +470,29 @@ boardsRouter.post("/:id/messages", async (req, res, next) => {
     next(err);
   }
 });
+
+// DELETE /api/boards/:id/messages/:messageId — unsend a message (its author, or
+// an owner/editor for moderation); broadcasts the removal so it disappears for
+// everyone.
+boardsRouter.delete("/:id/messages/:messageId", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+
+    const { rows } = await query(
+      "select author_id as \"authorId\" from messages where id = $1 and board_id = $2",
+      [req.params.messageId, req.params.id]
+    );
+    const msg = rows[0];
+    if (!msg) return res.status(404).json({ error: "Message not found." });
+    if (msg.authorId !== req.user.id && !canManage(role)) {
+      return res.status(403).json({ error: "You can only unsend your own messages." });
+    }
+
+    await query("delete from messages where id = $1", [req.params.messageId]);
+    emitToBoard(req.params.id, "board:message:delete", { id: req.params.messageId });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
