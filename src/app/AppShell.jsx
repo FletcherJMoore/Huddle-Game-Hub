@@ -6,12 +6,12 @@ import { NOTIFICATIONS } from "../lib/social.js";
 import Rail from "./Rail.jsx";
 import TopBar from "./TopBar.jsx";
 import BoardView from "./BoardView.jsx";
-import ChatDrawer from "./ChatDrawer.jsx";
+import ChatPage from "./ChatPage.jsx";
 import ProfileSettingsModal from "./ProfileSettingsModal.jsx";
 import { OverviewScreen, BoardsScreen, FriendsScreen, CatalogScreen } from "./TopScreens.jsx";
 import { BOARD_EMOJI } from "./theme.jsx";
 
-const TOP_TITLES = { overview: "Overview", boards: "Boards", friends: "Friends", catalog: "Game Catalog" };
+const TOP_TITLES = { overview: "Overview", boards: "Boards", friends: "Friends", catalog: "Game Catalog", chat: "Messages" };
 const BOARD_TITLES = { catalog: "Game Catalog", people: "People", calendar: "Calendar", admin: "Admin settings" };
 
 function NewBoardModal({ onClose, onCreated }) {
@@ -78,12 +78,11 @@ export default function AppShell() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const [readNotifs, setReadNotifs] = useState(new Set());
-  const [chatOpened, setChatOpened] = useState(false);
+  const [chatVisited, setChatVisited] = useState(false);
 
   useEffect(() => {
     listBoards().then(setBoards).catch(() => setBoards([]));
@@ -102,7 +101,7 @@ export default function AppShell() {
   const go = (next) => {
     setNav(next);
     closeMenus();
-    setChatOpen(false);
+    if (next === "chat") setChatVisited(true);
   };
   const selectBoard = (id) => {
     setNav("board");
@@ -119,23 +118,13 @@ export default function AppShell() {
     setSwitcherOpen(which === "switcher" ? (v) => !v : false);
     setProfileOpen(which === "profile" ? (v) => !v : false);
     setNotifOpen(which === "notif" ? (v) => !v : false);
-    if (which !== "chat") {
-      if (which === "switcher" || which === "profile") setChatOpen(false);
-    }
-  };
-  const toggleChat = () => {
-    setChatOpen((v) => !v);
-    setChatOpened(true);
-    setSwitcherOpen(false);
-    setProfileOpen(false);
-    setNotifOpen(false);
   };
 
   function openNotif(n) {
     setReadNotifs((prev) => new Set(prev).add(n.id));
     setNotifOpen(false);
     if (n.route === "chat") {
-      toggleChat();
+      go("chat");
     } else if (n.route === "catalog" || n.route === "calendar") {
       if (!onBoard) {
         if (boards[0]) selectBoard(boards[0].id);
@@ -174,9 +163,9 @@ export default function AppShell() {
         notifOpen={notifOpen}
         notifications={NOTIFICATIONS}
         readNotifs={readNotifs}
-        chatOpen={chatOpen}
-        hasUnreadChat={!chatOpened}
-        onToggleChat={toggleChat}
+        chatOpen={nav === "chat"}
+        hasUnreadChat={!chatVisited}
+        onToggleChat={() => go("chat")}
         onToggleSwitcher={() => toggle("switcher")}
         onToggleNotifs={() => toggle("notif")}
         onMarkAllRead={() => setReadNotifs(new Set(NOTIFICATIONS.map((n) => n.id)))}
@@ -199,7 +188,7 @@ export default function AppShell() {
           onSignOut={signOut}
         />
 
-        <section className="content">
+        <section className={`content${nav === "chat" ? " flush" : ""}`}>
           {onBoard && activeBoardId ? (
             <BoardView
               boardId={activeBoardId}
@@ -208,6 +197,8 @@ export default function AppShell() {
               onSetTab={setTab}
               onMetaChange={onMetaChange}
             />
+          ) : nav === "chat" ? (
+            <ChatPage boards={boards} user={user} activeBoardId={activeBoardId} />
           ) : nav === "boards" ? (
             <BoardsScreen boards={boards} onOpenBoard={selectBoard} onNewBoard={() => setCreating(true)} />
           ) : nav === "friends" ? (
@@ -221,8 +212,6 @@ export default function AppShell() {
       </main>
 
       {(switcherOpen || profileOpen || notifOpen) && <div className="menu-backdrop" onClick={closeMenus} />}
-
-      {chatOpen && <ChatDrawer boards={boards} user={user} activeBoardId={activeBoardId} onClose={() => setChatOpen(false)} />}
 
       {settingsOpen && <ProfileSettingsModal user={user} onClose={() => setSettingsOpen(false)} />}
 
