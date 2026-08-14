@@ -174,6 +174,9 @@ export default function AppShell() {
         notifOpen={notifOpen}
         notifications={NOTIFICATIONS}
         readNotifs={readNotifs}
+        chatOpen={chatOpen}
+        hasUnreadChat={!chatOpened}
+        onToggleChat={toggleChat}
         onToggleSwitcher={() => toggle("switcher")}
         onToggleNotifs={() => toggle("notif")}
         onMarkAllRead={() => setReadNotifs(new Set(NOTIFICATIONS.map((n) => n.id)))}
@@ -187,10 +190,7 @@ export default function AppShell() {
         <TopBar
           title={title}
           user={user}
-          chatOpen={chatOpen}
-          hasUnreadChat={!chatOpened}
           profileOpen={profileOpen}
-          onToggleChat={toggleChat}
           onToggleProfile={() => toggle("profile")}
           onOpenSettings={() => {
             setSettingsOpen(true);

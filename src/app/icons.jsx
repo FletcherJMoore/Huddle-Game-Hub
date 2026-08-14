@@ -135,6 +135,14 @@ export const Clock = (p) => (
   </Svg>
 );
 
+export const MoreHorizontal = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="1.4" />
+    <circle cx="19" cy="12" r="1.4" />
+    <circle cx="5" cy="12" r="1.4" />
+  </Svg>
+);
+
 export const MapPin = (p) => (
   <Svg {...p}>
     <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />

@@ -8,6 +8,7 @@ import {
   Calendar,
   Settings,
   Bell,
+  MessageCircle,
   ChevronDown,
   ArrowLeft
 } from "./icons.jsx";
@@ -41,6 +42,9 @@ export default function Rail({
   notifOpen,
   notifications,
   readNotifs,
+  chatOpen,
+  hasUnreadChat,
+  onToggleChat,
   onToggleSwitcher,
   onToggleNotifs,
   onMarkAllRead,
@@ -125,6 +129,12 @@ export default function Rail({
       )}
 
       <div className="rail-spacer" />
+
+      {/* Messages — Instagram-style, chat lives in the rail */}
+      <div className="rail-msg-wrap">
+        <RailItem icon={MessageCircle} label="Messages" active={chatOpen} onClick={onToggleChat} />
+        {hasUnreadChat && <span className="rail-bell-dot msg-dot" />}
+      </div>
 
       {/* Notifications bell (always present) */}
       <div className="rail-bell-wrap">

@@ -173,6 +173,16 @@
   background: var(--accent);
   border: 2px solid var(--bg-elev);
 }
+.rail-msg-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.rail-msg-wrap .msg-dot {
+  top: 8px;
+  right: 9px;
+}
 .rail-admin-wrap {
   padding-top: 8px;
   margin-bottom: 4px;
@@ -2059,6 +2069,108 @@
 }
 .chat-composer .text-input {
   flex: 1;
+}
+.chat-bubble {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Per-message hover controls (⋯) + dropdown, Instagram-style */
+.chat-bubble-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.chat-msg-row.me .chat-bubble-line {
+  flex-direction: row-reverse;
+}
+.msg-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.chat-msg-row:hover .msg-controls,
+.msg-controls.open {
+  opacity: 1;
+}
+.msg-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.msg-more:hover {
+  background: var(--card-hover);
+  color: var(--text);
+}
+.msg-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 95;
+  min-width: 152px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 20px 50px -22px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.chat-msg-row.me .msg-menu {
+  left: 0;
+}
+.chat-msg-row:not(.me) .msg-menu {
+  right: 0;
+}
+.msg-menu button {
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+}
+.msg-menu button:hover {
+  background: var(--card-hover);
+}
+.msg-menu button.danger {
+  color: var(--danger);
+}
+/* Touch devices have no hover, so keep the ⋯ visible */
+@media (hover: none) {
+  .msg-controls {
+    opacity: 1;
+  }
+}
+
+.reply-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+.reply-quote {
+  font-size: 12px;
+  color: var(--text-dim);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .board-error {

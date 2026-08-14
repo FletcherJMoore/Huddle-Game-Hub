@@ -1,7 +1,6 @@
 import { useRef } from "react";
 
 import { useTheme, ACCENTS, BG_PRESETS } from "./theme.jsx";
-import { MessageCircle } from "./icons.jsx";
 
 function readAsDataURL(file, cb) {
   const reader = new FileReader();
@@ -12,10 +11,7 @@ function readAsDataURL(file, cb) {
 export default function TopBar({
   title,
   user,
-  chatOpen,
-  hasUnreadChat,
   profileOpen,
-  onToggleChat,
   onToggleProfile,
   onOpenSettings,
   onSignOut
@@ -29,15 +25,6 @@ export default function TopBar({
       <h1 className="topbar-title">{title}</h1>
 
       <div className="topbar-right">
-        <button
-          className={`topbar-chat${chatOpen ? " active" : ""}`}
-          onClick={onToggleChat}
-          aria-label="Messages"
-        >
-          <MessageCircle />
-          {hasUnreadChat && <span className="topbar-chat-dot" />}
-        </button>
-
         <button className="topbar-avatar" onClick={onToggleProfile} aria-label="Profile">
           {user?.photo_url ? (
             <img src={user.photo_url} alt="" referrerPolicy="no-referrer" />
