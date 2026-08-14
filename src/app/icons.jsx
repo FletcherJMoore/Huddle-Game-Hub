@@ -35,6 +35,25 @@ export const Columns3 = (p) => (
   </Svg>
 );
 
+export const CircuitBoard = (p) => (
+  <Svg {...p}>
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M11 9h4a2 2 0 0 0 2-2V3" />
+    <circle cx="9" cy="9" r="2" />
+    <path d="M7 21v-4a2 2 0 0 1 2-2h4" />
+    <circle cx="15" cy="15" r="2" />
+  </Svg>
+);
+
+export const MessageCircleMore = (p) => (
+  <Svg {...p}>
+    <path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" />
+    <path d="M8 12h.01" />
+    <path d="M12 12h.01" />
+    <path d="M16 12h.01" />
+  </Svg>
+);
+
 export const Users = (p) => (
   <Svg {...p}>
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
