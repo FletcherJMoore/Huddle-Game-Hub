@@ -2,12 +2,13 @@ import { useState } from "react";
 
 import {
   LayoutDashboard,
-  Columns3,
+  CircuitBoard,
   Users,
   Gamepad2,
   Calendar,
   Settings,
   Bell,
+  MessageCircleMore,
   ChevronDown,
   ArrowLeft
 } from "./icons.jsx";
@@ -41,6 +42,9 @@ export default function Rail({
   notifOpen,
   notifications,
   readNotifs,
+  chatOpen,
+  hasUnreadChat,
+  onToggleChat,
   onToggleSwitcher,
   onToggleNotifs,
   onMarkAllRead,
@@ -118,13 +122,19 @@ export default function Rail({
       ) : (
         <nav className="rail-nav">
           <RailItem icon={LayoutDashboard} label="Overview" active={nav === "overview"} onClick={() => onGo("overview")} />
-          <RailItem icon={Columns3} label="Boards" active={nav === "boards"} onClick={() => onGo("boards")} />
+          <RailItem icon={CircuitBoard} label="Boards" active={nav === "boards"} onClick={() => onGo("boards")} />
           <RailItem icon={Users} label="Friends" active={nav === "friends"} onClick={() => onGo("friends")} />
           <RailItem icon={Gamepad2} label="Game Catalog" active={nav === "catalog"} onClick={() => onGo("catalog")} />
         </nav>
       )}
 
       <div className="rail-spacer" />
+
+      {/* Messages — Instagram-style, chat lives in the rail */}
+      <div className="rail-msg-wrap">
+        <RailItem icon={MessageCircleMore} label="Messages" active={chatOpen} onClick={onToggleChat} />
+        {hasUnreadChat && <span className="rail-bell-dot msg-dot" />}
+      </div>
 
       {/* Notifications bell (always present) */}
       <div className="rail-bell-wrap">
