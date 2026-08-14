@@ -21,8 +21,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   background: var(--bg);
   /* faint wash of the chosen background image/gradient behind content */
   background-image: linear-gradient(var(--app-veil), var(--app-veil)), var(--app-bg-layer, none);
@@ -42,7 +41,14 @@
   position: relative;
   z-index: 5;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 28px 32px 48px;
+}
+/* The chat page fills the content area edge-to-edge and scrolls internally. */
+.content.flush {
+  padding: 0;
+  overflow: hidden;
 }
 
 .col {
@@ -2171,6 +2177,100 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* ---------------- Chat page (two-pane, Instagram-style) ---------------- */
+.chat-page {
+  display: flex;
+  height: 100%;
+}
+.chat-pane-list {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+.chat-list-head {
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-list-head h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+.chat-page .chat-row.active {
+  background: var(--card-hover);
+}
+.chat-pane-thread {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.chat-empty-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  color: var(--text-dim);
+}
+.chat-empty-pane > svg {
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+.chat-empty-pane h3 {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--text);
+}
+.chat-thread-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-thread-head h2 {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+}
+.chat-board-tile.sm {
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+  border-radius: 8px;
+}
+.chat-back {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .chat-pane-list {
+    width: 100%;
+  }
+  .chat-page.has-thread .chat-pane-list {
+    display: none;
+  }
+  .chat-page:not(.has-thread) .chat-pane-thread {
+    display: none;
+  }
+  .chat-back {
+    display: flex;
+  }
 }
 
 .board-error {
