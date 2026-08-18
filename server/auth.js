@@ -18,12 +18,11 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { Strategy as SteamStrategy } from "passport-steam";
 
 import { pool, query } from "./db.js";
 
 const APP_URL = process.env.APP_URL || "http://localhost:5173";
-const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, AUTH_SECRET, STEAM_API_KEY } = process.env;
+const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, AUTH_SECRET } = process.env;
 
 const missingEnv = [
   ["GOOGLE_CLIENT_ID", GOOGLE_CLIENT_ID],
@@ -34,9 +33,6 @@ const missingEnv = [
   .map(([name]) => name);
 
 export const authConfigured = missingEnv.length === 0;
-
-// Steam linking is optional and rides on top of auth being configured.
-const steamConfigured = authConfigured && Boolean(STEAM_API_KEY);
 
 if (!authConfigured) {
   console.warn(
@@ -83,43 +79,12 @@ if (authConfigured) {
     )
   );
 
-  // Link Steam to the *currently signed-in* user rather than logging in as the
-  // Steam identity: passReqToCallback gives us req.user (the Google session),
-  // and we stamp their steam_id onto that row.
-  if (steamConfigured) {
-    passport.use(
-      new SteamStrategy(
-        {
-          returnURL: `${APP_URL}/api/auth/steam/return`,
-          realm: APP_URL,
-          apiKey: STEAM_API_KEY,
-          passReqToCallback: true
-        },
-        async (req, _identifier, profile, done) => {
-          try {
-            if (!req.user) return done(null, false); // must be signed in to link
-            const persona = profile.displayName || null;
-            await query("update users set steam_id = $1, steam_persona = $2 where id = $3", [
-              profile.id,
-              persona,
-              req.user.id
-            ]);
-            done(null, { ...req.user, steam_id: profile.id, steam_persona: persona });
-          } catch (err) {
-            done(err);
-          }
-        }
-      )
-    );
-  }
-
   // Only the user id rides in the session; the row is re-read on each request.
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id, done) => {
     try {
       const { rows } = await query(
-        `select id, email, name, photo_url, steam_id as "steamId", steam_persona as "steamPersona"
-           from users where id = $1`,
+        "select id, email, name, photo_url from users where id = $1",
         [id]
       );
       done(null, rows[0] ?? false);
@@ -162,20 +127,6 @@ if (authConfigured) {
     passport.authenticate("google", { failureRedirect: "/?authError=1" }),
     (_req, res) => res.redirect("/")
   );
-
-  if (steamConfigured) {
-    // Link Steam: bounce to Steam (only when already signed in), then stamp the
-    // returned SteamID onto the current user and return to the app.
-    authRouter.get("/steam", (req, res, next) => {
-      if (!req.user) return res.redirect("/");
-      passport.authenticate("steam")(req, res, next);
-    });
-    authRouter.get(
-      "/steam/return",
-      passport.authenticate("steam", { failureRedirect: "/?steamError=1" }),
-      (_req, res) => res.redirect("/?steam=linked")
-    );
-  }
 
   authRouter.get("/me", (req, res) => {
     if (!req.user) return res.status(401).json({ user: null });

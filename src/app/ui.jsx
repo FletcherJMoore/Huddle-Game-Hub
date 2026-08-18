@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { gradFor, initialsOf } from "./theme.jsx";
+import { GAME_META } from "../lib/game-meta.js";
 import { Search } from "./icons.jsx";
 
 const steamImg = (appid, file) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/${file}`;
@@ -69,6 +70,44 @@ export function Cover({ game, className = "" }) {
     <span className={`cover ${className}`} style={{ backgroundImage: gradFor(game.title || game.id || "game") }}>
       {initialsOf(game.title || "")}
     </span>
+  );
+}
+
+// Steam-style launcher tile: full-bleed key art with the title baked in, plus a
+// description/actions panel that fades in on hover. Descriptive fields fall back
+// to the shared metadata map, and the hero art to a stable gradient, so any
+// game — catalog, board, or elsewhere — renders the same rich card. `action` is
+// the context's control (add / vote / schedule); `badge` an optional corner tag.
+export function GameTile({ game, action, badge }) {
+  const meta = GAME_META[game.title] || {};
+  const genre = game.genre || meta.genre;
+  const developer = game.developer || meta.developer;
+  const description = game.description || meta.description;
+  // Real key art (from IGDB) wins; otherwise a stable gradient stands in.
+  const hero = game.heroImage
+    ? `url("${game.heroImage}")`
+    : game.hero || meta.hero || gradFor(game.title || "game");
+  const metaLine = [game.players && `${game.players} players`, (game.platforms || []).join(", ")]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div className="launcher-card" style={{ backgroundImage: hero }}>
+      <div className="launcher-scrim" />
+      {badge && <span className="launcher-badge">{badge}</span>}
+      <span className="launcher-logo">{game.title}</span>
+
+      <div className="launcher-info">
+        <span className="launcher-name">{game.title}</span>
+        <span className="launcher-tags">
+          {genre && <span className="launcher-tag">{genre}</span>}
+          {developer && <span className="launcher-studio">{developer}</span>}
+        </span>
+        {description && <p className="launcher-desc">{description}</p>}
+        {metaLine && <div className="launcher-meta">{metaLine}</div>}
+        {action && <div className="launcher-actions">{action}</div>}
+      </div>
+    </div>
   );
 }
 

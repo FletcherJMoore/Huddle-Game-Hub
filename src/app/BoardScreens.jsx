@@ -5,7 +5,7 @@ import { inRotation, pendingApproval, everyoneOwns, upVotes, threshold } from ".
 import { myRsvp, rsvpCounts, sortSessions, isPast, formatSessionDate, formatTimeRange } from "../lib/schedule.js";
 import { roleLabel } from "../lib/social.js";
 import { BOARD_EMOJI } from "./theme.jsx";
-import { Cover, Avatar, SearchBox } from "./ui.jsx";
+import { Cover, Avatar, SearchBox, GameTile } from "./ui.jsx";
 import { ChevronLeft, ChevronRight, Plus } from "./icons.jsx";
 
 // ---- Rolodex: rotation games as cards hinged at the top ----
@@ -233,62 +233,57 @@ export function BoardCatalog({ board, games, user, onVote, onProposeGame, onSetT
       <div className="subhead-row">
         <h2>In rotation</h2>
       </div>
-      <div className="list-card">
-        {rotation.length === 0 && <div className="list-row muted">Nothing in rotation yet.</div>}
-        {rotation.map((g) => (
-          <div key={g.id} className="list-row">
-            <Cover game={g} className="chip-cover" />
-            <span className="col">
-              <span className="row-name">{g.title}</span>
-              <span className="row-sub">
-                {(g.platforms || []).join(", ")} · {g.players} players
-              </span>
-            </span>
-            <button className="ghost-btn" onClick={() => onSetTab("calendar")}>
-              Schedule
-            </button>
-          </div>
-        ))}
-      </div>
+      {rotation.length === 0 ? (
+        <p className="muted catalog-empty">Nothing in rotation yet.</p>
+      ) : (
+        <div className="launcher-grid">
+          {rotation.map((g) => (
+            <GameTile
+              key={g.id}
+              game={g}
+              badge="In rotation"
+              action={
+                <button className="ghost-btn sm" onClick={() => onSetTab("calendar")}>
+                  Schedule
+                </button>
+              }
+            />
+          ))}
+        </div>
+      )}
 
       <div className="section-gap">
         <div className="subhead-row">
           <h2>Pending approval</h2>
         </div>
-        <div className="list-card">
-          {pending.length === 0 && <div className="list-row muted">No games awaiting votes.</div>}
-          {pending.map((g) => {
-            const yes = upVotes(g);
-            const need = threshold(memberCount);
-            const pct = Math.min(100, Math.round((yes / need) * 100));
-            const mine = myVote(g, user.id);
-            return (
-              <div key={g.id} className="vote-row">
-                <Cover game={g} className="chip-cover" />
-                <span className="col">
-                  <span className="row-name">{g.title}</span>
-                  <span className="row-sub">
-                    {(g.platforms || []).join(", ")} · {g.players} players
-                  </span>
-                  <span className="vote-track">
-                    <span className={`vote-fill${yes >= need ? " met" : ""}`} style={{ width: `${pct}%` }} />
-                  </span>
-                  <span className="vote-label">
-                    {yes} of {need} yes votes needed
-                  </span>
-                </span>
-                <span className="rsvp-group">
-                  <button className={`vote-btn yes${mine === "up" ? " on" : ""}`} onClick={() => onVote(g.id, "up")}>
-                    Yes
-                  </button>
-                  <button className={`vote-btn no${mine === "down" ? " on" : ""}`} onClick={() => onVote(g.id, "down")}>
-                    No
-                  </button>
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        {pending.length === 0 ? (
+          <p className="muted catalog-empty">No games awaiting votes.</p>
+        ) : (
+          <div className="launcher-grid">
+            {pending.map((g) => {
+              const yes = upVotes(g);
+              const need = threshold(memberCount);
+              const mine = myVote(g, user.id);
+              return (
+                <GameTile
+                  key={g.id}
+                  game={g}
+                  badge={`${yes}/${need} yes`}
+                  action={
+                    <>
+                      <button className={`vote-btn yes${mine === "up" ? " on" : ""}`} onClick={() => onVote(g.id, "up")}>
+                        Yes
+                      </button>
+                      <button className={`vote-btn no${mine === "down" ? " on" : ""}`} onClick={() => onVote(g.id, "down")}>
+                        No
+                      </button>
+                    </>
+                  }
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {common.length > 0 && (
@@ -297,20 +292,18 @@ export function BoardCatalog({ board, games, user, onVote, onProposeGame, onSetT
             <h2>Everyone owns these</h2>
             <span className="subhead-note">From each member's personal catalog</span>
           </div>
-          <div className="list-card">
+          <div className="launcher-grid">
             {common.map((g) => (
-              <div key={g.id} className="list-row">
-                <Cover game={g} className="chip-cover" />
-                <span className="col">
-                  <span className="row-name">{g.title}</span>
-                  <span className="row-sub">
-                    {g.owners} of {memberCount} members own it · {g.players} players
-                  </span>
-                </span>
-                <button className="ghost-btn" onClick={() => onVote(g.id, "up")}>
-                  Propose
-                </button>
-              </div>
+              <GameTile
+                key={g.id}
+                game={g}
+                badge={`${g.owners}/${memberCount} own`}
+                action={
+                  <button className="ghost-btn sm" onClick={() => onVote(g.id, "up")}>
+                    Propose
+                  </button>
+                }
+              />
             ))}
           </div>
         </div>
