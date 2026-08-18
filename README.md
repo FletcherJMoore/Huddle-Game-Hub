@@ -1,24 +1,24 @@
 # Huddle Game Hub
 
 A shared planning hub for game nights. Create boards with your crew, vote games
-into rotation, schedule sessions on a calendar, chat in real time, and pull in
-the games you own on Steam.
+into rotation, schedule sessions on a calendar, chat in real time, and browse a
+cross-platform video-game catalog powered by IGDB.
 
 ## Features
 
 - **Boards** — shared spaces with members and roles (owner / editor / member).
-- **Game catalog & voting** — propose games; the crew votes them into rotation.
+- **Game catalog & voting** — search the IGDB video-game catalog (art, genres,
+  studios, platforms), propose games, and vote them into rotation.
 - **Scheduling** — a Google-Calendar-style day/week/month view with RSVPs.
 - **Realtime chat** — per-board chat over Socket.IO, with reactions and unsend.
-- **Steam library** — link your Steam account (OpenID) to bring your owned games
-  into the catalog and add them to a board.
 - **Runtime theming** — light/dark, accent color, and background, per user.
 
 ## Tech stack
 
 - **Frontend** — Vite + React 18 single-page app (`src/`).
 - **Backend** — Node + Express (`server/`) with PostgreSQL, Socket.IO for
-  realtime, and Passport for auth (Google OAuth + Steam OpenID).
+  realtime, and Passport for Google OAuth. The games catalog is proxied to
+  IGDB (Twitch app credentials).
 - **Hosting** — Railway. One backend service serves the built SPA and the API on
   the same origin, backed by a Railway Postgres plugin.
 
@@ -76,17 +76,18 @@ Backend variables (set in `.env` locally, or on the Railway backend service):
 | --- | --- | --- |
 | `DATABASE_URL` | ✅ | Postgres connection string. On Railway, set to `${{Postgres.DATABASE_URL}}`. |
 | `AUTH_SECRET` | ✅ | Secret for signing the session cookie. |
-| `APP_URL` | ✅ | The app's public origin (e.g. `https://…up.railway.app`). Used for OAuth callback and Steam realm URLs. Defaults to `http://localhost:5173`. |
+| `APP_URL` | ✅ | The app's public origin (e.g. `https://…up.railway.app`). Used for the OAuth callback URL. Defaults to `http://localhost:5173`. |
 | `GOOGLE_CLIENT_ID` | ✅¹ | Google OAuth client id. |
 | `GOOGLE_CLIENT_SECRET` | ✅¹ | Google OAuth client secret. |
-| `STEAM_API_KEY` | optional | Enables the Steam library (owned games). Get one at steamcommunity.com/dev/apikey. |
-| `BGG_API_TOKEN` | optional | Bearer token for the BoardGameGeek / VideoGameGeek catalog search. |
-| `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET` | optional | IGDB video-game cover art (via a Twitch dev app). Falls back to VGG covers if unset. |
+| `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET` | ✅² | IGDB (games catalog) credentials, from a Twitch dev app at dev.twitch.tv/console/apps. |
 | `PGSSLMODE` | optional | Set to `disable` to turn off TLS for a local Postgres. |
 | `PORT` | — | Set automatically by Railway; defaults to `3000`. |
 
 ¹ Auth is optional to boot: if the Google/`AUTH_SECRET` vars are missing the app
 still serves, but `/api/auth/*` returns `503` until they're configured.
+
+² The games catalog is optional to boot too: without the Twitch credentials the
+app runs, but `/api/catalog/search` returns `503`.
 
 The `VITE_FIREBASE_*` entries in `.env.example` are leftovers from the previous
 Firebase stack and are no longer used (see [Migration note](#migration-note)).
@@ -112,8 +113,8 @@ runner (`server/migrate.js`) that records applied files in `schema_migrations`.
 
 **Google OAuth:** in the Google Cloud console, add
 `${APP_URL}/api/auth/google/callback` as an authorized redirect URI.
-**Steam** (optional) returns to `${APP_URL}/api/auth/steam/return`; the user's
-Steam profile game details must be public for their library to load.
+**IGDB:** create a Twitch developer application at dev.twitch.tv/console/apps and
+use its Client ID + Client Secret for the `TWITCH_*` vars.
 
 ## Project structure
 
@@ -124,10 +125,9 @@ src/                 React SPA
   auth/              auth context + login
 server/              Express API + Socket.IO realtime
   index.js           entry — mounts routers, serves the SPA
-  auth.js            Google OAuth + Steam OpenID (Passport)
+  auth.js            Google OAuth (Passport)
   boards.js          boards, games, sessions, chat
-  steam.js           Steam library (owned games, cover resolution)
-  catalog.js         BGG/VGG catalog search
+  catalog.js         IGDB video-game catalog search
   realtime.js        Socket.IO rooms + broadcasts
   db.js              Postgres pool
   migrations/        forward-only SQL migrations

@@ -4,6 +4,8 @@
 // MOCK mode (VITE_MOCK=1) swaps the network for an in-memory board so the
 // redesigned shell can be previewed without the Postgres backend running.
 
+import { GAME_META } from "./game-meta.js";
+
 export const MOCK = import.meta.env.VITE_MOCK === "1";
 
 async function request(path, options = {}) {
@@ -48,26 +50,28 @@ const mockMembers = [
   { userId: "f5", name: "Riley Chen", photoUrl: null, role: "member", online: true, since: "Jun 30, 2026" }
 ];
 
-const g = (id, title, kind, players, platforms, approvals, owners) => ({
-  id, title, kind, genre: "", players, platforms, coverImageUrl: null, approvals, addedBy: "f1", owners
+// Board games carry gameplay attrs (players/platforms/votes); descriptive
+// metadata (genre, studio, blurb, hero art) is merged in from the shared map so
+// every board tile renders as richly as the catalog.
+const g = (id, title, players, platforms, approvals, owners) => ({
+  id, title, kind: "video", players, platforms, coverImageUrl: null, approvals, addedBy: "f1", owners,
+  ...GAME_META[title]
 });
 
 const mockContent = {
   games: [
-    g("g1", "Overcooked 2", "video", "2-4", ["Switch", "PC"], { me: "up", f1: "up", f2: "up", f4: "up" }, 5),
-    g("g2", "Mario Kart 8 Deluxe", "video", "2-8", ["Switch"], { me: "up", f1: "up", f3: "up", f5: "up" }, 6),
-    g("g3", "Among Us", "video", "4-15", ["PC", "Mobile"], { f1: "up", f4: "up" }, 6),
-    g("g4", "It Takes Two", "video", "2", ["PS5", "Xbox", "PC"], { f2: "up" }, 2),
-    g("g5", "Jackbox Party Pack 10", "party", "4-10", ["PC"], { me: "up", f1: "up", f3: "up", f4: "up" }, 5),
-    g("g6", "Catan", "party", "3-4", ["Board game"], { f1: "up", f5: "up" }, 3),
-    g("g7", "Lethal Company", "video", "2-4", ["PC"], {}, 6),
-    g("g8", "Rocket League", "video", "2-8", ["PS5", "Xbox", "PC", "Switch"], {}, 6),
-    g("g9", "Stardew Valley", "video", "1-4", ["PC", "Switch"], {}, 5)
+    g("g1", "Overcooked 2", "2-4", ["Switch", "PC"], { me: "up", f1: "up", f2: "up", f4: "up" }, 5),
+    g("g2", "Mario Kart 8 Deluxe", "2-8", ["Switch"], { me: "up", f1: "up", f3: "up", f5: "up" }, 6),
+    g("g3", "Among Us", "4-15", ["PC", "Mobile"], { f1: "up", f4: "up" }, 6),
+    g("g4", "It Takes Two", "2", ["PS5", "Xbox", "PC"], { f2: "up" }, 2),
+    g("g7", "Lethal Company", "2-4", ["PC"], {}, 6),
+    g("g8", "Rocket League", "2-8", ["PS5", "Xbox", "PC", "Switch"], {}, 6),
+    g("g9", "Stardew Valley", "1-4", ["PC", "Switch"], {}, 5)
   ],
   schedule: [
     { id: "s1", date: "2026-08-07", start: "20:00", end: "23:00", activity: "Overcooked 2 night", gameId: "g1", rsvps: { me: "in", f1: "in", f3: "in", f5: "in" }, createdBy: "f1" },
     { id: "s2", date: "2026-08-09", start: "19:30", end: "22:00", activity: "Mario Kart tournament", gameId: "g2", rsvps: { f1: "in", f2: "in", f4: "in" }, createdBy: "f4" },
-    { id: "s3", date: "2026-08-12", start: "21:00", end: "24:00", activity: "Jackbox party", gameId: "g5", rsvps: { f3: "in", f5: "in" }, createdBy: "f3" }
+    { id: "s3", date: "2026-08-12", start: "21:00", end: "24:00", activity: "Rocket League night", gameId: "g8", rsvps: { f3: "in", f5: "in" }, createdBy: "f3" }
   ]
 };
 
@@ -85,108 +89,29 @@ function mockBoard(id) {
   };
 }
 
-// Rich catalog used for the Steam-style launcher mockup. Each entry carries a
-// genre (category), developer (studio), a short blurb, and a `hero` gradient
-// that stands in for full-bleed key art until real images are wired up.
+// Mock store catalog (video games only) used when VITE_MOCK=1. Gameplay attrs
+// live here; the descriptive metadata (genre, studio, blurb, hero art) is
+// merged in from the shared map — the same shape the IGDB proxy returns in
+// production.
 const CATALOG = [
-  {
-    title: "Overwatch 2", genre: "Shooter", developer: "Blizzard Entertainment",
-    players: "1-10", platforms: ["PC", "PS5", "Xbox", "Switch"],
-    description: "Team-based hero shooter where two squads of five clash across objective maps, each hero built around a distinct kit.",
-    hero: "linear-gradient(135deg,#f97316,#b45309)"
-  },
-  {
-    title: "World of Warcraft", genre: "MMORPG", developer: "Blizzard Entertainment",
-    players: "1-40", platforms: ["PC"],
-    description: "The sprawling online world of Azeroth — quest, raid, and explore with thousands of other players across decades of story.",
-    hero: "linear-gradient(135deg,#1d4ed8,#1e3a8a)"
-  },
-  {
-    title: "Diablo IV", genre: "Action RPG", developer: "Blizzard Entertainment",
-    players: "1-4", platforms: ["PC", "PS5", "Xbox"],
-    description: "A dark dungeon crawler through the world of Sanctuary — grind loot, master classes, and hunt Lilith across a shared open world.",
-    hero: "linear-gradient(135deg,#b91c1c,#450a0a)"
-  },
-  {
-    title: "Hearthstone", genre: "Card", developer: "Blizzard Entertainment",
-    players: "1-2", platforms: ["PC", "Mobile"],
-    description: "A fast, friendly digital card game — build decks from Warcraft heroes and duel opponents in quick tactical matches.",
-    hero: "linear-gradient(135deg,#d97706,#78350f)"
-  },
-  {
-    title: "League of Legends", genre: "MOBA", developer: "Riot Games",
-    players: "1-10", platforms: ["PC"],
-    description: "The definitive MOBA — pick a champion, push lanes, and destroy the enemy Nexus in five-on-five strategic team battles.",
-    hero: "linear-gradient(135deg,#0891b2,#164e63)"
-  },
-  {
-    title: "Valorant", genre: "Shooter", developer: "Riot Games",
-    players: "1-10", platforms: ["PC"],
-    description: "A tactical five-on-five shooter blending precise gunplay with agent abilities across tight, round-based rounds.",
-    hero: "linear-gradient(135deg,#e11d48,#831843)"
-  },
-  {
-    title: "Counter-Strike 2", genre: "Shooter", developer: "Valve",
-    players: "1-10", platforms: ["PC"],
-    description: "The legendary competitive shooter, rebuilt — plant, defuse, and out-aim the enemy team round after round.",
-    hero: "linear-gradient(135deg,#ca8a04,#3f3f46)"
-  },
-  {
-    title: "Dota 2", genre: "MOBA", developer: "Valve",
-    players: "1-10", platforms: ["PC"],
-    description: "A deep, high-skill MOBA with over a hundred heroes and endless strategic depth in five-on-five lane battles.",
-    hero: "linear-gradient(135deg,#7c3aed,#312e81)"
-  },
-  {
-    title: "Portal 2", genre: "Puzzle", developer: "Valve",
-    players: "1-2", platforms: ["PC", "PS5", "Xbox"],
-    description: "A mind-bending first-person puzzler — think with portals, solo or in co-op, through Aperture's test chambers.",
-    hero: "linear-gradient(135deg,#2563eb,#1e293b)"
-  },
-  {
-    title: "Elden Ring", genre: "Action RPG", developer: "FromSoftware",
-    players: "1-4", platforms: ["PS5", "Xbox", "PC"],
-    description: "An open-world dark fantasy epic — explore the Lands Between, face towering bosses, and forge your own path to the throne.",
-    hero: "linear-gradient(135deg,#a16207,#1c1917)"
-  },
-  {
-    title: "Sekiro: Shadows Die Twice", genre: "Action RPG", developer: "FromSoftware",
-    players: "1", platforms: ["PS5", "Xbox", "PC"],
-    description: "A punishing single-player action game of posture-breaking swordplay and stealth in a reimagined Sengoku-era Japan.",
-    hero: "linear-gradient(135deg,#dc2626,#292524)"
-  },
-  {
-    title: "Baldur's Gate 3", genre: "RPG", developer: "Larian Studios",
-    players: "1-4", platforms: ["PS5", "PC", "Xbox"],
-    description: "A sweeping party-based RPG built on D&D — every choice matters across a richly reactive world, solo or in co-op.",
-    hero: "linear-gradient(135deg,#b45309,#7c2d12)"
-  },
-  {
-    title: "Mario Kart 8 Deluxe", genre: "Racing", developer: "Nintendo",
-    players: "1-8", platforms: ["Switch"],
-    description: "The definitive kart racer — drift, boost, and sling shells across wild tracks with up to eight players.",
-    hero: "linear-gradient(135deg,#dc2626,#c2410c)"
-  },
-  {
-    title: "Splatoon 3", genre: "Shooter", developer: "Nintendo",
-    players: "2-8", platforms: ["Switch"],
-    description: "A colorful team shooter about covering turf in ink — splat rivals and out-splash them in four-on-four matches.",
-    hero: "linear-gradient(135deg,#7c3aed,#0d9488)"
-  },
-  {
-    title: "Fortnite", genre: "Battle Royale", developer: "Epic Games",
-    players: "1-100", platforms: ["PS5", "Xbox", "PC", "Switch"],
-    description: "Build, battle, and be the last one standing — a hundred players drop onto a shrinking island in a fight to survive.",
-    hero: "linear-gradient(135deg,#6d28d9,#1e40af)"
-  },
-  {
-    title: "Among Us", genre: "Party", developer: "Innersloth",
-    players: "4-15", platforms: ["PC", "Mobile", "Switch"],
-    description: "Work together to prep your ship — but one of you is an impostor. Deceive, deduce, and vote to survive.",
-    hero: "linear-gradient(135deg,#dc2626,#1e3a8a)"
-  }
-].map((game, i) => ({
-  catalogId: `cat-${i}`, kind: "video", coverImageUrl: null, ...game
+  ["Overwatch 2", "1-10", ["PC", "PS5", "Xbox", "Switch"]],
+  ["World of Warcraft", "1-40", ["PC"]],
+  ["Diablo IV", "1-4", ["PC", "PS5", "Xbox"]],
+  ["Hearthstone", "1-2", ["PC", "Mobile"]],
+  ["League of Legends", "1-10", ["PC"]],
+  ["Valorant", "1-10", ["PC"]],
+  ["Counter-Strike 2", "1-10", ["PC"]],
+  ["Dota 2", "1-10", ["PC"]],
+  ["Portal 2", "1-2", ["PC", "PS5", "Xbox"]],
+  ["Elden Ring", "1-4", ["PS5", "Xbox", "PC"]],
+  ["Sekiro: Shadows Die Twice", "1", ["PS5", "Xbox", "PC"]],
+  ["Baldur's Gate 3", "1-4", ["PS5", "PC", "Xbox"]],
+  ["Mario Kart 8 Deluxe", "1-8", ["Switch"]],
+  ["Splatoon 3", "2-8", ["Switch"]],
+  ["Fortnite", "1-100", ["PS5", "Xbox", "PC", "Switch"]],
+  ["Among Us", "4-15", ["PC", "Mobile", "Switch"]]
+].map(([title, players, platforms], i) => ({
+  catalogId: `cat-${i}`, kind: "video", coverImageUrl: null, title, players, platforms, ...GAME_META[title]
 }));
 
 // Current signed-in user, or null.
@@ -264,54 +189,15 @@ export async function deleteBoard(id) {
   return json(await request(`/api/boards/${id}`, { method: "DELETE" }));
 }
 
-export async function searchCatalog(query, kind) {
+// Searches the video-game catalog. In production this hits the IGDB proxy on
+// the server; an empty query returns a default browse set of popular games.
+export async function searchCatalog(query = "") {
   if (MOCK) {
     const q = (query || "").toLowerCase();
-    return CATALOG.filter((c) => (!kind || c.kind === kind) && (!q || c.title.toLowerCase().includes(q)));
+    return CATALOG.filter((c) => !q || c.title.toLowerCase().includes(q));
   }
-  const params = new URLSearchParams({ q: query, type: kind === "party" ? "party" : "video" });
+  const params = new URLSearchParams({ q: query });
   return (await json(await request(`/api/catalog/search?${params}`))).results;
-}
-
-// ---- Steam library ----
-
-// The link flow is a full-page redirect to Steam's OpenID, so it's a URL, not a
-// fetch. Steam returns to /?steam=linked.
-export const STEAM_LOGIN_URL = "/api/auth/steam";
-
-const MOCK_STEAM = [
-  { steamAppId: 1245620, title: "Elden Ring", playtimeForever: 5400 },
-  { steamAppId: 1145360, title: "Hades", playtimeForever: 2100 },
-  { steamAppId: 413150, title: "Stardew Valley", playtimeForever: 1800 },
-  { steamAppId: 319510, title: "Five Nights at Freddy's", playtimeForever: 1600 }, // no portrait capsule → header fallback
-  { steamAppId: 105600, title: "Terraria", playtimeForever: 1500 },
-  { steamAppId: 620, title: "Portal 2", playtimeForever: 900 },
-  { steamAppId: 730, title: "Counter-Strike 2", playtimeForever: 600 },
-  // No predictable CDN capsule — the server resolves its real header via Steam's
-  // appdetails API; hardcoded here so the mock preview shows the resolved result.
-  {
-    steamAppId: 3527290,
-    title: "PEAK",
-    playtimeForever: 300,
-    cover: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3527290/31bac6b2eccf09b368f5e95ce510bae2baf3cfcd/header.jpg"
-  }
-].map((g) => ({
-  ...g,
-  catalogId: null,
-  kind: "video",
-  platforms: ["PC"],
-  players: "",
-  coverImageUrl: g.cover || `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.steamAppId}/library_600x900.jpg`
-}));
-
-export async function getSteamLibrary() {
-  if (MOCK) return { linked: true, persona: "you", count: MOCK_STEAM.length, games: MOCK_STEAM };
-  return json(await request("/api/steam/games"));
-}
-
-export async function unlinkSteam() {
-  if (MOCK) return { ok: true };
-  return json(await request("/api/steam", { method: "DELETE" }));
 }
 
 export async function addGame(boardId, game) {

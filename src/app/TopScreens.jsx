@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
-import { searchCatalog, addGame, getSteamLibrary, unlinkSteam, STEAM_LOGIN_URL } from "../lib/api.js";
+import { searchCatalog, addGame } from "../lib/api.js";
 import { FRIENDS } from "../lib/social.js";
 import { gradFor } from "./theme.jsx";
-import { Cover, Avatar, SearchBox } from "./ui.jsx";
+import { Avatar, SearchBox, GameTile } from "./ui.jsx";
 import { Plus, ChevronDown } from "./icons.jsx";
 
 function BoardTiles({ boards, onOpen }) {
@@ -25,7 +25,7 @@ function BoardTiles({ boards, onOpen }) {
 export function OverviewScreen({ user, boards, onOpenBoard }) {
   const [catalogCount, setCatalogCount] = useState(0);
   useEffect(() => {
-    searchCatalog("", null).then((r) => setCatalogCount(r.length)).catch(() => {});
+    searchCatalog("").then((r) => setCatalogCount(r.length)).catch(() => {});
   }, []);
 
   return (
@@ -177,61 +177,34 @@ function FilterSelect({ label, value, options, onChange }) {
   );
 }
 
-// A Steam-style launcher tile: full-bleed key art with the title baked in, and
-// a description/actions panel that fades in on hover (like the Fortnite card in
-// the reference).
-function LauncherCard({ game, boards }) {
-  return (
-    <div className="launcher-card" style={{ backgroundImage: game.hero || gradFor(game.title) }}>
-      <div className="launcher-scrim" />
-      <span className="launcher-logo">{game.title}</span>
-
-      <div className="launcher-info">
-        <span className="launcher-name">{game.title}</span>
-        <span className="launcher-tags">
-          {game.genre && <span className="launcher-tag">{game.genre}</span>}
-          {game.developer && <span className="launcher-studio">{game.developer}</span>}
-        </span>
-        <p className="launcher-desc">{game.description}</p>
-        <div className="launcher-meta">
-          {game.players} players · {(game.platforms || []).join(", ")}
-        </div>
-        <div className="launcher-actions">
-          <AddToBoardButton game={game} boards={boards} variant="primary" />
-          <button className="ghost-btn sm">Game info</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function uniqueSorted(list) {
   return [...new Set(list.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
-function BrowseCatalog({ boards }) {
+export function CatalogScreen({ boards = [] }) {
   const [games, setGames] = useState([]);
   const [q, setQ] = useState("");
   const [genre, setGenre] = useState("");
   const [studio, setStudio] = useState("");
 
+  // Debounced search: the query hits IGDB (or the mock catalog) directly, so the
+  // list is whatever the source returns for the current text.
   useEffect(() => {
     let alive = true;
-    searchCatalog("", null).then((r) => alive && setGames(r)).catch(() => alive && setGames([]));
+    const t = setTimeout(() => {
+      searchCatalog(q.trim()).then((r) => alive && setGames(r)).catch(() => alive && setGames([]));
+    }, q.trim() ? 250 : 0);
     return () => {
       alive = false;
+      clearTimeout(t);
     };
-  }, []);
+  }, [q]);
 
   const genres = uniqueSorted(games.map((g) => g.genre));
   const studios = uniqueSorted(games.map((g) => g.developer));
 
-  const query = q.trim().toLowerCase();
   const filtered = games.filter(
-    (g) =>
-      (!query || g.title.toLowerCase().includes(query)) &&
-      (!genre || g.genre === genre) &&
-      (!studio || g.developer === studio)
+    (g) => (!genre || g.genre === genre) && (!studio || g.developer === studio)
   );
 
   const hasFilters = q || genre || studio;
@@ -261,99 +234,19 @@ function BrowseCatalog({ boards }) {
       ) : (
         <div className="launcher-grid">
           {filtered.map((g) => (
-            <LauncherCard key={g.catalogId || g.title} game={g} boards={boards} />
+            <GameTile
+              key={g.catalogId || g.title}
+              game={g}
+              action={
+                <>
+                  <AddToBoardButton game={g} boards={boards} variant="primary" />
+                  <button className="ghost-btn sm">Game info</button>
+                </>
+              }
+            />
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function hoursLabel(minutes) {
-  if (!minutes) return "Never played";
-  const hrs = minutes / 60;
-  return hrs >= 1 ? `${Math.round(hrs)} hrs on record` : `${minutes} min on record`;
-}
-
-function SteamLinkCTA() {
-  return (
-    <div className="steam-cta">
-      <div className="steam-cta-mark">🎮</div>
-      <h3>Link your Steam account</h3>
-      <p className="muted">Pull in the games you own on Steam, then add any of them to a board.</p>
-      <a className="steam-btn" href={STEAM_LOGIN_URL}>
-        Sign in through Steam
-      </a>
-      <span className="hint">Your Steam profile's game details need to be public.</span>
-    </div>
-  );
-}
-
-function SteamLibrary({ boards }) {
-  const [lib, setLib] = useState(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    getSteamLibrary()
-      .then(setLib)
-      .catch((e) => setError(e.message || "Couldn't load your Steam library."));
-  }, []);
-
-  async function unlink() {
-    await unlinkSteam().catch(() => {});
-    setLib({ linked: false, games: [] });
-  }
-
-  if (error) return <div className="list-card"><div className="list-row muted">{error}</div></div>;
-  if (!lib) return <p className="muted">Loading…</p>;
-  if (!lib.linked) return <SteamLinkCTA />;
-
-  return (
-    <div>
-      <div className="steam-head">
-        <span className="steam-status">
-          <span className="steam-dot" /> Linked{lib.persona ? ` as ${lib.persona}` : ""} · {lib.count ?? lib.games.length} games
-        </span>
-        <button className="ghost-btn sm" onClick={unlink}>
-          Unlink
-        </button>
-      </div>
-      {lib.games.length === 0 ? (
-        <div className="list-card">
-          <div className="list-row muted">No games found — make sure your Steam profile's game details are public.</div>
-        </div>
-      ) : (
-        <div className="catalog-grid">
-          {lib.games.map((g) => (
-            <div key={g.steamAppId} className="game-card">
-              <Cover game={g} className="cover-3x4" />
-              <span className="game-title">{g.title}</span>
-              <span className="game-meta">{hoursLabel(g.playtimeForever)}</span>
-              <AddToBoardButton game={g} boards={boards} />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function CatalogScreen({ boards = [] }) {
-  const [mode, setMode] = useState(() =>
-    new URLSearchParams(window.location.search).get("steam") === "linked" ? "steam" : "browse"
-  );
-
-  return (
-    <div>
-      <div className="segmented-2 catalog-modes">
-        <button className={mode === "browse" ? "seg-on" : ""} onClick={() => setMode("browse")}>
-          Browse
-        </button>
-        <button className={mode === "steam" ? "seg-on" : ""} onClick={() => setMode("steam")}>
-          My Steam library
-        </button>
-      </div>
-      {mode === "browse" ? <BrowseCatalog boards={boards} /> : <SteamLibrary boards={boards} />}
     </div>
   );
 }
