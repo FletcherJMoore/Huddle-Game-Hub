@@ -52,7 +52,11 @@ async function getTwitchToken() {
     grant_type: "client_credentials"
   });
   const resp = await fetch(`https://id.twitch.tv/oauth2/token?${params}`, { method: "POST" });
-  if (!resp.ok) throw new Error("twitch-auth-failed");
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => "");
+    console.error(`[catalog] Twitch token ${resp.status}: ${detail.slice(0, 300)}`);
+    throw new Error("twitch-auth-failed");
+  }
 
   const data = await resp.json();
   twitchToken = data.access_token;
@@ -94,19 +98,10 @@ const IGDB_FIELDS =
   "artworks.image_id, screenshots.image_id, " +
   "involved_companies.developer, involved_companies.company.name";
 
-// Builds the IGDB query body. A search term uses relevance ordering; an empty
-// term browses the most-rated main games.
-function igdbQuery(query) {
-  if (query) {
-    return `search "${query.replace(/"/g, "")}"; ${IGDB_FIELDS}; where category = 0 & version_parent = null; limit 24;`;
-  }
-  return `${IGDB_FIELDS}; where category = 0 & cover != null & total_rating_count > 40; sort total_rating_count desc; limit 24;`;
-}
-
-async function searchIgdb(query) {
-  const token = await getTwitchToken();
-  if (!token) return null;
-
+// Runs one IGDB query body against /games, returning the parsed rows. On an
+// error it logs the real IGDB status + message so failures show up in the
+// server (Railway) logs instead of vanishing into a generic 502.
+async function runIgdb(token, body) {
   const resp = await fetch("https://api.igdb.com/v4/games", {
     method: "POST",
     headers: {
@@ -114,11 +109,41 @@ async function searchIgdb(query) {
       Authorization: `Bearer ${token}`,
       Accept: "application/json"
     },
-    body: igdbQuery(query)
+    body
   });
-  if (!resp.ok) throw new Error("igdb-request-failed");
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => "");
+    console.error(`[catalog] IGDB ${resp.status}: ${detail.slice(0, 500)}`);
+    throw new Error("igdb-request-failed");
+  }
+  return resp.json();
+}
 
-  return (await resp.json()).map(mapIgdbGame);
+async function searchIgdb(query) {
+  const token = await getTwitchToken();
+  if (!token) return null;
+
+  if (query) {
+    const rows = await runIgdb(
+      token,
+      `search "${query.replace(/"/g, "")}"; ${IGDB_FIELDS}; where version_parent = null; limit 24;`
+    );
+    return rows.map(mapIgdbGame);
+  }
+
+  // Browse: the most-rated main games. If that strict filter comes back empty,
+  // fall back to a looser one so the discovery page is never blank.
+  let rows = await runIgdb(
+    token,
+    `${IGDB_FIELDS}; where category = 0 & cover != null & total_rating_count > 30; sort total_rating_count desc; limit 24;`
+  );
+  if (!rows.length) {
+    rows = await runIgdb(
+      token,
+      `${IGDB_FIELDS}; where cover != null & total_rating_count != null; sort total_rating_count desc; limit 24;`
+    );
+  }
+  return rows.map(mapIgdbGame);
 }
 
 catalogRouter.get("/search", async (req, res) => {

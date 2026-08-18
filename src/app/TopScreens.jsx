@@ -183,16 +183,28 @@ function uniqueSorted(list) {
 
 export function CatalogScreen({ boards = [] }) {
   const [games, setGames] = useState([]);
+  const [status, setStatus] = useState("loading"); // loading | ok | error
   const [q, setQ] = useState("");
   const [genre, setGenre] = useState("");
   const [studio, setStudio] = useState("");
 
   // Debounced search: the query hits IGDB (or the mock catalog) directly, so the
-  // list is whatever the source returns for the current text.
+  // list is whatever the source returns. An empty query browses popular games.
   useEffect(() => {
     let alive = true;
+    setStatus("loading");
     const t = setTimeout(() => {
-      searchCatalog(q.trim()).then((r) => alive && setGames(r)).catch(() => alive && setGames([]));
+      searchCatalog(q.trim())
+        .then((r) => {
+          if (!alive) return;
+          setGames(r);
+          setStatus("ok");
+        })
+        .catch(() => {
+          if (!alive) return;
+          setGames([]);
+          setStatus("error");
+        });
     }, q.trim() ? 250 : 0);
     return () => {
       alive = false;
@@ -229,8 +241,14 @@ export function CatalogScreen({ boards = [] }) {
         )}
       </div>
 
-      {filtered.length === 0 ? (
-        <p className="muted catalog-empty">No games match those filters.</p>
+      {status === "loading" ? (
+        <p className="muted catalog-empty">Loading games…</p>
+      ) : status === "error" ? (
+        <p className="muted catalog-empty">Couldn't reach the games catalog. Try again in a moment.</p>
+      ) : filtered.length === 0 ? (
+        <p className="muted catalog-empty">
+          {q.trim() ? `No games found for "${q.trim()}".` : "No games match those filters."}
+        </p>
       ) : (
         <div className="launcher-grid">
           {filtered.map((g) => (
