@@ -2,10 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
 import { searchCatalog, addGame } from "../lib/api.js";
-import { pickBestCover } from "../lib/covers.js";
 
 export default function ProposeGameModal({ boardId, onClose, onAdded }) {
-  const [kind, setKind] = useState("video");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -13,7 +11,8 @@ export default function ProposeGameModal({ boardId, onClose, onAdded }) {
   const [error, setError] = useState("");
   const debounce = useRef();
 
-  // Debounced catalog search as the user types (or switches video/party).
+  // Debounced catalog search as the user types — the same IGDB-backed
+  // searchCatalog the top-level Game Catalog uses.
   useEffect(() => {
     clearTimeout(debounce.current);
     const q = query.trim();
@@ -25,7 +24,7 @@ export default function ProposeGameModal({ boardId, onClose, onAdded }) {
     setSearching(true);
     debounce.current = setTimeout(async () => {
       try {
-        setResults(await searchCatalog(q, kind));
+        setResults(await searchCatalog(q));
       } catch {
         setResults([]);
       } finally {
@@ -33,7 +32,7 @@ export default function ProposeGameModal({ boardId, onClose, onAdded }) {
       }
     }, 400);
     return () => clearTimeout(debounce.current);
-  }, [query, kind]);
+  }, [query]);
 
   async function submit(game) {
     if (busy) return;
@@ -47,19 +46,19 @@ export default function ProposeGameModal({ boardId, onClose, onAdded }) {
     }
   }
 
-  // Choose the best-fitting box art among the result's candidates, then add.
-  async function pickResult(r) {
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    const coverImageUrl = await pickBestCover(r.covers?.length ? r.covers : [r.coverImageUrl]);
+  // Add a catalog result, carrying the same fields the catalog tile shows so
+  // the proposed game renders identically on the board.
+  function pickResult(r) {
     submit({
       title: r.title,
-      kind,
+      kind: "video",
       genre: r.genre,
+      developer: r.developer,
+      description: r.description,
       players: r.players,
       platforms: r.platforms,
-      coverImageUrl,
+      coverImageUrl: r.coverImageUrl,
+      heroImage: r.heroImage,
       catalogId: r.catalogId
     });
   }
@@ -82,25 +81,12 @@ export default function ProposeGameModal({ boardId, onClose, onAdded }) {
       >
         <h2>Propose a game</h2>
 
-        <div className="kind-toggle">
-          {["video", "party"].map((k) => (
-            <button
-              key={k}
-              type="button"
-              className={`kind-option${kind === k ? " selected" : ""}`}
-              onClick={() => setKind(k)}
-            >
-              {k === "video" ? "🎮 Video game" : "🎲 Party / board game"}
-            </button>
-          ))}
-        </div>
-
         <input
           autoFocus
           className="propose-search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={kind === "video" ? "Search video games…" : "Search board games…"}
+          placeholder="Search games…"
         />
 
         <div className="catalog-results">
@@ -139,7 +125,7 @@ export default function ProposeGameModal({ boardId, onClose, onAdded }) {
             type="button"
             className="primary-btn"
             disabled={busy || !query.trim()}
-            onClick={() => submit({ title: query.trim(), kind })}
+            onClick={() => submit({ title: query.trim(), kind: "video" })}
           >
             {busy ? "Adding…" : `Add "${query.trim() || "…"}" by name`}
           </button>

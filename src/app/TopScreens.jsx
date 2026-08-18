@@ -112,11 +112,14 @@ function AddToBoardButton({ game, boards, variant = "ghost" }) {
     try {
       await addGame(board.id, {
         title: game.title,
-        kind: game.kind || "video",
+        kind: "video",
         genre: game.genre || "",
+        developer: game.developer || "",
+        description: game.description || "",
         players: game.players || "",
         platforms: game.platforms || [],
         coverImageUrl: game.coverImageUrl || null,
+        heroImage: game.heroImage || null,
         catalogId: game.catalogId ?? null
       });
       setAdded(board.name);
