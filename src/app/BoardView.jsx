@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider.jsx";
 import {
   getBoard,
   voteGame,
+  removeGame,
   rsvpSession,
   createSession,
   updateBoard,
@@ -77,6 +78,16 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
       setGames(await voteGame(boardId, gameId, next));
     } catch {
       /* keep optimistic */
+    }
+  }
+
+  // Admins (owner/editor) can pull a game off the board entirely.
+  async function handleRemove(gameId) {
+    setGames((gs) => gs.filter((g) => g.id !== gameId)); // optimistic
+    try {
+      setGames(await removeGame(boardId, gameId));
+    } catch {
+      /* keep optimistic; the next board:content broadcast will reconcile */
     }
   }
 
@@ -156,7 +167,9 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
           board={board}
           games={games}
           user={user}
+          canManage={isAdmin}
           onVote={handleVote}
+          onRemove={handleRemove}
           onProposeGame={() => setProposing(true)}
           onSetTab={onSetTab}
         />

@@ -1131,6 +1131,15 @@
   border-color: rgba(255, 255, 255, 0.22);
   color: #fff;
 }
+.launcher-actions .ghost-btn.sm.danger {
+  background: rgba(220, 38, 38, 0.24);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+.launcher-actions .ghost-btn.sm.danger:hover {
+  background: rgba(220, 38, 38, 0.4);
+  color: #fff;
+}
 /* Keep the accent "voted yes" state readable over the dark panel. */
 .launcher-actions .vote-btn.yes.on {
   background: var(--accent);
