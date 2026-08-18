@@ -160,16 +160,7 @@ export default function AppShell() {
         boards={boards}
         isBoardAdmin={isBoardAdmin}
         switcherOpen={switcherOpen}
-        notifOpen={notifOpen}
-        notifications={NOTIFICATIONS}
-        readNotifs={readNotifs}
-        chatOpen={nav === "chat"}
-        hasUnreadChat={!chatVisited}
-        onToggleChat={() => go("chat")}
         onToggleSwitcher={() => toggle("switcher")}
-        onToggleNotifs={() => toggle("notif")}
-        onMarkAllRead={() => setReadNotifs(new Set(NOTIFICATIONS.map((n) => n.id)))}
-        onOpenNotif={openNotif}
         onGo={go}
         onSelectBoard={selectBoard}
         onSetBoardTab={setTab}
@@ -186,6 +177,15 @@ export default function AppShell() {
             closeMenus();
           }}
           onSignOut={signOut}
+          chatOpen={nav === "chat"}
+          hasUnreadChat={!chatVisited}
+          onToggleChat={() => go("chat")}
+          notifOpen={notifOpen}
+          notifications={NOTIFICATIONS}
+          readNotifs={readNotifs}
+          onToggleNotifs={() => toggle("notif")}
+          onMarkAllRead={() => setReadNotifs(new Set(NOTIFICATIONS.map((n) => n.id)))}
+          onOpenNotif={openNotif}
         />
 
         <section className={`content${nav === "chat" ? " flush" : ""}`}>

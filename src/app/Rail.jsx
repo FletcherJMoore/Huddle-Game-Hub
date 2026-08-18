@@ -7,8 +7,6 @@ import {
   Gamepad2,
   Calendar,
   Settings,
-  Bell,
-  MessageCircleMore,
   ChevronDown,
   ArrowLeft
 } from "./icons.jsx";
@@ -39,22 +37,12 @@ export default function Rail({
   boards,
   isBoardAdmin,
   switcherOpen,
-  notifOpen,
-  notifications,
-  readNotifs,
-  chatOpen,
-  hasUnreadChat,
-  onToggleChat,
   onToggleSwitcher,
-  onToggleNotifs,
-  onMarkAllRead,
-  onOpenNotif,
   onGo,
   onSelectBoard,
   onSetBoardTab
 }) {
   const [brandHover, setBrandHover] = useState(false);
-  const hasUnread = notifications.some((n) => !readNotifs.has(n.id));
 
   return (
     <aside className="rail">
@@ -129,47 +117,6 @@ export default function Rail({
       )}
 
       <div className="rail-spacer" />
-
-      {/* Messages — Instagram-style, chat lives in the rail */}
-      <div className="rail-msg-wrap">
-        <RailItem icon={MessageCircleMore} label="Messages" active={chatOpen} onClick={onToggleChat} />
-        {hasUnreadChat && <span className="rail-bell-dot msg-dot" />}
-      </div>
-
-      {/* Notifications bell (always present) */}
-      <div className="rail-bell-wrap">
-        <button
-          className={`rail-item${notifOpen ? " active" : ""}`}
-          onClick={onToggleNotifs}
-          aria-label="Notifications"
-        >
-          <Bell />
-          {hasUnread && <span className="rail-bell-dot" />}
-        </button>
-
-        {notifOpen && (
-          <div className="rail-menu notif-menu">
-            <div className="notif-head">
-              <span className="eyebrow">NOTIFICATIONS</span>
-              <button className="notif-clear" onClick={onMarkAllRead}>
-                Mark all read
-              </button>
-            </div>
-            {notifications.map((n) => {
-              const unread = !readNotifs.has(n.id);
-              return (
-                <button key={n.id} className="notif-row" onClick={() => onOpenNotif(n)}>
-                  <span className={`notif-dot${unread ? " unread" : ""}`} />
-                  <span className="col">
-                    <span className={`notif-text${unread ? " unread" : ""}`}>{n.text}</span>
-                    <span className="notif-time">{n.time}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
       {/* Admin gear — only inside a board, admins only */}
       {onBoard && isBoardAdmin && (
