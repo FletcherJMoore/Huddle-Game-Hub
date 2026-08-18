@@ -1,6 +1,7 @@
 import { useRef } from "react";
 
 import { useTheme, ACCENTS, BG_PRESETS } from "./theme.jsx";
+import { Bell, MessageCircleMore } from "./icons.jsx";
 
 function readAsDataURL(file, cb) {
   const reader = new FileReader();
@@ -14,17 +15,70 @@ export default function TopBar({
   profileOpen,
   onToggleProfile,
   onOpenSettings,
-  onSignOut
+  onSignOut,
+  chatOpen,
+  hasUnreadChat,
+  onToggleChat,
+  notifOpen,
+  notifications,
+  readNotifs,
+  onToggleNotifs,
+  onMarkAllRead,
+  onOpenNotif
 }) {
   const { theme, setTheme, accentKey, setAccentKey, bgKey, customBg, selectBg, setCustomBg } = useTheme();
   const fileRef = useRef(null);
   const initial = (user?.name || user?.email || "U").trim().charAt(0).toUpperCase();
+  const hasUnreadNotif = notifications?.some((n) => !readNotifs.has(n.id));
 
   return (
     <header className="topbar">
       <h1 className="topbar-title">{title}</h1>
 
       <div className="topbar-right">
+        <div className="topbar-notif-wrap">
+          <button
+            className={`topbar-icon-btn${notifOpen ? " active" : ""}`}
+            onClick={onToggleNotifs}
+            aria-label="Notifications"
+          >
+            <Bell />
+            {hasUnreadNotif && <span className="topbar-icon-dot" />}
+          </button>
+
+          {notifOpen && (
+            <div className="topbar-menu">
+              <div className="notif-head">
+                <span className="eyebrow">NOTIFICATIONS</span>
+                <button className="notif-clear" onClick={onMarkAllRead}>
+                  Mark all read
+                </button>
+              </div>
+              {notifications.map((n) => {
+                const unread = !readNotifs.has(n.id);
+                return (
+                  <button key={n.id} className="notif-row" onClick={() => onOpenNotif(n)}>
+                    <span className={`notif-dot${unread ? " unread" : ""}`} />
+                    <span className="col">
+                      <span className={`notif-text${unread ? " unread" : ""}`}>{n.text}</span>
+                      <span className="notif-time">{n.time}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <button
+          className={`topbar-icon-btn${chatOpen ? " active" : ""}`}
+          onClick={onToggleChat}
+          aria-label="Messages"
+        >
+          <MessageCircleMore />
+          {hasUnreadChat && <span className="topbar-icon-dot" />}
+        </button>
+
         <button className="topbar-avatar" onClick={onToggleProfile} aria-label="Profile">
           {user?.photo_url ? (
             <img src={user.photo_url} alt="" referrerPolicy="no-referrer" />
