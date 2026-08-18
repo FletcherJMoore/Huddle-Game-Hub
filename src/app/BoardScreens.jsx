@@ -213,13 +213,31 @@ export function BoardOverview({ board, games, schedule, user, onRsvp, onSetTab }
 
 // ---- Board → Game Catalog ----
 
-export function BoardCatalog({ board, games, user, onVote, onProposeGame, onSetTab }) {
+// Admin-only control to pull a game off the board. Confirms first, since it
+// affects every member.
+function RemoveGameButton({ game, onRemove }) {
+  return (
+    <button
+      className="ghost-btn sm danger"
+      onClick={() => {
+        if (window.confirm(`Remove ${game.title} from this board for everyone?`)) onRemove(game.id);
+      }}
+    >
+      Remove
+    </button>
+  );
+}
+
+export function BoardCatalog({ board, games, user, canManage, onVote, onRemove, onProposeGame, onSetTab }) {
   const [q, setQ] = useState("");
   const memberCount = board.members.length;
   const match = (g) => !q || g.title.toLowerCase().includes(q.toLowerCase());
   const rotation = inRotation(games, memberCount).filter(match);
   const pending = pendingApproval(games, memberCount).filter(match);
   const common = everyoneOwns(games, memberCount).filter(match);
+
+  // Admins (owner/editor) can remove any game; anyone can remove one they added.
+  const canRemove = (g) => canManage || g.addedBy === user.id;
 
   return (
     <div>
@@ -243,9 +261,12 @@ export function BoardCatalog({ board, games, user, onVote, onProposeGame, onSetT
               game={g}
               badge="In rotation"
               action={
-                <button className="ghost-btn sm" onClick={() => onSetTab("calendar")}>
-                  Schedule
-                </button>
+                <>
+                  <button className="ghost-btn sm" onClick={() => onSetTab("calendar")}>
+                    Schedule
+                  </button>
+                  {canRemove(g) && <RemoveGameButton game={g} onRemove={onRemove} />}
+                </>
               }
             />
           ))}
@@ -277,6 +298,7 @@ export function BoardCatalog({ board, games, user, onVote, onProposeGame, onSetT
                       <button className={`vote-btn no${mine === "down" ? " on" : ""}`} onClick={() => onVote(g.id, "down")}>
                         No
                       </button>
+                      {canRemove(g) && <RemoveGameButton game={g} onRemove={onRemove} />}
                     </>
                   }
                 />
@@ -299,9 +321,12 @@ export function BoardCatalog({ board, games, user, onVote, onProposeGame, onSetT
                 game={g}
                 badge={`${g.owners}/${memberCount} own`}
                 action={
-                  <button className="ghost-btn sm" onClick={() => onVote(g.id, "up")}>
-                    Propose
-                  </button>
+                  <>
+                    <button className="ghost-btn sm" onClick={() => onVote(g.id, "up")}>
+                      Propose
+                    </button>
+                    {canRemove(g) && <RemoveGameButton game={g} onRemove={onRemove} />}
+                  </>
                 }
               />
             ))}
