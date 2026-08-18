@@ -85,17 +85,108 @@ function mockBoard(id) {
   };
 }
 
+// Rich catalog used for the Steam-style launcher mockup. Each entry carries a
+// genre (category), developer (studio), a short blurb, and a `hero` gradient
+// that stands in for full-bleed key art until real images are wired up.
 const CATALOG = [
-  ["Elden Ring", "video", "1-4", ["PS5", "Xbox", "PC"]],
-  ["Baldur's Gate 3", "video", "1-4", ["PS5", "PC"]],
-  ["Splatoon 3", "video", "2-8", ["Switch"]],
-  ["Gloomhaven", "party", "1-4", ["Board game"]],
-  ["Wingspan", "party", "1-5", ["Board game"]],
-  ["Fortnite", "video", "1-100", ["PS5", "Xbox", "PC", "Switch"]],
-  ["Ticket to Ride", "party", "2-5", ["Board game"]],
-  ["Fall Guys", "video", "1-60", ["PS5", "PC", "Switch"]]
-].map(([title, kind, players, platforms], i) => ({
-  catalogId: `cat-${i}`, title, kind, players, platforms, coverImageUrl: null
+  {
+    title: "Overwatch 2", genre: "Shooter", developer: "Blizzard Entertainment",
+    players: "1-10", platforms: ["PC", "PS5", "Xbox", "Switch"],
+    description: "Team-based hero shooter where two squads of five clash across objective maps, each hero built around a distinct kit.",
+    hero: "linear-gradient(135deg,#f97316,#b45309)"
+  },
+  {
+    title: "World of Warcraft", genre: "MMORPG", developer: "Blizzard Entertainment",
+    players: "1-40", platforms: ["PC"],
+    description: "The sprawling online world of Azeroth — quest, raid, and explore with thousands of other players across decades of story.",
+    hero: "linear-gradient(135deg,#1d4ed8,#1e3a8a)"
+  },
+  {
+    title: "Diablo IV", genre: "Action RPG", developer: "Blizzard Entertainment",
+    players: "1-4", platforms: ["PC", "PS5", "Xbox"],
+    description: "A dark dungeon crawler through the world of Sanctuary — grind loot, master classes, and hunt Lilith across a shared open world.",
+    hero: "linear-gradient(135deg,#b91c1c,#450a0a)"
+  },
+  {
+    title: "Hearthstone", genre: "Card", developer: "Blizzard Entertainment",
+    players: "1-2", platforms: ["PC", "Mobile"],
+    description: "A fast, friendly digital card game — build decks from Warcraft heroes and duel opponents in quick tactical matches.",
+    hero: "linear-gradient(135deg,#d97706,#78350f)"
+  },
+  {
+    title: "League of Legends", genre: "MOBA", developer: "Riot Games",
+    players: "1-10", platforms: ["PC"],
+    description: "The definitive MOBA — pick a champion, push lanes, and destroy the enemy Nexus in five-on-five strategic team battles.",
+    hero: "linear-gradient(135deg,#0891b2,#164e63)"
+  },
+  {
+    title: "Valorant", genre: "Shooter", developer: "Riot Games",
+    players: "1-10", platforms: ["PC"],
+    description: "A tactical five-on-five shooter blending precise gunplay with agent abilities across tight, round-based rounds.",
+    hero: "linear-gradient(135deg,#e11d48,#831843)"
+  },
+  {
+    title: "Counter-Strike 2", genre: "Shooter", developer: "Valve",
+    players: "1-10", platforms: ["PC"],
+    description: "The legendary competitive shooter, rebuilt — plant, defuse, and out-aim the enemy team round after round.",
+    hero: "linear-gradient(135deg,#ca8a04,#3f3f46)"
+  },
+  {
+    title: "Dota 2", genre: "MOBA", developer: "Valve",
+    players: "1-10", platforms: ["PC"],
+    description: "A deep, high-skill MOBA with over a hundred heroes and endless strategic depth in five-on-five lane battles.",
+    hero: "linear-gradient(135deg,#7c3aed,#312e81)"
+  },
+  {
+    title: "Portal 2", genre: "Puzzle", developer: "Valve",
+    players: "1-2", platforms: ["PC", "PS5", "Xbox"],
+    description: "A mind-bending first-person puzzler — think with portals, solo or in co-op, through Aperture's test chambers.",
+    hero: "linear-gradient(135deg,#2563eb,#1e293b)"
+  },
+  {
+    title: "Elden Ring", genre: "Action RPG", developer: "FromSoftware",
+    players: "1-4", platforms: ["PS5", "Xbox", "PC"],
+    description: "An open-world dark fantasy epic — explore the Lands Between, face towering bosses, and forge your own path to the throne.",
+    hero: "linear-gradient(135deg,#a16207,#1c1917)"
+  },
+  {
+    title: "Sekiro: Shadows Die Twice", genre: "Action RPG", developer: "FromSoftware",
+    players: "1", platforms: ["PS5", "Xbox", "PC"],
+    description: "A punishing single-player action game of posture-breaking swordplay and stealth in a reimagined Sengoku-era Japan.",
+    hero: "linear-gradient(135deg,#dc2626,#292524)"
+  },
+  {
+    title: "Baldur's Gate 3", genre: "RPG", developer: "Larian Studios",
+    players: "1-4", platforms: ["PS5", "PC", "Xbox"],
+    description: "A sweeping party-based RPG built on D&D — every choice matters across a richly reactive world, solo or in co-op.",
+    hero: "linear-gradient(135deg,#b45309,#7c2d12)"
+  },
+  {
+    title: "Mario Kart 8 Deluxe", genre: "Racing", developer: "Nintendo",
+    players: "1-8", platforms: ["Switch"],
+    description: "The definitive kart racer — drift, boost, and sling shells across wild tracks with up to eight players.",
+    hero: "linear-gradient(135deg,#dc2626,#c2410c)"
+  },
+  {
+    title: "Splatoon 3", genre: "Shooter", developer: "Nintendo",
+    players: "2-8", platforms: ["Switch"],
+    description: "A colorful team shooter about covering turf in ink — splat rivals and out-splash them in four-on-four matches.",
+    hero: "linear-gradient(135deg,#7c3aed,#0d9488)"
+  },
+  {
+    title: "Fortnite", genre: "Battle Royale", developer: "Epic Games",
+    players: "1-100", platforms: ["PS5", "Xbox", "PC", "Switch"],
+    description: "Build, battle, and be the last one standing — a hundred players drop onto a shrinking island in a fight to survive.",
+    hero: "linear-gradient(135deg,#6d28d9,#1e40af)"
+  },
+  {
+    title: "Among Us", genre: "Party", developer: "Innersloth",
+    players: "4-15", platforms: ["PC", "Mobile", "Switch"],
+    description: "Work together to prep your ship — but one of you is an impostor. Deceive, deduce, and vote to survive.",
+    hero: "linear-gradient(135deg,#dc2626,#1e3a8a)"
+  }
+].map((game, i) => ({
+  catalogId: `cat-${i}`, kind: "video", coverImageUrl: null, ...game
 }));
 
 // Current signed-in user, or null.

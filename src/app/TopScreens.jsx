@@ -4,7 +4,7 @@ import { searchCatalog, addGame, getSteamLibrary, unlinkSteam, STEAM_LOGIN_URL }
 import { FRIENDS } from "../lib/social.js";
 import { gradFor } from "./theme.jsx";
 import { Cover, Avatar, SearchBox } from "./ui.jsx";
-import { Plus } from "./icons.jsx";
+import { Plus, ChevronDown } from "./icons.jsx";
 
 function BoardTiles({ boards, onOpen }) {
   return (
@@ -102,9 +102,10 @@ export function FriendsScreen() {
 
 // A game card's "Add to board" control — opens a small board picker and adds
 // the game to the chosen board's catalog (via the same propose-a-game endpoint).
-function AddToBoardButton({ game, boards }) {
+function AddToBoardButton({ game, boards, variant = "ghost" }) {
   const [open, setOpen] = useState(false);
   const [added, setAdded] = useState(null);
+  const triggerClass = variant === "primary" ? "primary-btn sm" : "ghost-btn sm";
 
   async function pick(board) {
     setOpen(false);
@@ -134,7 +135,7 @@ function AddToBoardButton({ game, boards }) {
 
   return (
     <div className="add-board-wrap">
-      <button className="ghost-btn sm" onClick={() => setOpen((o) => !o)}>
+      <button className={triggerClass} onClick={() => setOpen((o) => !o)}>
         Add to board
       </button>
       {open && (
@@ -158,34 +159,112 @@ function AddToBoardButton({ game, boards }) {
   );
 }
 
+// A styled <select> that matches the shell's controls. `options` is a list of
+// plain string values; an "all" sentinel renders the provided `allLabel`.
+function FilterSelect({ label, value, options, onChange }) {
+  return (
+    <label className="filter-select">
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{label}</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={14} />
+    </label>
+  );
+}
+
+// A Steam-style launcher tile: full-bleed key art with the title baked in, and
+// a description/actions panel that fades in on hover (like the Fortnite card in
+// the reference).
+function LauncherCard({ game, boards }) {
+  return (
+    <div className="launcher-card" style={{ backgroundImage: game.hero || gradFor(game.title) }}>
+      <div className="launcher-scrim" />
+      <span className="launcher-logo">{game.title}</span>
+
+      <div className="launcher-info">
+        <span className="launcher-name">{game.title}</span>
+        <span className="launcher-tags">
+          {game.genre && <span className="launcher-tag">{game.genre}</span>}
+          {game.developer && <span className="launcher-studio">{game.developer}</span>}
+        </span>
+        <p className="launcher-desc">{game.description}</p>
+        <div className="launcher-meta">
+          {game.players} players · {(game.platforms || []).join(", ")}
+        </div>
+        <div className="launcher-actions">
+          <AddToBoardButton game={game} boards={boards} variant="primary" />
+          <button className="ghost-btn sm">Game info</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function uniqueSorted(list) {
+  return [...new Set(list.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
 function BrowseCatalog({ boards }) {
-  const [q, setQ] = useState("");
   const [games, setGames] = useState([]);
+  const [q, setQ] = useState("");
+  const [genre, setGenre] = useState("");
+  const [studio, setStudio] = useState("");
+
   useEffect(() => {
     let alive = true;
-    searchCatalog(q, null).then((r) => alive && setGames(r)).catch(() => alive && setGames([]));
+    searchCatalog("", null).then((r) => alive && setGames(r)).catch(() => alive && setGames([]));
     return () => {
       alive = false;
     };
-  }, [q]);
+  }, []);
+
+  const genres = uniqueSorted(games.map((g) => g.genre));
+  const studios = uniqueSorted(games.map((g) => g.developer));
+
+  const query = q.trim().toLowerCase();
+  const filtered = games.filter(
+    (g) =>
+      (!query || g.title.toLowerCase().includes(query)) &&
+      (!genre || g.genre === genre) &&
+      (!studio || g.developer === studio)
+  );
+
+  const hasFilters = q || genre || studio;
 
   return (
     <div>
-      <div className="action-row">
-        <SearchBox placeholder="Search the catalog" value={q} onChange={setQ} />
+      <div className="catalog-filters">
+        <SearchBox placeholder="Search by name" value={q} onChange={setQ} />
+        <FilterSelect label="All categories" value={genre} options={genres} onChange={setGenre} />
+        <FilterSelect label="All studios" value={studio} options={studios} onChange={setStudio} />
+        {hasFilters && (
+          <button
+            className="ghost-btn sm"
+            onClick={() => {
+              setQ("");
+              setGenre("");
+              setStudio("");
+            }}
+          >
+            Clear
+          </button>
+        )}
       </div>
-      <div className="catalog-grid">
-        {games.map((g) => (
-          <div key={g.catalogId || g.title} className="game-card">
-            <Cover game={g} className="cover-3x4" />
-            <span className="game-title">{g.title}</span>
-            <span className="game-meta">
-              {(g.platforms || []).join(", ")} · {g.players} players
-            </span>
-            <AddToBoardButton game={g} boards={boards} />
-          </div>
-        ))}
-      </div>
+
+      {filtered.length === 0 ? (
+        <p className="muted catalog-empty">No games match those filters.</p>
+      ) : (
+        <div className="launcher-grid">
+          {filtered.map((g) => (
+            <LauncherCard key={g.catalogId || g.title} game={g} boards={boards} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
