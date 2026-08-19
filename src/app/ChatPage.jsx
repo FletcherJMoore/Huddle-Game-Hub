@@ -4,11 +4,21 @@ import { getMessages, sendMessage, deleteMessage, MOCK } from "../lib/api.js";
 import { getSocket } from "../lib/socket.js";
 import { FRIENDS, SEED_MESSAGES, SEED_REACTIONS, REACTION_EMOJI } from "../lib/social.js";
 import { Avatar } from "./ui.jsx";
-import { ChevronLeft, MoreHorizontal, MessageCircleMore } from "./icons.jsx";
+import { ChevronLeft, MoreHorizontal, MessageCircleMore, X } from "./icons.jsx";
 
 function timeLabel(iso) {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+// Conversations the user has removed from their list, remembered across reloads.
+const REMOVED_KEY = "huddle.removedChats";
+function loadRemoved() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(REMOVED_KEY)) || []);
+  } catch {
+    return new Set();
+  }
 }
 
 // Instagram-style Messages page: a conversation list on the left, the open
@@ -23,6 +33,7 @@ export default function ChatPage({ boards, user, activeBoardId }) {
   const [menuFor, setMenuFor] = useState(null);
   const [emojiFor, setEmojiFor] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [removed, setRemoved] = useState(loadRemoved);
   const threadRef = useRef(null);
   const inputRef = useRef(null);
   threadRef.current = thread;
@@ -33,8 +44,22 @@ export default function ChatPage({ boards, user, activeBoardId }) {
   const conversations = [
     ...FRIENDS.map((f) => ({ id: `dm-${f.id}`, name: f.name, type: "dm" })),
     ...boards.map((b) => ({ id: `board-${b.id}`, name: b.name, emoji: b.emoji, type: "group" }))
-  ];
+  ].filter((c) => !removed.has(c.id));
   const activeConv = conversations.find((c) => c.id === thread);
+
+  // Hide a conversation from the list (persisted). Closes it if it's open.
+  function removeConversation(id) {
+    setRemoved((prev) => {
+      const next = new Set(prev).add(id);
+      try {
+        localStorage.setItem(REMOVED_KEY, JSON.stringify([...next]));
+      } catch {
+        /* non-fatal — it just won't persist across reloads */
+      }
+      return next;
+    });
+    if (threadRef.current === id) setThread(null);
+  }
 
   useEffect(() => {
     if (!isBoard) return;
@@ -147,30 +172,40 @@ export default function ChatPage({ boards, user, activeBoardId }) {
           <h2>Messages</h2>
         </div>
         <div className="chat-list">
+          {conversations.length === 0 && <div className="chat-empty muted">No conversations.</div>}
           {conversations.map((c) => {
             const msgs = c.type === "dm" ? dmMessages[c.id] || [] : [];
             const last = msgs[msgs.length - 1];
             return (
-              <button
-                key={c.id}
-                className={`chat-row${thread === c.id ? " active" : ""}`}
-                onClick={() => setThread(c.id)}
-              >
-                {c.type === "dm" ? (
-                  <Avatar name={c.name} className="md" />
-                ) : (
-                  <span className="chat-board-tile">{c.emoji || "🎮"}</span>
-                )}
-                <span className="col">
-                  <span className="chat-row-top">
-                    <span className="row-name">{c.name}</span>
-                    <span className="chat-time">{last ? last.meta.split(" · ")[1] || "" : ""}</span>
+              <div key={c.id} className="chat-row-wrap">
+                <button
+                  className={`chat-row${thread === c.id ? " active" : ""}`}
+                  onClick={() => setThread(c.id)}
+                >
+                  {c.type === "dm" ? (
+                    <Avatar name={c.name} className="md" />
+                  ) : (
+                    <span className="chat-board-tile">{c.emoji || "🎮"}</span>
+                  )}
+                  <span className="col">
+                    <span className="chat-row-top">
+                      <span className="row-name">{c.name}</span>
+                      <span className="chat-time">{last ? last.meta.split(" · ")[1] || "" : ""}</span>
+                    </span>
+                    <span className={`chat-preview${last && !last.me ? " incoming" : ""}`}>
+                      {c.type === "dm" ? (last ? last.text : "No messages yet") : "Group chat"}
+                    </span>
                   </span>
-                  <span className={`chat-preview${last && !last.me ? " incoming" : ""}`}>
-                    {c.type === "dm" ? (last ? last.text : "No messages yet") : "Group chat"}
-                  </span>
-                </span>
-              </button>
+                </button>
+                <button
+                  className="chat-row-remove"
+                  onClick={() => removeConversation(c.id)}
+                  aria-label={`Remove ${c.name} from your chats`}
+                  title="Remove from list"
+                >
+                  <X size={15} />
+                </button>
+              </div>
             );
           })}
         </div>
