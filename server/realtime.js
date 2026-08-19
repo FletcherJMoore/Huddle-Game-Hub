@@ -21,6 +21,10 @@ export function initRealtime(httpServer) {
       return;
     }
 
+    // Personal room for direct messages — every device the user is on joins it,
+    // so a DM reaches all their open tabs.
+    socket.join(`user:${userId}`);
+
     socket.on("join", async (boardId) => {
       try {
         const { rows } = await query(
@@ -41,4 +45,9 @@ export function initRealtime(httpServer) {
 
 export function emitToBoard(boardId, event, payload) {
   io?.to(`board:${boardId}`).emit(event, payload);
+}
+
+// Deliver an event to every device a specific user has open.
+export function emitToUser(userId, event, payload) {
+  io?.to(`user:${userId}`).emit(event, payload);
 }

@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 
-import { getMessages, sendMessage, deleteMessage, MOCK } from "../lib/api.js";
+import {
+  getMessages,
+  sendMessage,
+  deleteMessage,
+  listDmThreads,
+  listDmContacts,
+  getDmMessages,
+  sendDm,
+  deleteDm,
+  MOCK
+} from "../lib/api.js";
 import { getSocket } from "../lib/socket.js";
-import { FRIENDS, SEED_MESSAGES, SEED_REACTIONS, REACTION_EMOJI } from "../lib/social.js";
+import { SEED_REACTIONS, REACTION_EMOJI } from "../lib/social.js";
 import { Avatar } from "./ui.jsx";
-import { ChevronLeft, MoreHorizontal, MessageCircleMore, X } from "./icons.jsx";
+import { ChevronLeft, MoreHorizontal, MessageCircleMore, Plus, X } from "./icons.jsx";
 
 function timeLabel(iso) {
   const d = new Date(iso);
@@ -22,47 +32,72 @@ function loadRemoved() {
 }
 
 // Instagram-style Messages page: a conversation list on the left, the open
-// thread on the right (empty until you pick one). DMs and board/group chats
-// share one list.
+// thread on the right. Direct messages (1:1) and board/group chats share one
+// list; DMs are real and delivered live, group chats ride the board room.
 export default function ChatPage({ boards, user, activeBoardId }) {
   const [thread, setThread] = useState(null);
   const [draft, setDraft] = useState("");
-  const [dmMessages, setDmMessages] = useState(SEED_MESSAGES);
-  const [reactions, setReactions] = useState(SEED_REACTIONS);
+  const [dmThreads, setDmThreads] = useState([]);
+  const [dmContacts, setDmContacts] = useState([]);
+  const [dmMessages, setDmMessages] = useState({}); // userId -> messages[]
   const [boardMessages, setBoardMessages] = useState([]);
+  const [reactions, setReactions] = useState(SEED_REACTIONS);
   const [menuFor, setMenuFor] = useState(null);
   const [emojiFor, setEmojiFor] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
   const [removed, setRemoved] = useState(loadRemoved);
+  const [newOpen, setNewOpen] = useState(false);
   const threadRef = useRef(null);
   const inputRef = useRef(null);
   threadRef.current = thread;
 
   const isBoard = thread?.startsWith("board-");
+  const isDm = thread?.startsWith("dm-");
   const boardId = isBoard ? thread.slice("board-".length) : null;
+  const dmUserId = isDm ? thread.slice("dm-".length) : null;
 
+  // Load the DM conversation list and contact directory once when the page opens.
+  useEffect(() => {
+    let alive = true;
+    listDmThreads().then((t) => alive && setDmThreads(t)).catch(() => {});
+    listDmContacts().then((c) => alive && setDmContacts(c)).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Anyone the user can talk to, by id — merges existing threads and contacts so
+  // an open thread always has a name/avatar even before its first message.
+  const directory = new Map();
+  [...dmThreads, ...dmContacts].forEach((p) => directory.set(p.userId, { name: p.name, photoUrl: p.photoUrl }));
+
+  const dmConvs = dmThreads.map((t) => ({
+    id: `dm-${t.userId}`,
+    userId: t.userId,
+    name: t.name,
+    photoUrl: t.photoUrl,
+    type: "dm",
+    preview: t.lastMessage,
+    time: t.lastAt,
+    incoming: !t.lastFromMe
+  }));
+  // Keep a freshly-started DM visible in the list before any message is sent.
+  if (isDm && !dmThreads.some((t) => t.userId === dmUserId)) {
+    const p = directory.get(dmUserId);
+    dmConvs.unshift({ id: thread, userId: dmUserId, name: p?.name || "New message", photoUrl: p?.photoUrl, type: "dm", preview: "", time: null, incoming: false });
+  }
   const conversations = [
-    ...FRIENDS.map((f) => ({ id: `dm-${f.id}`, name: f.name, type: "dm" })),
+    ...dmConvs,
     ...boards.map((b) => ({ id: `board-${b.id}`, name: b.name, emoji: b.emoji, type: "group" }))
   ].filter((c) => !removed.has(c.id));
-  const activeConv = conversations.find((c) => c.id === thread);
 
-  // Hide a conversation from the list (persisted). Closes it if it's open.
-  function removeConversation(id) {
-    setRemoved((prev) => {
-      const next = new Set(prev).add(id);
-      try {
-        localStorage.setItem(REMOVED_KEY, JSON.stringify([...next]));
-      } catch {
-        /* non-fatal — it just won't persist across reloads */
-      }
-      return next;
-    });
-    if (threadRef.current === id) setThread(null);
-  }
+  const activeConv =
+    conversations.find((c) => c.id === thread) ||
+    (isDm ? { type: "dm", name: directory.get(dmUserId)?.name || "Message", photoUrl: directory.get(dmUserId)?.photoUrl } : null);
 
+  // Load the open board's message history.
   useEffect(() => {
-    if (!isBoard) return;
+    if (!isBoard) return undefined;
     let alive = true;
     getMessages(boardId)
       .then((m) => alive && setBoardMessages(m))
@@ -72,6 +107,19 @@ export default function ChatPage({ boards, user, activeBoardId }) {
     };
   }, [thread]);
 
+  // Load the open DM's history (once per partner).
+  useEffect(() => {
+    if (!isDm || dmMessages[dmUserId]) return undefined;
+    let alive = true;
+    getDmMessages(dmUserId)
+      .then((m) => alive && setDmMessages((prev) => ({ ...prev, [dmUserId]: m })))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [thread]);
+
+  // Live board messages for the active board.
   useEffect(() => {
     if (MOCK) return undefined;
     const socket = getSocket();
@@ -90,9 +138,76 @@ export default function ChatPage({ boards, user, activeBoardId }) {
     };
   }, [activeBoardId]);
 
+  // Live direct messages — delivered to this user's personal room.
+  useEffect(() => {
+    if (MOCK) return undefined;
+    const socket = getSocket();
+    const onDm = ({ from, to, message }) => {
+      const partner = from === user?.id ? to : from;
+      setDmMessages((prev) => {
+        const list = prev[partner] || [];
+        if (list.some((m) => m.id === message.id)) return prev;
+        return { ...prev, [partner]: [...list, message] };
+      });
+      bumpThread(partner, message, from === user?.id);
+    };
+    const onDmDelete = ({ from, to, id }) => {
+      const partner = from === user?.id ? to : from;
+      setDmMessages((prev) => (prev[partner] ? { ...prev, [partner]: prev[partner].filter((m) => m.id !== id) } : prev));
+    };
+    socket.on("dm:message", onDm);
+    socket.on("dm:message:delete", onDmDelete);
+    return () => {
+      socket.off("dm:message", onDm);
+      socket.off("dm:message:delete", onDmDelete);
+    };
+  }, [user?.id]);
+
+  // Move a partner to the top of the DM list with the latest message (adding the
+  // thread if it's brand new), resolving their name/avatar from the directory.
+  function bumpThread(partner, message, fromMe) {
+    setDmThreads((prev) => {
+      const who = directory.get(partner) || prev.find((t) => t.userId === partner) || { name: message.author?.name, photoUrl: message.author?.photoUrl };
+      const rest = prev.filter((t) => t.userId !== partner);
+      return [
+        { userId: partner, name: who.name, photoUrl: who.photoUrl, lastMessage: message.text, lastAt: message.createdAt, lastFromMe: fromMe },
+        ...rest
+      ];
+    });
+  }
+
   function closeMenus() {
     setMenuFor(null);
     setEmojiFor(null);
+  }
+
+  function removeConversation(id) {
+    setRemoved((prev) => {
+      const next = new Set(prev).add(id);
+      try {
+        localStorage.setItem(REMOVED_KEY, JSON.stringify([...next]));
+      } catch {
+        /* non-fatal — it just won't persist across reloads */
+      }
+      return next;
+    });
+    if (threadRef.current === id) setThread(null);
+  }
+
+  function openDm(userId) {
+    setNewOpen(false);
+    setRemoved((prev) => {
+      if (!prev.has(`dm-${userId}`)) return prev;
+      const next = new Set(prev);
+      next.delete(`dm-${userId}`);
+      try {
+        localStorage.setItem(REMOVED_KEY, JSON.stringify([...next]));
+      } catch {
+        /* non-fatal */
+      }
+      return next;
+    });
+    setThread(`dm-${userId}`);
   }
 
   function toggleReaction(key, emoji) {
@@ -129,8 +244,13 @@ export default function ChatPage({ boards, user, activeBoardId }) {
       } catch {
         /* best effort — the broadcast keeps other clients in sync */
       }
-    } else {
-      setDmMessages((prev) => ({ ...prev, [thread]: (prev[thread] || []).filter((_, i) => i !== bubble.dmIndex) }));
+    } else if (isDm) {
+      setDmMessages((prev) => ({ ...prev, [dmUserId]: (prev[dmUserId] || []).filter((m) => m.id !== bubble.id) }));
+      try {
+        await deleteDm(dmUserId, bubble.id);
+      } catch {
+        /* best effort */
+      }
     }
   }
 
@@ -148,8 +268,17 @@ export default function ChatPage({ boards, user, activeBoardId }) {
       } catch {
         setDraft(bodyText);
       }
-    } else {
-      setDmMessages((prev) => ({ ...prev, [thread]: [...(prev[thread] || []), { me: true, text, meta: "You · now" }] }));
+    } else if (isDm) {
+      try {
+        const m = await sendDm(dmUserId, text);
+        setDmMessages((prev) => ({
+          ...prev,
+          [dmUserId]: (prev[dmUserId] || []).some((x) => x.id === m.id) ? prev[dmUserId] : [...(prev[dmUserId] || []), m]
+        }));
+        bumpThread(dmUserId, m, true);
+      } catch {
+        setDraft(bodyText);
+      }
     }
   }
 
@@ -163,51 +292,73 @@ export default function ChatPage({ boards, user, activeBoardId }) {
         meta: `${m.author?.name || "Someone"} · ${timeLabel(m.createdAt)}`,
         reactable: false
       }))
-    : (dmMessages[thread] || []).map((m, i) => ({ dmIndex: i, me: m.me, text: m.text, meta: m.meta, reactable: true }));
+    : (dmMessages[dmUserId] || []).map((m) => ({
+        id: m.id,
+        me: m.author?.id === user?.id,
+        text: m.text,
+        meta: `${m.author?.id === user?.id ? "You" : m.author?.name || "Them"} · ${timeLabel(m.createdAt)}`,
+        reactable: true
+      }));
 
   return (
     <div className={`chat-page${thread ? " has-thread" : ""}`}>
       <div className="chat-pane-list">
         <div className="chat-list-head">
           <h2>Messages</h2>
+          <div className="new-dm-wrap">
+            <button className="new-dm-btn" onClick={() => setNewOpen((o) => !o)} aria-label="New message" title="New message">
+              <Plus size={18} />
+            </button>
+            {newOpen && (
+              <>
+                <div className="add-board-backdrop" onClick={() => setNewOpen(false)} />
+                <div className="new-dm-menu">
+                  <div className="eyebrow">NEW MESSAGE</div>
+                  {dmContacts.length === 0 ? (
+                    <span className="hint">No one to message yet — join a board with other members.</span>
+                  ) : (
+                    dmContacts.map((c) => (
+                      <button key={c.userId} className="switcher-row" onClick={() => openDm(c.userId)}>
+                        <Avatar name={c.name} photoUrl={c.photoUrl} className="sm" />
+                        <span className="switcher-name">{c.name}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
         <div className="chat-list">
           {conversations.length === 0 && <div className="chat-empty muted">No conversations.</div>}
-          {conversations.map((c) => {
-            const msgs = c.type === "dm" ? dmMessages[c.id] || [] : [];
-            const last = msgs[msgs.length - 1];
-            return (
-              <div key={c.id} className="chat-row-wrap">
-                <button
-                  className={`chat-row${thread === c.id ? " active" : ""}`}
-                  onClick={() => setThread(c.id)}
-                >
-                  {c.type === "dm" ? (
-                    <Avatar name={c.name} className="md" />
-                  ) : (
-                    <span className="chat-board-tile">{c.emoji || "🎮"}</span>
-                  )}
-                  <span className="col">
-                    <span className="chat-row-top">
-                      <span className="row-name">{c.name}</span>
-                      <span className="chat-time">{last ? last.meta.split(" · ")[1] || "" : ""}</span>
-                    </span>
-                    <span className={`chat-preview${last && !last.me ? " incoming" : ""}`}>
-                      {c.type === "dm" ? (last ? last.text : "No messages yet") : "Group chat"}
-                    </span>
+          {conversations.map((c) => (
+            <div key={c.id} className="chat-row-wrap">
+              <button className={`chat-row${thread === c.id ? " active" : ""}`} onClick={() => setThread(c.id)}>
+                {c.type === "dm" ? (
+                  <Avatar name={c.name} photoUrl={c.photoUrl} className="md" />
+                ) : (
+                  <span className="chat-board-tile">{c.emoji || "🎮"}</span>
+                )}
+                <span className="col">
+                  <span className="chat-row-top">
+                    <span className="row-name">{c.name}</span>
+                    <span className="chat-time">{c.type === "dm" && c.time ? timeLabel(c.time) : ""}</span>
                   </span>
-                </button>
-                <button
-                  className="chat-row-remove"
-                  onClick={() => removeConversation(c.id)}
-                  aria-label={`Remove ${c.name} from your chats`}
-                  title="Remove from list"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            );
-          })}
+                  <span className={`chat-preview${c.type === "dm" && c.incoming ? " incoming" : ""}`}>
+                    {c.type === "dm" ? c.preview || "No messages yet" : "Group chat"}
+                  </span>
+                </span>
+              </button>
+              <button
+                className="chat-row-remove"
+                onClick={() => removeConversation(c.id)}
+                aria-label={`Remove ${c.name} from your chats`}
+                title="Remove from list"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -227,7 +378,7 @@ export default function ChatPage({ boards, user, activeBoardId }) {
               {activeConv?.type === "group" ? (
                 <span className="chat-board-tile sm">{activeConv.emoji || "🎮"}</span>
               ) : (
-                <Avatar name={activeConv?.name || "?"} className="sm" />
+                <Avatar name={activeConv?.name || "?"} photoUrl={activeConv?.photoUrl} className="sm" />
               )}
               <h2>{activeConv?.name || "Messages"}</h2>
             </div>
@@ -304,7 +455,11 @@ export default function ChatPage({ boards, user, activeBoardId }) {
                   </div>
                 );
               })}
-              {isBoard && bubbles.length === 0 && <div className="chat-empty muted">No messages yet. Say hi to the squad.</div>}
+              {bubbles.length === 0 && (
+                <div className="chat-empty muted">
+                  {isBoard ? "No messages yet. Say hi to the squad." : "No messages yet. Say hi 👋"}
+                </div>
+              )}
             </div>
 
             {replyingTo && (
