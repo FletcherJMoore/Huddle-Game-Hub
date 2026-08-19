@@ -301,3 +301,68 @@ export async function deleteMessage(boardId, messageId) {
   }
   return json(await request(`/api/boards/${boardId}/messages/${messageId}`, { method: "DELETE" }));
 }
+
+// ---- Direct messages (1:1) ----
+
+const dmAuthor = (id) => {
+  const m = mockMembers.find((x) => x.userId === id);
+  return { id, name: m?.name || "Someone", photoUrl: m?.photoUrl || null };
+};
+
+// Mock DM threads keyed by the partner's user id.
+const mockDms = {
+  f1: [
+    { id: "d1", text: "Are we still on for Friday?", createdAt: "2026-08-19T14:04:00Z", author: dmAuthor("f1") },
+    { id: "d2", text: "Yep — 8pm, Overcooked 2", createdAt: "2026-08-19T14:07:00Z", author: MOCK_USER }
+  ],
+  f3: [{ id: "d3", text: "Added Stardew to my catalog", createdAt: "2026-08-19T11:20:00Z", author: dmAuthor("f3") }],
+  f5: [{ id: "d4", text: "gg last night", createdAt: "2026-08-18T22:30:00Z", author: dmAuthor("f5") }]
+};
+
+export async function listDmContacts() {
+  if (MOCK) return mockMembers.filter((m) => m.userId !== MOCK_USER.id).map((m) => ({ userId: m.userId, name: m.name, photoUrl: m.photoUrl }));
+  return (await json(await request("/api/dm/contacts"))).contacts;
+}
+
+export async function listDmThreads() {
+  if (MOCK) {
+    return Object.entries(mockDms)
+      .map(([userId, msgs]) => {
+        const last = msgs[msgs.length - 1];
+        const who = dmAuthor(userId);
+        return {
+          userId,
+          name: who.name,
+          photoUrl: who.photoUrl,
+          lastMessage: last?.text || "",
+          lastAt: last?.createdAt || null,
+          lastFromMe: last?.author?.id === MOCK_USER.id
+        };
+      })
+      .sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
+  }
+  return (await json(await request("/api/dm"))).conversations;
+}
+
+export async function getDmMessages(userId) {
+  if (MOCK) return mockDms[userId] ? [...mockDms[userId]] : [];
+  return (await json(await request(`/api/dm/${userId}`))).messages;
+}
+
+export async function sendDm(userId, text) {
+  if (MOCK) {
+    const message = { id: `d${Date.now()}`, text, createdAt: new Date().toISOString(), author: MOCK_USER };
+    mockDms[userId] = [...(mockDms[userId] || []), message];
+    return message;
+  }
+  const res = await request(`/api/dm/${userId}`, { method: "POST", body: JSON.stringify({ text }) });
+  return (await json(res)).message;
+}
+
+export async function deleteDm(userId, messageId) {
+  if (MOCK) {
+    mockDms[userId] = (mockDms[userId] || []).filter((m) => m.id !== messageId);
+    return { ok: true };
+  }
+  return json(await request(`/api/dm/${userId}/${messageId}`, { method: "DELETE" }));
+}
