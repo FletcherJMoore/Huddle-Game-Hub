@@ -11,20 +11,15 @@ import {
   ArrowLeft
 } from "./icons.jsx";
 
-// A single icon-only nav button with a JS-driven tooltip that escapes the
-// button box (so it can sit in the content area, not be clipped by the rail).
+// A nav button with its icon and a persistent text label stacked beneath, so the
+// destination is legible at rest — no hover required, and nothing to get stuck
+// over the content on touch. The visible label also names the button for screen
+// readers, so no separate aria-label is needed.
 function RailItem({ icon: Icon, label, active, onClick }) {
-  const [hover, setHover] = useState(false);
   return (
-    <button
-      className={`rail-item${active ? " active" : ""}`}
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      aria-label={label}
-    >
+    <button className={`rail-item${active ? " active" : ""}`} onClick={onClick}>
       <Icon />
-      {hover && <span className="rail-tip">{label}</span>}
+      <span className="rail-label">{label}</span>
     </button>
   );
 }
@@ -103,7 +98,7 @@ export default function Rail({
       {onBoard ? (
         <nav className="rail-nav">
           <RailItem icon={LayoutDashboard} label="Overview" active={boardTab === "overview"} onClick={() => onSetBoardTab("overview")} />
-          <RailItem icon={Gamepad2} label="Game Catalog" active={boardTab === "catalog"} onClick={() => onSetBoardTab("catalog")} />
+          <RailItem icon={Gamepad2} label="Catalog" active={boardTab === "catalog"} onClick={() => onSetBoardTab("catalog")} />
           <RailItem icon={Users} label="People" active={boardTab === "people"} onClick={() => onSetBoardTab("people")} />
           <RailItem icon={Calendar} label="Calendar" active={boardTab === "calendar"} onClick={() => onSetBoardTab("calendar")} />
         </nav>
@@ -112,7 +107,7 @@ export default function Rail({
           <RailItem icon={LayoutDashboard} label="Overview" active={nav === "overview"} onClick={() => onGo("overview")} />
           <RailItem icon={CircuitBoard} label="Boards" active={nav === "boards"} onClick={() => onGo("boards")} />
           <RailItem icon={Users} label="Friends" active={nav === "friends"} onClick={() => onGo("friends")} />
-          <RailItem icon={Gamepad2} label="Game Catalog" active={nav === "catalog"} onClick={() => onGo("catalog")} />
+          <RailItem icon={Gamepad2} label="Catalog" active={nav === "catalog"} onClick={() => onGo("catalog")} />
         </nav>
       )}
 
@@ -121,7 +116,7 @@ export default function Rail({
       {/* Admin gear — only inside a board, admins only */}
       {onBoard && isBoardAdmin && (
         <div className="rail-admin-wrap">
-          <RailItem icon={Settings} label="Admin settings" active={boardTab === "admin"} onClick={() => onSetBoardTab("admin")} />
+          <RailItem icon={Settings} label="Admin" active={boardTab === "admin"} onClick={() => onSetBoardTab("admin")} />
         </div>
       )}
     </aside>

@@ -73,11 +73,14 @@ export function Cover({ game, className = "" }) {
   );
 }
 
-// Steam-style launcher tile: full-bleed key art with the title baked in, plus a
-// description/actions panel that fades in on hover. Descriptive fields fall back
-// to the shared metadata map, and the hero art to a stable gradient, so any
-// game — catalog, board, or elsewhere — renders the same rich card. `action` is
-// the context's control (add / vote / schedule); `badge` an optional corner tag.
+// Steam-style launcher tile: full-bleed key art with a persistent info footer
+// (name, tags, and the context's action) so the card is fully usable by touch
+// and keyboard, not just hover. The longer description is the one thing that
+// reveals on hover/focus — a progressive enhancement, never the only way in.
+// Descriptive fields fall back to the shared metadata map, and the hero art to a
+// stable gradient, so any game — catalog, board, or elsewhere — renders the same
+// rich card. `action` is the context's control (add / vote / schedule); `badge`
+// an optional corner tag.
 export function GameTile({ game, action, badge }) {
   const meta = GAME_META[game.title] || {};
   const genre = game.genre || meta.genre;
@@ -95,15 +98,14 @@ export function GameTile({ game, action, badge }) {
     <div className="launcher-card" style={{ backgroundImage: hero }}>
       <div className="launcher-scrim" />
       {badge && <span className="launcher-badge">{badge}</span>}
-      <span className="launcher-logo">{game.title}</span>
 
       <div className="launcher-info">
+        {description && <p className="launcher-desc">{description}</p>}
         <span className="launcher-name">{game.title}</span>
         <span className="launcher-tags">
           {genre && <span className="launcher-tag">{genre}</span>}
           {developer && <span className="launcher-studio">{developer}</span>}
         </span>
-        {description && <p className="launcher-desc">{description}</p>}
         {metaLine && <div className="launcher-meta">{metaLine}</div>}
         {action && <div className="launcher-actions">{action}</div>}
       </div>
