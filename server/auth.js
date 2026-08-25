@@ -119,13 +119,26 @@ export function authMiddleware() {
 
 export const authRouter = express.Router();
 
+// Only accept a local, single-slash path as a post-login destination — never an
+// absolute or protocol-relative URL — so ?returnTo can't be an open redirect.
+function safeReturnTo(value) {
+  return typeof value === "string" && /^\/(?!\/)/.test(value) && !value.includes("://") ? value : null;
+}
+
 if (authConfigured) {
-  authRouter.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+  authRouter.get("/google", (req, res, next) => {
+    req.session.returnTo = safeReturnTo(req.query.returnTo);
+    passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+  });
 
   authRouter.get(
     "/google/callback",
     passport.authenticate("google", { failureRedirect: "/?authError=1" }),
-    (_req, res) => res.redirect("/")
+    (req, res) => {
+      const dest = req.session.returnTo || "/";
+      delete req.session.returnTo;
+      res.redirect(dest);
+    }
   );
 
   authRouter.get("/me", (req, res) => {

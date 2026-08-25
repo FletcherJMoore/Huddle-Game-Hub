@@ -238,10 +238,21 @@ export function BoardCatalog({ board, games, user, canManage, onVote, onRemove, 
 
 // ---- Crew → People ----
 
-// Add an existing Huddle user to the crew by email. `onInvite` resolves with the
-// updated member list or throws the server's message for us to surface.
+// A compact role picker (editor/member). The owner row never renders one.
+function RoleSelect({ value, onChange }) {
+  return (
+    <select className="select-input role-select" value={value === "editor" ? "editor" : "member"} onChange={(e) => onChange(e.target.value)}>
+      <option value="editor">Editor</option>
+      <option value="member">Member</option>
+    </select>
+  );
+}
+
+// Email an invite to join the crew. `onInvite(email, role)` resolves when the
+// invite is created (and emailed) or throws the server's message.
 function InviteMemberModal({ onClose, onInvite }) {
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState("member");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null); // { ok, text }
 
@@ -252,11 +263,11 @@ function InviteMemberModal({ onClose, onInvite }) {
     setBusy(true);
     setFeedback(null);
     try {
-      await onInvite(value);
-      setFeedback({ ok: true, text: `Added ${value} to the crew.` });
+      await onInvite(value, role);
+      setFeedback({ ok: true, text: `Invite sent to ${value}.` });
       setEmail("");
     } catch (err) {
-      setFeedback({ ok: false, text: err.message || "Couldn't add that user." });
+      setFeedback({ ok: false, text: err.message || "Couldn't send that invite." });
     } finally {
       setBusy(false);
     }
@@ -280,8 +291,12 @@ function InviteMemberModal({ onClose, onInvite }) {
               placeholder="teammate@email.com"
             />
           </label>
+          <div className="field-col">
+            <span className="field-label">Role</span>
+            <RoleSelect value={role} onChange={setRole} />
+          </div>
           <span className="hint">
-            Adds an existing Huddle user right away — no invite email. They'll need to have signed in once.
+            We'll email them a link to join. They accept by signing in with this email.
           </span>
           {feedback && <span className={`add-member-feedback${feedback.ok ? " ok" : " err"}`}>{feedback.text}</span>}
         </div>
@@ -290,21 +305,11 @@ function InviteMemberModal({ onClose, onInvite }) {
             Close
           </button>
           <button type="submit" className="primary-btn" disabled={busy || !email.trim()}>
-            {busy ? "Adding…" : "Add to crew"}
+            {busy ? "Sending…" : "Send invite"}
           </button>
         </div>
       </form>
     </div>
-  );
-}
-
-// A compact role picker (editor/member). The owner row never renders one.
-function RoleSelect({ value, onChange }) {
-  return (
-    <select className="select-input role-select" value={value === "editor" ? "editor" : "member"} onChange={(e) => onChange(e.target.value)}>
-      <option value="editor">Editor</option>
-      <option value="member">Member</option>
-    </select>
   );
 }
 
@@ -355,28 +360,42 @@ export function BoardPeople({ board, isAdmin, onRemoveMember, onInvite }) {
 
 // ---- Crew → Admin settings ----
 
-export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember, onSetRole, onRemoveMember }) {
+export function BoardAdmin({
+  board,
+  invites = [],
+  onRename,
+  onSetEmoji,
+  onDelete,
+  onInvite,
+  onSetRole,
+  onRemoveMember,
+  onResendInvite,
+  onRevokeInvite
+}) {
   const [name, setName] = useState(board.name);
   const [emoji, setEmoji] = useState(board.emoji || "🎮");
   const [email, setEmail] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [role, setRole] = useState("member");
+  const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState(null); // { ok, text }
 
-  async function addMember() {
+  async function sendInvite() {
     const value = email.trim();
-    if (!value || adding) return;
-    setAdding(true);
+    if (!value || sending) return;
+    setSending(true);
     setFeedback(null);
     try {
-      await onAddMember(value);
-      setFeedback({ ok: true, text: `Added ${value} to the crew.` });
+      const { emailed } = await onInvite(value, role);
+      setFeedback({ ok: true, text: emailed ? `Invite emailed to ${value}.` : `Invite created for ${value}.` });
       setEmail("");
     } catch (err) {
-      setFeedback({ ok: false, text: err.message || "Couldn't add that user." });
+      setFeedback({ ok: false, text: err.message || "Couldn't send that invite." });
     } finally {
-      setAdding(false);
+      setSending(false);
     }
   }
+
+  const pending = invites.filter((i) => i.status === "pending");
 
   return (
     <div className="narrow-col">
@@ -421,16 +440,15 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember,
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addMember()}
+            onKeyDown={(e) => e.key === "Enter" && sendInvite()}
             placeholder="teammate@email.com"
           />
-          <button className="primary-btn" onClick={addMember} disabled={adding || !email.trim()}>
-            {adding ? "Adding…" : "Add to crew"}
+          <RoleSelect value={role} onChange={setRole} />
+          <button className="primary-btn" onClick={sendInvite} disabled={sending || !email.trim()}>
+            {sending ? "Sending…" : "Send invite"}
           </button>
         </div>
-        <span className="hint">
-          Adds an existing Huddle user right away — no invite email. They'll need to have signed in once.
-        </span>
+        <span className="hint">We'll email them a link to join. They accept by signing in with this email.</span>
         {feedback && <span className={`add-member-feedback${feedback.ok ? " ok" : " err"}`}>{feedback.text}</span>}
       </div>
       <div className="list-card">
@@ -457,6 +475,36 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember,
           </div>
         ))}
       </div>
+
+      {pending.length > 0 && (
+        <div className="section-gap">
+          <div className="subhead-row">
+            <h2>Pending invites</h2>
+            <span className="subhead-note">Waiting to be accepted</span>
+          </div>
+          <div className="list-card">
+            {pending.map((inv) => (
+              <div key={inv.id} className="list-row">
+                <span className="invite-avatar">✉️</span>
+                <span className="col">
+                  <span className="row-name">{inv.email}</span>
+                  <span className="row-sub">
+                    <span className="invite-status pending">Pending</span> · {inv.role === "editor" ? "Editor" : "Member"}
+                  </span>
+                </span>
+                <span className="rsvp-group">
+                  <button className="ghost-btn sm" onClick={() => onResendInvite(inv.id)}>
+                    Resend
+                  </button>
+                  <button className="danger-btn" onClick={() => onRevokeInvite(inv.id)}>
+                    Revoke
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="danger-row">
         <span className="col">

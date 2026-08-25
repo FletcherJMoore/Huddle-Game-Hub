@@ -13,6 +13,7 @@ import express from "express";
 import { pool } from "./db.js";
 import { authMiddleware, authRouter, authConfigured } from "./auth.js";
 import { boardsRouter } from "./boards.js";
+import { invitesRouter } from "./invites.js";
 import { dmRouter } from "./dm.js";
 import { catalogRouter } from "./catalog.js";
 import { initRealtime } from "./realtime.js";
@@ -29,6 +30,7 @@ app.use(authMiddleware());
 
 app.use("/api/auth", authRouter);
 app.use("/api/boards", boardsRouter);
+app.use("/api/invites", invitesRouter);
 app.use("/api/dm", dmRouter);
 app.use("/api/catalog", catalogRouter);
 

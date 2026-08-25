@@ -3,13 +3,15 @@
 // free-form content (games, schedule, reads, …) lives in boards.content JSONB;
 // only board identity/membership are relational.
 
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 
 import express from "express";
 
 import { pool, query } from "./db.js";
 import { requireAuth } from "./auth.js";
 import { emitToBoard } from "./realtime.js";
+import { sendInviteEmail } from "./email.js";
+import { acceptUrl, inviteStatus } from "./invites.js";
 
 export const boardsRouter = express.Router();
 boardsRouter.use(requireAuth);
@@ -223,6 +225,137 @@ boardsRouter.delete("/:id/members/:userId", async (req, res, next) => {
       [req.params.id, req.params.userId]
     );
     res.json({ members: await membersOf(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Invites (email-based; pending until accepted) ----
+
+// A board's invites, newest first, each with a derived status and accept link.
+async function invitesOf(boardId) {
+  const { rows } = await query(
+    `select id, email, role, token, created_at as "createdAt",
+            accepted_at as "acceptedAt", expires_at as "expiresAt"
+       from invites where board_id = $1 order by created_at desc`,
+    [boardId]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    email: r.email,
+    role: r.role,
+    status: inviteStatus(r),
+    createdAt: r.createdAt,
+    acceptUrl: acceptUrl(r.token)
+  }));
+}
+
+// GET /api/boards/:id/invites — the crew's invites (owner/editor).
+boardsRouter.get("/:id/invites", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+    if (!canManage(role)) return res.status(403).json({ error: "Only the owner or editors can manage invites." });
+    res.json({ invites: await invitesOf(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/boards/:id/invites — invite by email (owner/editor). Upserts the
+// invite so a re-invite refreshes the token, then emails the accept link.
+boardsRouter.post("/:id/invites", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+    if (!canManage(role)) return res.status(403).json({ error: "Only the owner or editors can invite people." });
+
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    if (!email || !email.includes("@")) return res.status(400).json({ error: "A valid email is required." });
+    const inviteRole = req.body?.role === "editor" ? "editor" : "member";
+
+    const { rows: already } = await query(
+      `select 1 from board_members m join users u on u.id = m.user_id
+        where m.board_id = $1 and lower(u.email) = $2`,
+      [req.params.id, email]
+    );
+    if (already.length) return res.status(409).json({ error: "They're already on this crew." });
+
+    const token = randomBytes(24).toString("base64url");
+    const { rows } = await query(
+      `insert into invites (board_id, email, role, invited_by, token)
+            values ($1, $2, $3, $4, $5)
+       on conflict (board_id, email) do update
+            set role = excluded.role, invited_by = excluded.invited_by,
+                token = excluded.token, created_at = now(),
+                accepted_at = null, accepted_by = null
+       returning id, email, role, token, created_at as "createdAt",
+                 accepted_at as "acceptedAt", expires_at as "expiresAt"`,
+      [req.params.id, email, inviteRole, req.user.id, token]
+    );
+    const row = rows[0];
+
+    const { rows: b } = await query("select name from boards where id = $1", [req.params.id]);
+    const send = await sendInviteEmail({
+      to: email,
+      crewName: b[0]?.name,
+      inviterName: req.user.name,
+      acceptUrl: acceptUrl(row.token)
+    });
+
+    res.status(201).json({
+      invite: {
+        id: row.id,
+        email: row.email,
+        role: row.role,
+        status: inviteStatus(row),
+        createdAt: row.createdAt,
+        acceptUrl: acceptUrl(row.token)
+      },
+      emailed: send.sent
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/boards/:id/invites/:inviteId/resend — re-send the invite email.
+boardsRouter.post("/:id/invites/:inviteId/resend", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+    if (!canManage(role)) return res.status(403).json({ error: "Only the owner or editors can manage invites." });
+
+    const { rows } = await query(
+      `select i.email, i.token, b.name as "crewName"
+         from invites i join boards b on b.id = i.board_id
+        where i.id = $1 and i.board_id = $2`,
+      [req.params.inviteId, req.params.id]
+    );
+    const inv = rows[0];
+    if (!inv) return res.status(404).json({ error: "Invite not found." });
+
+    const send = await sendInviteEmail({
+      to: inv.email,
+      crewName: inv.crewName,
+      inviterName: req.user.name,
+      acceptUrl: acceptUrl(inv.token)
+    });
+    res.json({ emailed: send.sent, acceptUrl: acceptUrl(inv.token) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/boards/:id/invites/:inviteId — revoke (removes the row, freeing
+// the email to be invited again).
+boardsRouter.delete("/:id/invites/:inviteId", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+    if (!canManage(role)) return res.status(403).json({ error: "Only the owner or editors can manage invites." });
+    await query("delete from invites where id = $1 and board_id = $2", [req.params.inviteId, req.params.id]);
+    res.json({ invites: await invitesOf(req.params.id) });
   } catch (err) {
     next(err);
   }
