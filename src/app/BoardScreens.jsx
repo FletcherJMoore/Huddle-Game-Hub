@@ -238,8 +238,79 @@ export function BoardCatalog({ board, games, user, canManage, onVote, onRemove, 
 
 // ---- Crew → People ----
 
-export function BoardPeople({ board, isAdmin, onRemoveMember }) {
+// Add an existing Huddle user to the crew by email. `onInvite` resolves with the
+// updated member list or throws the server's message for us to surface.
+function InviteMemberModal({ onClose, onInvite }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState(null); // { ok, text }
+
+  async function submit(e) {
+    e.preventDefault();
+    const value = email.trim();
+    if (!value || busy) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await onInvite(value);
+      setFeedback({ ok: true, text: `Added ${value} to the crew.` });
+      setEmail("");
+    } catch (err) {
+      setFeedback({ ok: false, text: err.message || "Couldn't add that user." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="scrim" onClick={() => !busy && onClose()}>
+      <form className="modal-card" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+        <div className="modal-head">
+          <h2>Invite to crew</h2>
+        </div>
+        <div className="modal-body">
+          <label className="field-col">
+            <span className="field-label">Their email</span>
+            <input
+              className="text-input"
+              type="email"
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="teammate@email.com"
+            />
+          </label>
+          <span className="hint">
+            Adds an existing Huddle user right away — no invite email. They'll need to have signed in once.
+          </span>
+          {feedback && <span className={`add-member-feedback${feedback.ok ? " ok" : " err"}`}>{feedback.text}</span>}
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="ghost-btn" onClick={onClose} disabled={busy}>
+            Close
+          </button>
+          <button type="submit" className="primary-btn" disabled={busy || !email.trim()}>
+            {busy ? "Adding…" : "Add to crew"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// A compact role picker (editor/member). The owner row never renders one.
+function RoleSelect({ value, onChange }) {
+  return (
+    <select className="select-input role-select" value={value === "editor" ? "editor" : "member"} onChange={(e) => onChange(e.target.value)}>
+      <option value="editor">Editor</option>
+      <option value="member">Member</option>
+    </select>
+  );
+}
+
+export function BoardPeople({ board, isAdmin, onRemoveMember, onInvite }) {
   const [q, setQ] = useState("");
+  const [inviting, setInviting] = useState(false);
   const query = q.trim().toLowerCase();
   const members = board.members.filter(
     (m) => !query || m.name.toLowerCase().includes(query) || roleLabel(m.role).toLowerCase().includes(query)
@@ -249,7 +320,11 @@ export function BoardPeople({ board, isAdmin, onRemoveMember }) {
     <div>
       <div className="action-row">
         <SearchBox placeholder="Search members" value={q} onChange={setQ} />
-        <button className="primary-btn">Invite people</button>
+        {isAdmin && (
+          <button className="primary-btn" onClick={() => setInviting(true)}>
+            <Plus size={14} /> Invite people
+          </button>
+        )}
       </div>
       <div className="list-card">
         {members.map((m) => (
@@ -272,13 +347,15 @@ export function BoardPeople({ board, isAdmin, onRemoveMember }) {
           </div>
         ))}
       </div>
+
+      {inviting && <InviteMemberModal onClose={() => setInviting(false)} onInvite={onInvite} />}
     </div>
   );
 }
 
 // ---- Crew → Admin settings ----
 
-export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember, onRemoveMember }) {
+export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember, onSetRole, onRemoveMember }) {
   const [name, setName] = useState(board.name);
   const [emoji, setEmoji] = useState(board.emoji || "🎮");
   const [email, setEmail] = useState("");
@@ -367,14 +444,16 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember,
               </span>
               <span className="row-sub">{m.since ? `Member since ${m.since}` : "Member"}</span>
             </span>
-            <span className="rsvp-group">
-              <button className="ghost-btn">Change role</button>
-              {m.role !== "owner" && (
+            {m.role === "owner" ? (
+              <span className="row-sub">Owner</span>
+            ) : (
+              <span className="rsvp-group">
+                <RoleSelect value={m.role} onChange={(role) => onSetRole(m.userId, role)} />
                 <button className="danger-btn" onClick={() => onRemoveMember(m.userId)}>
                   Remove
                 </button>
-              )}
-            </span>
+              </span>
+            )}
           </div>
         ))}
       </div>

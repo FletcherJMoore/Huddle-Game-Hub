@@ -10,6 +10,8 @@ import {
   updateBoard,
   deleteBoard,
   addMember,
+  setMemberRole,
+  removeMember,
   MOCK
 } from "../lib/api.js";
 import { getSocket } from "../lib/socket.js";
@@ -134,8 +136,33 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
     onExit();
   }
 
-  function handleRemoveMember(userId) {
+  // Remove a member for everyone. Confirms first (it affects the whole crew),
+  // updates optimistically, and reverts if the server rejects it.
+  async function handleRemoveMember(userId) {
+    const member = board.members.find((m) => m.userId === userId);
+    if (!window.confirm(`Remove ${member?.name || "this member"} from the crew?`)) return;
+    const prev = board.members;
     setBoard((b) => ({ ...b, members: b.members.filter((m) => m.userId !== userId) }));
+    try {
+      const members = await removeMember(boardId, userId);
+      setBoard((b) => ({ ...b, members }));
+    } catch (err) {
+      setBoard((b) => ({ ...b, members: prev }));
+      window.alert(err.message || "Couldn't remove that member.");
+    }
+  }
+
+  // Change a member's role (editor/member), optimistic with revert on failure.
+  async function handleSetRole(userId, role) {
+    const prev = board.members;
+    setBoard((b) => ({ ...b, members: b.members.map((m) => (m.userId === userId ? { ...m, role } : m)) }));
+    try {
+      const members = await setMemberRole(boardId, userId, role);
+      setBoard((b) => ({ ...b, members }));
+    } catch (err) {
+      setBoard((b) => ({ ...b, members: prev }));
+      window.alert(err.message || "Couldn't change that role.");
+    }
   }
 
   // Add a user by email; resolves the updated member list or throws for the
@@ -183,7 +210,9 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
           onSetTab={onSetTab}
         />
       )}
-      {boardTab === "people" && <BoardPeople board={board} isAdmin={isAdmin} onRemoveMember={handleRemoveMember} />}
+      {boardTab === "people" && (
+        <BoardPeople board={board} isAdmin={isAdmin} onRemoveMember={handleRemoveMember} onInvite={handleAddMember} />
+      )}
       {boardTab === "calendar" && (
         <Calendar board={board} games={games} schedule={schedule} user={user} onCreate={handleCreate} onRsvp={handleRsvp} />
       )}
@@ -194,6 +223,7 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
           onSetEmoji={(emoji) => handleMeta({ emoji })}
           onDelete={handleDelete}
           onAddMember={handleAddMember}
+          onSetRole={handleSetRole}
           onRemoveMember={handleRemoveMember}
         />
       )}

@@ -1714,6 +1714,11 @@
 .add-member-feedback.err {
   color: var(--danger);
 }
+.role-select {
+  width: auto;
+  padding: 7px 30px 7px 12px;
+  font-size: 12.5px;
+}
 
 .danger-row {
   display: flex;

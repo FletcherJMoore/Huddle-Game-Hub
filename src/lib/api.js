@@ -75,16 +75,29 @@ const mockContent = {
   ]
 };
 
-const mockExtraMembers = {}; // boardId -> [members added this session]
+// Per-board membership edits made this session (base member counts are captured
+// up front so slicing stays stable as members are added/removed).
+const mockBaseCount = Object.fromEntries(mockBoards.map((b) => [b.id, b.memberCount]));
+const mockExtraMembers = {}; // boardId -> [members added]
+const mockRemovedMembers = {}; // boardId -> [removed userIds]
+const mockMemberRoles = {}; // boardId -> { userId: role }
 
 function mockBoard(id) {
   const summary = mockBoards.find((b) => b.id === id) || mockBoards[0];
+  const removed = mockRemovedMembers[summary.id] || [];
+  const roles = mockMemberRoles[summary.id] || {};
+  const members = [
+    ...mockMembers.slice(0, mockBaseCount[summary.id] ?? summary.memberCount),
+    ...(mockExtraMembers[summary.id] || [])
+  ]
+    .filter((m) => !removed.includes(m.userId))
+    .map((m) => (roles[m.userId] ? { ...m, role: roles[m.userId] } : m));
   return {
     id: summary.id,
     name: summary.name,
     emoji: summary.emoji,
     role: summary.role,
-    members: [...mockMembers.slice(0, summary.memberCount), ...(mockExtraMembers[id] || [])],
+    members,
     content: mockContent
   };
 }
@@ -177,6 +190,31 @@ export async function addMember(boardId, email) {
     return mockBoard(boardId).members;
   }
   const res = await request(`/api/boards/${boardId}/members`, { method: "POST", body: JSON.stringify({ email }) });
+  return (await json(res)).members;
+}
+
+// Change a member's role ('editor' | 'member'). Returns the updated member list.
+export async function setMemberRole(boardId, userId, role) {
+  if (MOCK) {
+    mockMemberRoles[boardId] = { ...(mockMemberRoles[boardId] || {}), [userId]: role };
+    return mockBoard(boardId).members;
+  }
+  const res = await request(`/api/boards/${boardId}/members/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ role })
+  });
+  return (await json(res)).members;
+}
+
+// Remove a member from the board. Returns the updated member list.
+export async function removeMember(boardId, userId) {
+  if (MOCK) {
+    mockRemovedMembers[boardId] = [...(mockRemovedMembers[boardId] || []), userId];
+    const summary = mockBoards.find((b) => b.id === boardId);
+    if (summary) summary.memberCount = Math.max(1, summary.memberCount - 1);
+    return mockBoard(boardId).members;
+  }
+  const res = await request(`/api/boards/${boardId}/members/${userId}`, { method: "DELETE" });
   return (await json(res)).members;
 }
 
