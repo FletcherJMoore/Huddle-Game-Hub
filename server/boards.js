@@ -174,6 +174,60 @@ boardsRouter.post("/:id/members", async (req, res, next) => {
   }
 });
 
+// PATCH /api/boards/:id/members/:userId — change a member's role between
+// 'editor' and 'member' (owner/editor only). The owner's role is fixed and
+// ownership transfer isn't supported here. Returns the fresh member list.
+boardsRouter.patch("/:id/members/:userId", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+    if (!canManage(role)) {
+      return res.status(403).json({ error: "Only the owner or editors can change roles." });
+    }
+
+    const newRole = req.body?.role;
+    if (!["editor", "member"].includes(newRole)) {
+      return res.status(400).json({ error: "Role must be 'editor' or 'member'." });
+    }
+
+    const targetRole = await roleOf(req.params.id, req.params.userId);
+    if (!targetRole) return res.status(404).json({ error: "They're not on this board." });
+    if (targetRole === "owner") return res.status(403).json({ error: "The owner's role can't be changed." });
+
+    await query(
+      "update board_members set role = $1 where board_id = $2 and user_id = $3",
+      [newRole, req.params.id, req.params.userId]
+    );
+    res.json({ members: await membersOf(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/boards/:id/members/:userId — remove a member (owner/editor only).
+// The owner can't be removed. Returns the fresh member list.
+boardsRouter.delete("/:id/members/:userId", async (req, res, next) => {
+  try {
+    const role = await roleOf(req.params.id, req.user.id);
+    if (!role) return res.status(404).json({ error: "Board not found." });
+    if (!canManage(role)) {
+      return res.status(403).json({ error: "Only the owner or editors can remove members." });
+    }
+
+    const targetRole = await roleOf(req.params.id, req.params.userId);
+    if (!targetRole) return res.status(404).json({ error: "They're not on this board." });
+    if (targetRole === "owner") return res.status(403).json({ error: "The owner can't be removed." });
+
+    await query(
+      "delete from board_members where board_id = $1 and user_id = $2",
+      [req.params.id, req.params.userId]
+    );
+    res.json({ members: await membersOf(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/boards/:id — meta (name/emoji/accent) needs owner/editor; content
 // (games, schedule, …) any member may update.
 boardsRouter.patch("/:id", async (req, res, next) => {

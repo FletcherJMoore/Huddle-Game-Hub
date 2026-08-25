@@ -8,13 +8,14 @@ import TopBar from "./TopBar.jsx";
 import BoardView from "./BoardView.jsx";
 import ChatPage from "./ChatPage.jsx";
 import ProfileSettingsModal from "./ProfileSettingsModal.jsx";
-import { OverviewScreen, BoardsScreen, FriendsScreen, CatalogScreen } from "./TopScreens.jsx";
 import { BOARD_EMOJI } from "./theme.jsx";
+import { Plus } from "./icons.jsx";
 
-const TOP_TITLES = { overview: "Overview", boards: "Boards", friends: "Friends", catalog: "Game Catalog", chat: "Messages" };
-const BOARD_TITLES = { catalog: "Game Catalog", people: "People", calendar: "Calendar", admin: "Admin settings" };
+// Titles for the crew sub-nav. The Plan tab shows the crew's own name (built in
+// the title memo below), so it isn't listed here.
+const CREW_TITLES = { games: "Games", people: "People", calendar: "Calendar", admin: "Admin settings" };
 
-function NewBoardModal({ onClose, onCreated }) {
+function NewCrewModal({ onClose, onCreated }) {
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("🎮");
   const [busy, setBusy] = useState(false);
@@ -27,7 +28,7 @@ function NewBoardModal({ onClose, onCreated }) {
     try {
       onCreated(await createBoard({ name: name.trim(), emoji }));
     } catch (err) {
-      setError(err.message || "Couldn't create the board.");
+      setError(err.message || "Couldn't create the crew.");
       setBusy(false);
     }
   }
@@ -36,12 +37,12 @@ function NewBoardModal({ onClose, onCreated }) {
     <div className="scrim" onClick={() => !busy && onClose()}>
       <form className="modal-card" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="modal-head">
-          <h2>New board</h2>
+          <h2>New crew</h2>
         </div>
         <div className="modal-body">
           <label className="field-col">
             <span className="field-label">Name</span>
-            <input className="text-input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday Game Night" maxLength={60} />
+            <input className="text-input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday Night Crew" maxLength={60} />
           </label>
           <div className="field-col">
             <span className="field-label">Icon</span>
@@ -60,7 +61,7 @@ function NewBoardModal({ onClose, onCreated }) {
             Cancel
           </button>
           <button type="submit" className="primary-btn" disabled={busy || !name.trim()}>
-            {busy ? "Creating…" : "Create board"}
+            {busy ? "Creating…" : "Create crew"}
           </button>
         </div>
       </form>
@@ -68,12 +69,33 @@ function NewBoardModal({ onClose, onCreated }) {
   );
 }
 
+// Shown when the user has no crews yet — a focused invitation to start one, in
+// place of any dashboard.
+function EmptyCrewState({ onNewCrew }) {
+  return (
+    <div className="empty-crew">
+      <span className="empty-crew-badge">🎮</span>
+      <h2>Start your first crew</h2>
+      <p className="muted">
+        A crew is your group of friends. Add games, vote on what to play, and plan game nights together.
+      </p>
+      <button className="primary-btn" onClick={onNewCrew}>
+        <Plus size={14} /> New crew
+      </button>
+    </div>
+  );
+}
+
 export default function AppShell() {
   const { user, signOut } = useAuth();
   const [boards, setBoards] = useState([]);
-  const [nav, setNav] = useState("overview");
+  const [loaded, setLoaded] = useState(false);
+
+  // The app is always crew-scoped. `view` swaps the crew workspace for the
+  // (cross-crew) Messages surface; `crewTab` is the section within a crew.
+  const [view, setView] = useState("crew");
   const [activeBoardId, setActiveBoardId] = useState(null);
-  const [boardTab, setBoardTab] = useState("overview");
+  const [crewTab, setCrewTab] = useState("plan");
 
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -85,12 +107,18 @@ export default function AppShell() {
   const [chatVisited, setChatVisited] = useState(false);
 
   useEffect(() => {
-    listBoards().then(setBoards).catch(() => setBoards([]));
+    listBoards()
+      .then((bs) => {
+        setBoards(bs);
+        setActiveBoardId((id) => id ?? bs[0]?.id ?? null);
+      })
+      .catch(() => setBoards([]))
+      .finally(() => setLoaded(true));
   }, []);
 
-  const onBoard = nav === "board";
   const activeBoard = boards.find((b) => b.id === activeBoardId) || null;
   const isBoardAdmin = activeBoard?.role === "owner" || activeBoard?.role === "editor";
+  const onChat = view === "chat";
 
   const closeMenus = () => {
     setSwitcherOpen(false);
@@ -98,19 +126,20 @@ export default function AppShell() {
     setNotifOpen(false);
   };
 
-  const go = (next) => {
-    setNav(next);
-    closeMenus();
-    if (next === "chat") setChatVisited(true);
-  };
-  const selectBoard = (id) => {
-    setNav("board");
+  const selectCrew = (id) => {
     setActiveBoardId(id);
-    setBoardTab("overview");
+    setView("crew");
+    setCrewTab("plan");
     closeMenus();
   };
   const setTab = (t) => {
-    setBoardTab(t);
+    setCrewTab(t);
+    setView("crew");
+    closeMenus();
+  };
+  const goChat = () => {
+    setView("chat");
+    setChatVisited(true);
     closeMenus();
   };
 
@@ -124,12 +153,11 @@ export default function AppShell() {
     setReadNotifs((prev) => new Set(prev).add(n.id));
     setNotifOpen(false);
     if (n.route === "chat") {
-      go("chat");
-    } else if (n.route === "catalog" || n.route === "calendar") {
-      if (!onBoard) {
-        if (boards[0]) selectBoard(boards[0].id);
-      }
-      setBoardTab(n.route);
+      goChat();
+    } else if (n.route === "catalog") {
+      setTab("games");
+    } else if (n.route === "calendar") {
+      setTab("calendar");
     }
   }
 
@@ -143,27 +171,32 @@ export default function AppShell() {
   }
 
   const title = useMemo(() => {
-    if (onBoard) {
-      if (boardTab === "overview") return `${activeBoard?.emoji || "🎮"}  ${activeBoard?.name || "Board"}`;
-      return BOARD_TITLES[boardTab] || "Board";
-    }
-    return TOP_TITLES[nav] || "Overview";
-  }, [onBoard, boardTab, nav, activeBoard]);
+    if (onChat) return "Messages";
+    if (!activeBoard) return "Huddle";
+    if (crewTab === "plan") return `${activeBoard.emoji || "🎮"}  ${activeBoard.name}`;
+    return CREW_TITLES[crewTab] || activeBoard.name;
+  }, [onChat, crewTab, activeBoard]);
+
+  const hasCrews = boards.length > 0;
 
   return (
     <div className="app-shell">
       <Rail
-        nav={nav}
-        onBoard={onBoard}
-        boardTab={boardTab}
+        crews={boards}
         activeBoard={activeBoard}
-        boards={boards}
+        crewTab={crewTab}
+        onChat={onChat}
         isBoardAdmin={isBoardAdmin}
         switcherOpen={switcherOpen}
+        hasUnreadChat={!chatVisited}
         onToggleSwitcher={() => toggle("switcher")}
-        onGo={go}
-        onSelectBoard={selectBoard}
-        onSetBoardTab={setTab}
+        onSelectCrew={selectCrew}
+        onSetTab={setTab}
+        onNewCrew={() => {
+          setCreating(true);
+          closeMenus();
+        }}
+        onGoChat={goChat}
       />
 
       <main className="app-main">
@@ -177,9 +210,6 @@ export default function AppShell() {
             closeMenus();
           }}
           onSignOut={signOut}
-          chatOpen={nav === "chat"}
-          hasUnreadChat={!chatVisited}
-          onToggleChat={() => go("chat")}
           notifOpen={notifOpen}
           notifications={NOTIFICATIONS}
           readNotifs={readNotifs}
@@ -188,26 +218,20 @@ export default function AppShell() {
           onOpenNotif={openNotif}
         />
 
-        <section className={`content${nav === "chat" ? " flush" : ""}`}>
-          {onBoard && activeBoardId ? (
+        <section className={`content${onChat ? " flush" : ""}`}>
+          {!hasCrews ? (
+            loaded && <EmptyCrewState onNewCrew={() => setCreating(true)} />
+          ) : onChat ? (
+            <ChatPage boards={boards} user={user} activeBoardId={activeBoardId} />
+          ) : activeBoardId ? (
             <BoardView
               boardId={activeBoardId}
-              boardTab={boardTab}
-              onExit={() => go("overview")}
+              boardTab={crewTab}
+              onExit={() => setTab("plan")}
               onSetTab={setTab}
               onMetaChange={onMetaChange}
             />
-          ) : nav === "chat" ? (
-            <ChatPage boards={boards} user={user} activeBoardId={activeBoardId} />
-          ) : nav === "boards" ? (
-            <BoardsScreen boards={boards} onOpenBoard={selectBoard} onNewBoard={() => setCreating(true)} />
-          ) : nav === "friends" ? (
-            <FriendsScreen />
-          ) : nav === "catalog" ? (
-            <CatalogScreen boards={boards} />
-          ) : (
-            <OverviewScreen user={user} boards={boards} onOpenBoard={selectBoard} />
-          )}
+          ) : null}
         </section>
       </main>
 
@@ -216,12 +240,12 @@ export default function AppShell() {
       {settingsOpen && <ProfileSettingsModal user={user} onClose={() => setSettingsOpen(false)} />}
 
       {creating && (
-        <NewBoardModal
+        <NewCrewModal
           onClose={() => setCreating(false)}
           onCreated={(board) => {
             setBoards((bs) => [board, ...bs]);
             setCreating(false);
-            selectBoard(board.id);
+            selectCrew(board.id);
           }}
         />
       )}

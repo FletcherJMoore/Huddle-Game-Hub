@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { myVote } from "../lib/games.js";
 import { inRotation, pendingApproval, everyoneOwns, upVotes, threshold } from "../lib/board-domain.js";
@@ -6,221 +6,120 @@ import { myRsvp, rsvpCounts, sortSessions, isPast, formatSessionDate, formatTime
 import { roleLabel } from "../lib/social.js";
 import { BOARD_EMOJI } from "./theme.jsx";
 import { Cover, Avatar, SearchBox, GameTile } from "./ui.jsx";
-import { ChevronLeft, ChevronRight, Plus } from "./icons.jsx";
-
-// ---- Rolodex: rotation games as cards hinged at the top ----
-
-function Rolodex({ games, memberCount }) {
-  const [idx, setIdx] = useState(0);
-  const n = Math.max(1, games.length);
-
-  useEffect(() => {
-    if (games.length < 2) return undefined;
-    const t = setInterval(() => setIdx((i) => (i + 1) % n), 3400);
-    return () => clearInterval(t);
-  }, [games.length, n]);
-
-  const cur = idx % n;
-
-  return (
-    <div className="rolodex-panel">
-      <div className="rolodex-stage">
-        {games.map((g, i) => {
-          const off = (i - cur + n) % n;
-          let cls = "far";
-          if (off === 0) cls = "cur";
-          else if (off === n - 1) cls = "out";
-          else if (off === 1) cls = "next";
-          else if (off === 2) cls = "next2";
-          const owned = upVotes(g) < threshold(memberCount) && g.approvals && Object.keys(g.approvals).length > 0;
-          return (
-            <div key={g.id} className={`rolodex-card ${cls}`}>
-              <Cover game={g} className="rolodex-cover" />
-              <span className="rolodex-text">
-                <span className="rolodex-title">{g.title}</span>
-                <span className="rolodex-meta">
-                  {(g.platforms || []).join(", ")} · {g.players} players
-                </span>
-                <span className="rolodex-votes">
-                  {owned
-                    ? `Approved by vote · ${upVotes(g)} of ${memberCount} said yes`
-                    : `${g.owners ?? upVotes(g)} of ${memberCount} members own it`}
-                </span>
-              </span>
-            </div>
-          );
-        })}
-        {games.length === 0 && <div className="rolodex-empty muted">No games in rotation yet — vote some up.</div>}
-      </div>
-      {games.length > 1 && (
-        <div className="rolodex-controls">
-          <button className="icon-btn" onClick={() => setIdx((i) => (i - 1 + n) % n)} aria-label="Previous">
-            <ChevronLeft size={15} />
-          </button>
-          <div className="rolodex-dots">
-            {games.map((g, i) => (
-              <span key={g.id} className={`rolodex-dot${i === cur ? " on" : ""}`} />
-            ))}
-          </div>
-          <button className="icon-btn" onClick={() => setIdx((i) => (i + 1) % n)} aria-label="Next">
-            <ChevronRight size={15} />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
+import { Plus } from "./icons.jsx";
 
 function nextUpcoming(schedule) {
   return sortSessions(schedule).find((s) => !isPast(s)) || null;
 }
 
-// ---- Board → Overview ----
+// ---- Crew → Plan ----
+//
+// The action home: the two decisions a crew actually makes — *when* we play
+// next (schedule + RSVP) and *what* we play (vote / propose). No stat cards or
+// activity feed; those were the dashboard this screen replaced.
 
-export function BoardOverview({ board, games, schedule, user, onRsvp, onSetTab }) {
+export function BoardPlan({ board, games, schedule, user, onRsvp, onVote, onProposeGame, onSetTab }) {
   const memberCount = board.members.length;
-  const rotation = inRotation(games, memberCount);
   const pending = pendingApproval(games, memberCount);
   const next = nextUpcoming(schedule);
   const nextGame = next && games.find((g) => g.id === next.gameId);
   const nextMine = next ? myRsvp(next, user.id) : null;
   const going = next ? rsvpCounts(next).in : 0;
 
-  const unRsvpd = schedule.filter((s) => !isPast(s) && !myRsvp(s, user.id)).length;
-  const needs = [
-    { id: "votes", count: pending.length, title: "Games waiting on your vote", sub: "Approve or pass in Game Catalog", tab: "catalog" },
-    { id: "rsvp", count: unRsvpd, title: "Sessions without your RSVP", sub: "Let the crew know if you're in", tab: "calendar" }
-  ].filter((n) => n.count > 0);
-
-  const activity = [
-    { who: "Morgan Lee", text: "Morgan voted yes on Among Us", time: "1h ago" },
-    { who: "Jordan Reyes", text: "Jordan proposed Catan for the rotation", time: "Yesterday" },
-    { who: "Riley Chen", text: "Riley RSVP'd to Friday, 8:00pm", time: "Yesterday" },
-    { who: "Casey Kim", text: "Casey joined the board", time: "Apr 21" }
-  ];
-
   return (
-    <div>
-      <div className="full-col">
-        <div className="subhead-row">
-          <h2>In rotation</h2>
-        </div>
-        <Rolodex games={rotation} memberCount={memberCount} />
+    <div className="plan">
+      <div className="subhead-row">
+        <h2>Next up</h2>
       </div>
-
-      <div className="two-col">
-        <div>
-          <div className="subhead-row">
-            <h2>Next session</h2>
+      {next ? (
+        <div className="hero-card">
+          {nextGame ? <Cover game={nextGame} className="hero-art" /> : <span className="hero-art placeholder">—</span>}
+          <div className="hero-text">
+            <span className="hero-date">{formatSessionDate(next.date)}</span>
+            <span className="hero-time">{next.start ? formatTimeRange(next.start, next.end) : ""}</span>
+            <span className="hero-game">{next.activity || nextGame?.title || "Game night"}</span>
+            <span className="hero-going">
+              <span className="stack">
+                {board.members.slice(0, Math.max(1, Math.min(going, 5))).map((m) => (
+                  <Avatar key={m.userId} name={m.name} className="xs stacked" />
+                ))}
+              </span>
+              <span className="row-sub">
+                {going} of {memberCount} going
+              </span>
+            </span>
+            <span className="rsvp-group">
+              <button className={`rsvp-btn in${nextMine === "in" ? " active" : ""}`} onClick={() => onRsvp(next.id, "in")}>
+                I'm in
+              </button>
+              <button className={`rsvp-btn out${nextMine === "out" ? " active" : ""}`} onClick={() => onRsvp(next.id, "out")}>
+                Can't make it
+              </button>
+            </span>
           </div>
-          {next ? (
-            <div className="hero-card">
-              {nextGame ? <Cover game={nextGame} className="hero-art" /> : <span className="hero-art placeholder">—</span>}
-              <div className="hero-text">
-                <span className="hero-date">{formatSessionDate(next.date)}</span>
-                <span className="hero-time">{next.start ? formatTimeRange(next.start, next.end) : ""}</span>
-                <span className="hero-game">{next.activity || nextGame?.title || "Game night"}</span>
-                <span className="hero-going">
-                  <span className="stack">
-                    {board.members.slice(0, Math.max(1, Math.min(going, 5))).map((m) => (
-                      <Avatar key={m.userId} name={m.name} className="xs stacked" />
-                    ))}
-                  </span>
+        </div>
+      ) : (
+        <div className="hero-card empty plan-empty">
+          <span className="col">
+            <span className="hero-date">No game night planned yet</span>
+            <span className="row-sub">Pick a night that works and rally the crew.</span>
+          </span>
+          <button className="primary-btn" onClick={() => onSetTab("calendar")}>
+            <Plus size={14} /> Plan your next night
+          </button>
+        </div>
+      )}
+
+      <div className="subhead-row plan-head section-gap">
+        <h2>Deciding what to play</h2>
+        <button className="ghost-btn sm plan-head-action" onClick={onProposeGame}>
+          <Plus size={13} /> Propose a game
+        </button>
+      </div>
+      <div className="list-card">
+        {pending.length === 0 ? (
+          <div className="list-row muted">Nothing up for a vote. Propose a game to get the crew deciding.</div>
+        ) : (
+          pending.map((g) => {
+            const yes = upVotes(g);
+            const need = threshold(memberCount);
+            const mine = myVote(g, user.id);
+            return (
+              <div key={g.id} className="list-row decide-row">
+                <Cover game={g} className="decide-cover" />
+                <span className="col">
+                  <span className="row-name">{g.title}</span>
                   <span className="row-sub">
-                    {going} of {memberCount} going
+                    {yes} of {need} yes{(g.platforms || []).length ? ` · ${(g.platforms || []).join(", ")}` : ""}
                   </span>
                 </span>
                 <span className="rsvp-group">
-                  <button className={`rsvp-btn in${nextMine === "in" ? " active" : ""}`} onClick={() => onRsvp(next.id, "in")}>
-                    I'm in
+                  <button className={`vote-btn yes${mine === "up" ? " on" : ""}`} onClick={() => onVote(g.id, "up")}>
+                    Yes
                   </button>
-                  <button className={`rsvp-btn out${nextMine === "out" ? " active" : ""}`} onClick={() => onRsvp(next.id, "out")}>
-                    Can't make it
+                  <button className={`vote-btn no${mine === "down" ? " on" : ""}`} onClick={() => onVote(g.id, "down")}>
+                    No
                   </button>
                 </span>
               </div>
-            </div>
-          ) : (
-            <div className="hero-card empty muted">Nothing scheduled yet.</div>
-          )}
-        </div>
-
-        <div>
-          <div className="subhead-row">
-            <h2>Needs you</h2>
-          </div>
-          <div className="list-card">
-            {needs.length === 0 && <div className="list-row muted">You're all caught up 🎉</div>}
-            {needs.map((n) => (
-              <button key={n.id} className="needs-row" onClick={() => onSetTab(n.tab)}>
-                <span className="needs-badge">{n.count}</span>
-                <span className="col">
-                  <span className="row-name">{n.title}</span>
-                  <span className="row-sub">{n.sub}</span>
-                </span>
-                <ChevronRight size={15} />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="two-col">
-        <div>
-          <div className="subhead-row">
-            <h2>Recent activity</h2>
-          </div>
-          <div className="list-card">
-            {activity.map((a, i) => (
-              <div key={i} className="activity-row">
-                <Avatar name={a.who} className="sm grad" />
-                <span className="col">
-                  <span className="activity-text">{a.text}</span>
-                  <span className="notif-time">{a.time}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="subhead-row">
-            <h2>Board pulse</h2>
-          </div>
-          <div className="pulse-grid">
-            <div className="stat-card">
-              <span className="stat-num">{schedule.length}</span>
-              <span className="stat-label">Sessions planned</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-num">{rotation[0]?.title?.split(" ")[0] || "—"}</span>
-              <span className="stat-label">Top game</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-num">{memberCount}</span>
-              <span className="stat-label">Members</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-num">{rotation.length}</span>
-              <span className="stat-label">Games in rotation</span>
-            </div>
-          </div>
-        </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
 }
 
-// ---- Board → Game Catalog ----
+// ---- Crew → Games ----
 
-// Admin-only control to pull a game off the board. Confirms first, since it
+// Admin-only control to pull a game off the crew. Confirms first, since it
 // affects every member.
 function RemoveGameButton({ game, onRemove }) {
   return (
     <button
       className="ghost-btn sm danger"
       onClick={() => {
-        if (window.confirm(`Remove ${game.title} from this board for everyone?`)) onRemove(game.id);
+        if (window.confirm(`Remove ${game.title} from this crew for everyone?`)) onRemove(game.id);
       }}
     >
       Remove
@@ -242,7 +141,7 @@ export function BoardCatalog({ board, games, user, canManage, onVote, onRemove, 
   return (
     <div>
       <div className="action-row">
-        <SearchBox placeholder="Search this board's games" value={q} onChange={setQ} />
+        <SearchBox placeholder="Search this crew's games" value={q} onChange={setQ} />
         <button className="primary-btn" onClick={onProposeGame}>
           <Plus size={14} /> Propose a game
         </button>
@@ -337,10 +236,81 @@ export function BoardCatalog({ board, games, user, canManage, onVote, onRemove, 
   );
 }
 
-// ---- Board → People ----
+// ---- Crew → People ----
 
-export function BoardPeople({ board, isAdmin, onRemoveMember }) {
+// Add an existing Huddle user to the crew by email. `onInvite` resolves with the
+// updated member list or throws the server's message for us to surface.
+function InviteMemberModal({ onClose, onInvite }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState(null); // { ok, text }
+
+  async function submit(e) {
+    e.preventDefault();
+    const value = email.trim();
+    if (!value || busy) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await onInvite(value);
+      setFeedback({ ok: true, text: `Added ${value} to the crew.` });
+      setEmail("");
+    } catch (err) {
+      setFeedback({ ok: false, text: err.message || "Couldn't add that user." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="scrim" onClick={() => !busy && onClose()}>
+      <form className="modal-card" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+        <div className="modal-head">
+          <h2>Invite to crew</h2>
+        </div>
+        <div className="modal-body">
+          <label className="field-col">
+            <span className="field-label">Their email</span>
+            <input
+              className="text-input"
+              type="email"
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="teammate@email.com"
+            />
+          </label>
+          <span className="hint">
+            Adds an existing Huddle user right away — no invite email. They'll need to have signed in once.
+          </span>
+          {feedback && <span className={`add-member-feedback${feedback.ok ? " ok" : " err"}`}>{feedback.text}</span>}
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="ghost-btn" onClick={onClose} disabled={busy}>
+            Close
+          </button>
+          <button type="submit" className="primary-btn" disabled={busy || !email.trim()}>
+            {busy ? "Adding…" : "Add to crew"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// A compact role picker (editor/member). The owner row never renders one.
+function RoleSelect({ value, onChange }) {
+  return (
+    <select className="select-input role-select" value={value === "editor" ? "editor" : "member"} onChange={(e) => onChange(e.target.value)}>
+      <option value="editor">Editor</option>
+      <option value="member">Member</option>
+    </select>
+  );
+}
+
+export function BoardPeople({ board, isAdmin, onRemoveMember, onInvite }) {
   const [q, setQ] = useState("");
+  const [inviting, setInviting] = useState(false);
   const query = q.trim().toLowerCase();
   const members = board.members.filter(
     (m) => !query || m.name.toLowerCase().includes(query) || roleLabel(m.role).toLowerCase().includes(query)
@@ -350,7 +320,11 @@ export function BoardPeople({ board, isAdmin, onRemoveMember }) {
     <div>
       <div className="action-row">
         <SearchBox placeholder="Search members" value={q} onChange={setQ} />
-        <button className="primary-btn">Invite people</button>
+        {isAdmin && (
+          <button className="primary-btn" onClick={() => setInviting(true)}>
+            <Plus size={14} /> Invite people
+          </button>
+        )}
       </div>
       <div className="list-card">
         {members.map((m) => (
@@ -373,13 +347,15 @@ export function BoardPeople({ board, isAdmin, onRemoveMember }) {
           </div>
         ))}
       </div>
+
+      {inviting && <InviteMemberModal onClose={() => setInviting(false)} onInvite={onInvite} />}
     </div>
   );
 }
 
-// ---- Board → Admin settings ----
+// ---- Crew → Admin settings ----
 
-export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember, onRemoveMember }) {
+export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember, onSetRole, onRemoveMember }) {
   const [name, setName] = useState(board.name);
   const [emoji, setEmoji] = useState(board.emoji || "🎮");
   const [email, setEmail] = useState("");
@@ -393,7 +369,7 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember,
     setFeedback(null);
     try {
       await onAddMember(value);
-      setFeedback({ ok: true, text: `Added ${value} to the board.` });
+      setFeedback({ ok: true, text: `Added ${value} to the crew.` });
       setEmail("");
     } catch (err) {
       setFeedback({ ok: false, text: err.message || "Couldn't add that user." });
@@ -404,10 +380,10 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember,
 
   return (
     <div className="narrow-col">
-      <p className="lead">You're an admin on this board. These settings apply to everyone.</p>
+      <p className="lead">You're an admin on this crew. These settings apply to everyone.</p>
       <div className="admin-card">
         <label className="field-col">
-          <span className="field-label">Board name</span>
+          <span className="field-label">Crew name</span>
           <input
             className="text-input"
             value={name}
@@ -416,7 +392,7 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember,
           />
         </label>
         <div className="field-col">
-          <span className="field-label">Board icon</span>
+          <span className="field-label">Crew icon</span>
           <div className="emoji-row">
             {BOARD_EMOJI.map((e) => (
               <button
@@ -431,7 +407,7 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember,
               </button>
             ))}
           </div>
-          <span className="hint">Pick an emoji for the board badge.</span>
+          <span className="hint">Pick an emoji for the crew badge.</span>
         </div>
       </div>
 
@@ -449,7 +425,7 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember,
             placeholder="teammate@email.com"
           />
           <button className="primary-btn" onClick={addMember} disabled={adding || !email.trim()}>
-            {adding ? "Adding…" : "Add to board"}
+            {adding ? "Adding…" : "Add to crew"}
           </button>
         </div>
         <span className="hint">
@@ -468,25 +444,27 @@ export function BoardAdmin({ board, onRename, onSetEmoji, onDelete, onAddMember,
               </span>
               <span className="row-sub">{m.since ? `Member since ${m.since}` : "Member"}</span>
             </span>
-            <span className="rsvp-group">
-              <button className="ghost-btn">Change role</button>
-              {m.role !== "owner" && (
+            {m.role === "owner" ? (
+              <span className="row-sub">Owner</span>
+            ) : (
+              <span className="rsvp-group">
+                <RoleSelect value={m.role} onChange={(role) => onSetRole(m.userId, role)} />
                 <button className="danger-btn" onClick={() => onRemoveMember(m.userId)}>
                   Remove
                 </button>
-              )}
-            </span>
+              </span>
+            )}
           </div>
         ))}
       </div>
 
       <div className="danger-row">
         <span className="col">
-          <span className="field-label">Delete this board</span>
-          <span className="hint">Removes the board, its games, and its schedule for everyone.</span>
+          <span className="field-label">Delete this crew</span>
+          <span className="hint">Removes the crew, its games, and its schedule for everyone.</span>
         </span>
         <button className="danger-btn" onClick={onDelete}>
-          Delete board
+          Delete crew
         </button>
       </div>
     </div>
