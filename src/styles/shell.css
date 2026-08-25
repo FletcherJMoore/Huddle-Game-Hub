@@ -69,7 +69,7 @@
 /* ---------------- Rail ---------------- */
 
 .rail {
-  width: 64px;
+  width: 76px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -139,16 +139,23 @@
 .rail-item {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  padding: 0;
-  border-radius: 11px;
+  gap: 4px;
+  width: 60px;
+  padding: 8px 0 7px;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
   background: transparent;
   color: var(--text-dim);
+}
+.rail-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
 }
 .rail-item:hover {
   background: var(--card-hover);
@@ -193,7 +200,7 @@
   padding-top: 8px;
   margin-bottom: 4px;
   border-top: 1px solid var(--border);
-  width: 44px;
+  width: 60px;
   display: flex;
   justify-content: center;
 }
@@ -217,6 +224,13 @@
 }
 .rail-tip-top {
   top: 15px;
+}
+/* Tooltips are a hover affordance only — on touch there's no way to dismiss one,
+   so it would otherwise stick over the content. Never render them without hover. */
+@media (hover: none) {
+  .rail-tip {
+    display: none;
+  }
 }
 
 /* Rail dropdowns (switcher + notifications) */
@@ -1035,32 +1049,16 @@
   background-size: cover;
   background-position: center;
   border: 1px solid var(--border);
-  cursor: pointer;
 }
 .launcher-scrim {
   position: absolute;
   inset: 0;
   background: linear-gradient(160deg, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.5) 100%);
 }
-.launcher-logo {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  text-align: center;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 21px;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: #fff;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
-  transition: opacity 0.18s ease;
-}
 
+/* Persistent footer: art shows through the transparent top, the name/tags/
+   actions sit legibly over the dark base. Always visible so touch and keyboard
+   reach the controls — only the description below reveals on hover/focus. */
 .launcher-info {
   position: absolute;
   inset: 0;
@@ -1069,15 +1067,7 @@
   justify-content: flex-end;
   gap: 5px;
   padding: 14px;
-  background: linear-gradient(180deg, rgba(6, 10, 20, 0.1) 0%, rgba(6, 10, 20, 0.92) 78%);
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-.launcher-card:hover .launcher-info {
-  opacity: 1;
-}
-.launcher-card:hover .launcher-logo {
-  opacity: 0;
+  background: linear-gradient(180deg, rgba(6, 10, 20, 0) 28%, rgba(6, 10, 20, 0.62) 62%, rgba(6, 10, 20, 0.95) 100%);
 }
 .launcher-name {
   font-family: var(--font-display);
@@ -1106,15 +1096,34 @@
   color: rgba(255, 255, 255, 0.78);
   font-weight: 600;
 }
+/* Description is the one hover/focus reveal — collapsed by default so the art
+   breathes, expanded on interaction. Kept visible where there's no hover
+   (touch), since those users can't summon it otherwise. */
 .launcher-desc {
   font-size: 12px;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.86);
-  margin: 2px 0 0;
+  margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.2s ease, opacity 0.2s ease, margin 0.2s ease;
+}
+.launcher-card:hover .launcher-desc,
+.launcher-card:focus-within .launcher-desc {
+  max-height: 58px;
+  opacity: 1;
+  margin: 0 0 2px;
+}
+@media (hover: none) {
+  .launcher-desc {
+    max-height: 58px;
+    opacity: 1;
+    margin: 0 0 2px;
+  }
 }
 .launcher-meta {
   font-size: 11px;
