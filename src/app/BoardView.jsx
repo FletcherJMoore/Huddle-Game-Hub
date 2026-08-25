@@ -15,7 +15,7 @@ import {
 import { getSocket } from "../lib/socket.js";
 import { myVote } from "../lib/games.js";
 import { myRsvp } from "../lib/schedule.js";
-import { BoardOverview, BoardCatalog, BoardPeople, BoardAdmin } from "./BoardScreens.jsx";
+import { BoardPlan, BoardCatalog, BoardPeople, BoardAdmin } from "./BoardScreens.jsx";
 import Calendar from "./Calendar.jsx";
 import ProposeGameModal from "./ProposeGameModal.jsx";
 
@@ -159,10 +159,19 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
 
   return (
     <>
-      {boardTab === "overview" && (
-        <BoardOverview board={board} games={games} schedule={schedule} user={user} onRsvp={handleRsvp} onSetTab={onSetTab} />
+      {boardTab === "plan" && (
+        <BoardPlan
+          board={board}
+          games={games}
+          schedule={schedule}
+          user={user}
+          onRsvp={handleRsvp}
+          onVote={handleVote}
+          onProposeGame={() => setProposing(true)}
+          onSetTab={onSetTab}
+        />
       )}
-      {boardTab === "catalog" && (
+      {boardTab === "games" && (
         <BoardCatalog
           board={board}
           games={games}
