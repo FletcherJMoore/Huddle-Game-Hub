@@ -81,6 +81,7 @@ const mockBaseCount = Object.fromEntries(mockBoards.map((b) => [b.id, b.memberCo
 const mockExtraMembers = {}; // boardId -> [members added]
 const mockRemovedMembers = {}; // boardId -> [removed userIds]
 const mockMemberRoles = {}; // boardId -> { userId: role }
+const mockInvites = {}; // boardId -> [invite]
 
 function mockBoard(id) {
   const summary = mockBoards.find((b) => b.id === id) || mockBoards[0];
@@ -216,6 +217,77 @@ export async function removeMember(boardId, userId) {
   }
   const res = await request(`/api/boards/${boardId}/members/${userId}`, { method: "DELETE" });
   return (await json(res)).members;
+}
+
+// ---- Invites (email-based; pending until accepted) ----
+
+const mockAcceptUrl = (token) => `/invite/${token}`;
+
+export async function listInvites(boardId) {
+  if (MOCK) return [...(mockInvites[boardId] || [])];
+  return (await json(await request(`/api/boards/${boardId}/invites`))).invites;
+}
+
+export async function createInvite(boardId, { email, role }) {
+  if (MOCK) {
+    const clean = email.trim().toLowerCase();
+    const list = mockInvites[boardId] || (mockInvites[boardId] = []);
+    const token = `mock-${Math.random().toString(36).slice(2, 10)}`;
+    const existing = list.find((i) => i.email === clean);
+    const invite = existing || { id: `inv-${Date.now()}`, email: clean };
+    Object.assign(invite, { role: role === "editor" ? "editor" : "member", status: "pending", createdAt: new Date().toISOString(), token, acceptUrl: mockAcceptUrl(token) });
+    if (!existing) list.unshift(invite);
+    return { invite, emailed: false };
+  }
+  const res = await request(`/api/boards/${boardId}/invites`, { method: "POST", body: JSON.stringify({ email, role }) });
+  return json(res);
+}
+
+export async function resendInvite(boardId, inviteId) {
+  if (MOCK) {
+    const inv = (mockInvites[boardId] || []).find((i) => i.id === inviteId);
+    return { emailed: false, acceptUrl: inv?.acceptUrl };
+  }
+  const res = await request(`/api/boards/${boardId}/invites/${inviteId}/resend`, { method: "POST" });
+  return json(res);
+}
+
+export async function revokeInvite(boardId, inviteId) {
+  if (MOCK) {
+    mockInvites[boardId] = (mockInvites[boardId] || []).filter((i) => i.id !== inviteId);
+    return [...mockInvites[boardId]];
+  }
+  const res = await request(`/api/boards/${boardId}/invites/${inviteId}`, { method: "DELETE" });
+  return (await json(res)).invites;
+}
+
+// Public invite preview for the accept landing page (no auth).
+export async function getInvite(token) {
+  if (MOCK) {
+    for (const [boardId, list] of Object.entries(mockInvites)) {
+      const inv = list.find((i) => i.token === token);
+      if (inv) {
+        const b = mockBoards.find((x) => x.id === boardId);
+        return { status: inv.status, email: inv.email, role: inv.role, crew: { name: b?.name || "a crew", emoji: b?.emoji }, inviterName: MOCK_USER.name };
+      }
+    }
+    return { status: "not_found" };
+  }
+  return json(await request(`/api/invites/${token}`));
+}
+
+export async function acceptInvite(token) {
+  if (MOCK) {
+    for (const [boardId, list] of Object.entries(mockInvites)) {
+      const inv = list.find((i) => i.token === token);
+      if (inv) {
+        inv.status = "accepted";
+        return { boardId };
+      }
+    }
+    throw new Error("This invite is no longer valid.");
+  }
+  return json(await request(`/api/invites/${token}/accept`, { method: "POST" }));
 }
 
 export async function deleteBoard(id) {

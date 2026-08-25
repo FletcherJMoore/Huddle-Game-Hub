@@ -2,7 +2,15 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { useAuth } from "./auth/AuthProvider.jsx";
 import LoginScreen from "./auth/LoginScreen.jsx";
+import InviteAccept from "./auth/InviteAccept.jsx";
 import AppShell from "./app/AppShell.jsx";
+
+// Deep link for an emailed invite: /invite/<token>. Handled here (no router) so
+// it works signed in or out, before the normal splash/login/app switch.
+const inviteToken = (() => {
+  const m = window.location.pathname.match(/^\/invite\/([^/]+)\/?$/);
+  return m ? decodeURIComponent(m[1]) : null;
+})();
 
 function Splash() {
   return (
@@ -33,7 +41,15 @@ export default function App() {
     <>
       <div className="aurora" aria-hidden="true" />
       <AnimatePresence mode="wait">
-        {loading ? <Splash key="splash" /> : user ? <AppShell key="app" /> : <LoginScreen key="login" />}
+        {inviteToken ? (
+          <InviteAccept key="invite" token={inviteToken} />
+        ) : loading ? (
+          <Splash key="splash" />
+        ) : user ? (
+          <AppShell key="app" />
+        ) : (
+          <LoginScreen key="login" />
+        )}
       </AnimatePresence>
     </>
   );

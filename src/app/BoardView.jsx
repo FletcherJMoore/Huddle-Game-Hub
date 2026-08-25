@@ -9,9 +9,12 @@ import {
   createSession,
   updateBoard,
   deleteBoard,
-  addMember,
   setMemberRole,
   removeMember,
+  listInvites,
+  createInvite,
+  resendInvite,
+  revokeInvite,
   MOCK
 } from "../lib/api.js";
 import { getSocket } from "../lib/socket.js";
@@ -26,6 +29,7 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
   const [board, setBoard] = useState(null);
   const [games, setGames] = useState([]);
   const [schedule, setSchedule] = useState([]);
+  const [invites, setInvites] = useState([]);
   const [error, setError] = useState("");
   const [proposing, setProposing] = useState(false);
 
@@ -59,6 +63,18 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
       alive = false;
       socket.emit("leave", boardId);
       socket.off("board:content", onContent);
+    };
+  }, [boardId]);
+
+  // Load the crew's invites for the admin panel. Non-admins get a 403; we just
+  // leave the list empty in that case.
+  useEffect(() => {
+    let alive = true;
+    listInvites(boardId)
+      .then((rows) => alive && setInvites(rows))
+      .catch(() => alive && setInvites([]));
+    return () => {
+      alive = false;
     };
   }, [boardId]);
 
@@ -165,11 +181,20 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
     }
   }
 
-  // Add a user by email; resolves the updated member list or throws for the
-  // Admin form to surface the server's message.
-  async function handleAddMember(email) {
-    const members = await addMember(boardId, email);
-    setBoard((b) => ({ ...b, members }));
+  // Invite by email; resolves { invite, emailed } (or throws the server's
+  // message) and refreshes the pending-invite list.
+  async function handleInvite(email, role) {
+    const result = await createInvite(boardId, { email, role });
+    setInvites(await listInvites(boardId));
+    return result;
+  }
+
+  function handleResendInvite(inviteId) {
+    return resendInvite(boardId, inviteId);
+  }
+
+  async function handleRevokeInvite(inviteId) {
+    setInvites(await revokeInvite(boardId, inviteId));
   }
 
   if (error) {
@@ -211,7 +236,7 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
         />
       )}
       {boardTab === "people" && (
-        <BoardPeople board={board} isAdmin={isAdmin} onRemoveMember={handleRemoveMember} onInvite={handleAddMember} />
+        <BoardPeople board={board} isAdmin={isAdmin} onRemoveMember={handleRemoveMember} onInvite={handleInvite} />
       )}
       {boardTab === "calendar" && (
         <Calendar board={board} games={games} schedule={schedule} user={user} onCreate={handleCreate} onRsvp={handleRsvp} />
@@ -219,12 +244,15 @@ export default function BoardView({ boardId, boardTab, onExit, onMetaChange, onS
       {boardTab === "admin" && (
         <BoardAdmin
           board={board}
+          invites={invites}
           onRename={(name) => handleMeta({ name })}
           onSetEmoji={(emoji) => handleMeta({ emoji })}
           onDelete={handleDelete}
-          onAddMember={handleAddMember}
+          onInvite={handleInvite}
           onSetRole={handleSetRole}
           onRemoveMember={handleRemoveMember}
+          onResendInvite={handleResendInvite}
+          onRevokeInvite={handleRevokeInvite}
         />
       )}
 
